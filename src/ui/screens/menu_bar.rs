@@ -8,7 +8,7 @@ use crate::{
 };
 use iced::{
     Element, Length, Size,
-    widget::{Column, Row, button, container, space, text},
+    widget::{Column, Row, button, column, container, space, text},
 };
 
 pub(super) fn header_prefix(app: &App) -> Element<'_, Message> {

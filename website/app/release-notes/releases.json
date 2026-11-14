@@ -1658,7 +1658,16 @@
           "src/ui/screens/search_everywhere/mod.rs",
           "src/app/shortcuts/mod.rs"
         ]
-      },
+      }
+    ]
+  },
+  {
+    "version": "unreleased",
+    "status": "prepared",
+    "publishedAt": null,
+    "tags": [],
+    "source": null,
+    "items": [
       {
         "id": "command-line-workspace-commands",
         "category": "added",
@@ -1734,15 +1743,17 @@
           "es": "El sitio reúne todas las guías en una sección de documentación con un menú lateral, incluidas las notas de versión."
         },
         "sources": ["website/app/components/DocsLayout.vue", "docs/website.md"]
+      },
+      {
+        "id": "windows-menu-bar-build",
+        "category": "fixed",
+        "text": {
+          "en": "The header menu bar compiles on Windows, and Windows packages build again.",
+          "ru": "Панель меню компилируется на Windows, и сборки Windows снова работают.",
+          "es": "La barra de menús compila en Windows y los paquetes de Windows se compilan de nuevo."
+        },
+        "sources": ["src/ui/screens/menu_bar.rs"]
       }
     ]
-  },
-  {
-    "version": "unreleased",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
-    "items": []
   }
 ]
