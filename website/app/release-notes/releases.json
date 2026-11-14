@@ -1662,7 +1662,7 @@
     ]
   },
   {
-    "version": "unreleased",
+    "version": "1.2.0",
     "status": "prepared",
     "publishedAt": null,
     "tags": [],
@@ -1755,5 +1755,13 @@
         "sources": ["src/ui/screens/menu_bar.rs"]
       }
     ]
+  },
+  {
+    "version": "unreleased",
+    "status": "prepared",
+    "publishedAt": null,
+    "tags": [],
+    "source": null,
+    "items": []
   }
 ]
