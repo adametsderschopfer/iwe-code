@@ -2,8 +2,8 @@
 
 #[cfg(unix)]
 pub(super) mod agent;
-mod ssh;
-pub(super) use ssh::Ssh;
+pub(crate) mod ssh;
+pub(crate) use ssh::Ssh;
 
 use super::*;
 use std::{

@@ -88,8 +88,12 @@ builds, publication, and website deployment. No dispatch requests or additional 
 tokens are required. Only version preparation, tagging, and release publication receive contents
 write permission. Website deployment receives pages and id-token write permissions. The workflow
 checks out the prepared commit explicitly because the initiating event references main. The built-in
-token pushes the version commit without triggering another Code Checks run. Release does not wait
-for or inspect earlier Code Checks results.
+token pushes the version commit without triggering another Code Checks run.
+
+The first version workflow job waits for the Code Checks run of the dispatched commit. Preparation
+stops when those checks fail, get cancelled, or stay absent for 45 minutes. This keeps a failing
+platform compile from burning a release tag, because the code of the prepared commit matches the
+checked commit.
 
 Retry failed release jobs after transient errors. A full rerun reuses its original version commit.
 The run identifier in the commit message links reruns to that commit. If code needs correction, push

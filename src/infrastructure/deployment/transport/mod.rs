@@ -163,5 +163,6 @@ pub(crate) fn child_path(parent: &str, name: &str) -> Result<String, Error> {
 #[cfg(test)]
 mod tests;
 
+/// In-memory test servers shared with in-crate checks of the MCP tools.
 #[cfg(test)]
-mod fixtures;
+pub(crate) mod fixtures;

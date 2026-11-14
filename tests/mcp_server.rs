@@ -149,6 +149,195 @@ fn git(project: &Path, arguments: &[&str]) {
     assert!(status.success(), "git {arguments:?} failed");
 }
 
+/// Create an isolated data directory whose workspace owns one deployment profile.
+fn deployment_fixture() -> (tempfile::TempDir, tempfile::TempDir) {
+    let (data, project) = fixture();
+    let directory = project.path().display().to_string();
+    let workspace = json!({
+        "spaces": [{
+            "name": "Main",
+            "projects": [{
+                "name": "sample",
+                "directory": directory,
+                "pinned": false,
+            }],
+            "deployments": [{
+                "id": "p1",
+                "name": "production",
+                "project": directory,
+                "connection": "c1",
+                "root": "/var/www",
+                "mappings": [
+                    {"local": "src", "remote": "code"},
+                    {"local": "readme.md", "remote": "readme.md"},
+                ],
+                "excluded": ["src/tmp"],
+                "default": true,
+            }],
+        }],
+        "selected_space": 0,
+        "selected_project": 0,
+        "deployment": {
+            "connections": [{
+                "id": "c1",
+                "name": "web",
+                "protocol": "Sftp",
+                "host": "example.com",
+                "port": 22,
+                "username": "deploy",
+                "authentication": "Password",
+            }],
+            "keys": [],
+        },
+    });
+    std::fs::write(data.path().join("workspace.json"), workspace.to_string())
+        .expect("write workspace metadata");
+    (data, project)
+}
+
+#[test]
+fn lists_deployments_without_secrets() {
+    let (data, _project) = deployment_fixture();
+    let mut server = Server::start(data.path());
+    server.request("initialize", json!({"protocolVersion": "2025-06-18"}));
+    server.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+
+    let value = server.tool_value("list_deployments", json!({}));
+    let text = serde_json::to_string(&value).unwrap();
+    assert!(!text.contains("secret"), "{text}");
+    assert_eq!(value["connections"][0]["name"], "web");
+    assert_eq!(value["connections"][0]["protocol"], "sftp");
+    assert_eq!(value["connections"][0]["authentication"], "password");
+    assert_eq!(value["keys"], serde_json::json!([]));
+    assert_eq!(value["spaces"][0]["profiles"][0]["name"], "production");
+    assert_eq!(value["spaces"][0]["profiles"][0]["connection"], "web");
+    assert_eq!(value["spaces"][0]["profiles"][0]["root"], "/var/www");
+    assert_eq!(
+        value["spaces"][0]["profiles"][0]["mappings"][0],
+        serde_json::json!({"local": "src", "remote": "code"})
+    );
+    assert_eq!(
+        server.tool_value("list_deployments", json!({}))["spaces"][0]["profiles"][0]["default"],
+        json!(true)
+    );
+}
+
+#[test]
+fn resolves_deployment_paths_across_mappings() {
+    let (data, _project) = deployment_fixture();
+    let mut server = Server::start(data.path());
+    server.request("initialize", json!({"protocolVersion": "2025-06-18"}));
+    server.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+
+    let value = server.tool_value(
+        "resolve_deployment_path",
+        json!({"profile": "production", "local": "src/main.rs"}),
+    );
+    assert_eq!(value["profile"], "production");
+    assert_eq!(value["remote"], "/var/www/code/main.rs");
+
+    let value = server.tool_value(
+        "resolve_deployment_path",
+        json!({"profile": "production", "remote": "/var/www/readme.md"}),
+    );
+    assert_eq!(value["local"], "readme.md");
+
+    let error = server.tool_error(
+        "resolve_deployment_path",
+        json!({"profile": "production", "local": "absent.txt"}),
+    );
+    assert!(error.contains("outside the profile mappings"), "{error}");
+
+    let error = server.tool_error(
+        "resolve_deployment_path",
+        json!({"profile": "absent", "local": "src/main.rs"}),
+    );
+    assert!(
+        error.contains("No deployment profile matches 'absent'."),
+        "{error}"
+    );
+
+    let error = server.tool_error("resolve_deployment_path", json!({"profile": "production"}));
+    assert!(
+        error.contains("Provide the 'local' or the 'remote'"),
+        "{error}"
+    );
+
+    let error = server.tool_error(
+        "resolve_deployment_path",
+        json!({"profile": "production", "local": "src/main.rs", "remote": "/var/www/code"}),
+    );
+    assert!(error.contains("not both"), "{error}");
+}
+
+/// Create an isolated data directory whose profile points at a closed loopback port.
+fn offline_deployment_fixture() -> tempfile::TempDir {
+    let (data, project) = fixture();
+    let directory = project.path().display().to_string();
+    let workspace = json!({
+        "spaces": [{
+            "name": "Main",
+            "projects": [{"name": "sample", "directory": directory, "pinned": false}],
+            "deployments": [{
+                "id": "p1",
+                "name": "production",
+                "project": directory,
+                "connection": "c1",
+                "root": "/var/www",
+                "mappings": [{"local": "src", "remote": "code"}],
+                "excluded": [],
+                "default": true,
+            }],
+        }],
+        "selected_space": 0,
+        "selected_project": 0,
+        "deployment": {
+            "connections": [{
+                "id": "c1",
+                "name": "web",
+                "protocol": "Sftp",
+                "host": "127.0.0.1",
+                "port": 1,
+                "username": "deploy",
+                "authentication": "Password",
+            }],
+            "keys": [],
+        },
+    });
+    std::fs::write(data.path().join("workspace.json"), workspace.to_string())
+        .expect("write workspace metadata");
+    data
+}
+
+#[test]
+fn deployment_reads_report_unknown_profiles_and_unreachable_servers() {
+    let data = offline_deployment_fixture();
+    let mut server = Server::start(data.path());
+    server.request("initialize", json!({"protocolVersion": "2025-06-18"}));
+    server.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+
+    let error = server.tool_error(
+        "deployment_read_remote",
+        json!({"profile": "absent", "path": "/var/www/readme.md"}),
+    );
+    assert!(
+        error.contains("No deployment profile matches 'absent'."),
+        "{error}"
+    );
+
+    let error = server.tool_error(
+        "deployment_read_remote",
+        json!({"profile": "production", "path": "/var/www/readme.md"}),
+    );
+    assert!(error.contains("IWE Code could not connect"), "{error}");
+
+    let error = server.tool_error(
+        "deployment_compare",
+        json!({"profile": "production", "path": "src/main.rs"}),
+    );
+    assert!(error.contains("IWE Code could not connect"), "{error}");
+}
+
 #[test]
 fn completes_the_handshake_and_lists_tools() {
     let (data, _project) = fixture();
@@ -183,6 +372,10 @@ fn completes_the_handshake_and_lists_tools() {
             "search_files",
             "git_status",
             "git_log",
+            "list_deployments",
+            "resolve_deployment_path",
+            "deployment_read_remote",
+            "deployment_compare",
         ]
     );
 }

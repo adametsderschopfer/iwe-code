@@ -22,9 +22,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  wait_checks:
+    name: Wait for code checks
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+    timeout-minutes: 45
+    steps:
+      - name: Wait for the Code Checks run of this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The dispatched commit must pass the platform checks before a tag exists.
+          for attempt in $(seq 1 90); do
+            result=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --json status,conclusion --limit 10)
+            if echo "$result" | jq -e 'any(.[]; .status == "completed" and .conclusion != "success")' > /dev/null; then
+              echo "Code checks did not pass for $GITHUB_SHA"
+              exit 1
+            fi
+            if echo "$result" | jq -e 'any(.[]; .status == "completed" and .conclusion == "success")' > /dev/null; then
+              echo "Code checks passed for $GITHUB_SHA"
+              exit 0
+            fi
+            echo "Waiting for code checks ($attempt/90)..."
+            sleep 30
+          done
+          echo "Timed out waiting for code checks for $GITHUB_SHA"
+          exit 1
+
   prepare:
     name: Prepare version
     if: github.ref == 'refs/heads/main'
+    needs: wait_checks
     runs-on: ubuntu-24.04
     permissions:
       contents: write

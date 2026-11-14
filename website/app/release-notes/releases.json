@@ -1748,11 +1748,51 @@
         "id": "windows-menu-bar-build",
         "category": "fixed",
         "text": {
-          "en": "The header menu bar compiles on Windows, and Windows packages build again.",
-          "ru": "Панель меню компилируется на Windows, и сборки Windows снова работают.",
-          "es": "La barra de menús compila en Windows y los paquetes de Windows se compilan de nuevo."
+          "en": "The header menu bar and the Windows deep-link listener compile on Windows, and Windows packages build again.",
+          "ru": "Панель меню и обработчик deep links компилируются на Windows, и сборки Windows снова работают.",
+          "es": "La barra de menús y el escucha de deep links de Windows compilan en Windows y los paquetes de Windows se compilan de nuevo."
         },
-        "sources": ["src/ui/screens/menu_bar.rs"]
+        "sources": ["src/ui/screens/menu_bar.rs", "src/infrastructure/external/windows.rs"]
+      },
+      {
+        "id": "external-interface-rules",
+        "category": "maintenance",
+        "text": {
+          "en": "Development rules now cover work on the command line, the MCP server, and deep links.",
+          "ru": "Правила разработки теперь охватывают работу с командной строкой, сервером MCP и deep links.",
+          "es": "Las reglas de desarrollo ahora cubren el trabajo con la línea de comandos, el servidor MCP y los deep links."
+        },
+        "sources": ["AGENTS.md", "docs/rules/external-interfaces.md"]
+      },
+      {
+        "id": "deployment-command-line",
+        "category": "added",
+        "text": {
+          "en": "The command line manages deployments. It adds, changes, and removes connections, SSH keys, and deployment profiles, and runs test, upload, download, and remote listing commands with JSON output.",
+          "ru": "Командная строка управляет деплоем: добавляет, изменяет и удаляет подключения, SSH-ключи и профили деплоя, а также выполняет команды test, upload, download и просмотра удалённых папок с выводом JSON.",
+          "es": "La línea de comandos gestiona los despliegues: añade, modifica y elimina conexiones, claves SSH y perfiles de despliegue, y ejecuta comandos de test, upload, download y listado remoto con salida JSON."
+        },
+        "sources": ["src/cli/deployment.rs", "docs/cli.md"]
+      },
+      {
+        "id": "deployment-mcp-tools",
+        "category": "added",
+        "text": {
+          "en": "The MCP server gains four deployment tools. It lists deployments, resolves mapped paths, reads remote text files, and compares project files with their remote counterparts. The reads connect to the server of one profile and never return credentials.",
+          "ru": "Сервер MCP получает четыре инструмента деплоя: список деплойментов, сопоставление путей, чтение удалённых текстовых файлов и сравнение файлов проекта с их удалёнными копиями. Чтение подключается к серверу одного профиля и никогда не возвращает учётные данные.",
+          "es": "El servidor MCP gana cuatro herramientas de despliegue: lista de despliegues, correspondencia de rutas, lectura de archivos de texto remotos y comparación de archivos del proyecto con sus copias remotas. Las lecturas se conectan al servidor de un perfil y nunca devuelven credenciales."
+        },
+        "sources": ["src/app/mcp/tools.rs", "docs/mcp.md"]
+      },
+      {
+        "id": "release-waits-for-code-checks",
+        "category": "maintenance",
+        "text": {
+          "en": "Version preparation now waits for the Code Checks run of the prepared commit and stops when those checks fail.",
+          "ru": "Подготовка версии теперь ждёт завершения проверки Code Checks для подготовленного коммита и останавливается при её провале.",
+          "es": "La preparación de la versión ahora espera la ejecución de Code Checks del commit preparado y se detiene si falla."
+        },
+        "sources": [".github/workflows/bump-version.yml", "docs/ci.md"]
       }
     ]
   },

@@ -184,7 +184,7 @@ fn directory_entries_cannot_escape_their_parent() {
 fn edit_round_trip(transport: &mut dyn Transport) {
     use crate::{
         domain::deployment::Profile,
-        modules::deployment::transfer::{self, Operation, Output},
+        infrastructure::deployment::transfer::{self, Operation, Output},
     };
     let directory = tempfile::tempdir().unwrap();
     let profile = Profile {

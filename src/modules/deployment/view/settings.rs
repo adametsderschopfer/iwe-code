@@ -7,10 +7,8 @@ use crate::{
         workspace::Space,
     },
     i18n::{I18n, Key},
-    modules::deployment::{
-        state::{Event, Field, NameAction, ProfileTab, State},
-        transport::Secret,
-    },
+    infrastructure::deployment::transport::Secret,
+    modules::deployment::state::{Event, Field, NameAction, ProfileTab, State},
     ui::{
         icons::{Icon, icon},
         theme, tooltip,

@@ -4,6 +4,7 @@
 //! to the interface. Everything else is a command-line invocation.
 
 mod args;
+mod deployment;
 mod output;
 
 #[cfg(test)]
@@ -60,6 +61,7 @@ fn dispatch(i18n: &I18n, invocation: args::Invocation) -> ExitCode {
             json,
         } => add_project(i18n, &directory, space.as_deref(), json),
         args::Invocation::RemoveProject { target, json } => remove_project(i18n, &target, json),
+        args::Invocation::Deployment(command) => deployment::dispatch(i18n, command),
     }
 }
 
@@ -269,7 +271,7 @@ fn present(i18n: &I18n, json: bool, project: &Project, key: Key) -> ExitCode {
 }
 
 /// Print one JSON value and succeed, or fail with a localized message.
-fn emit_json(i18n: &I18n, value: &impl serde::Serialize) -> ExitCode {
+pub(crate) fn emit_json(i18n: &I18n, value: &impl serde::Serialize) -> ExitCode {
     match output::print_json(value) {
         Ok(()) => ExitCode::SUCCESS,
         Err(()) => failure(
@@ -282,7 +284,7 @@ fn emit_json(i18n: &I18n, value: &impl serde::Serialize) -> ExitCode {
 }
 
 /// Load the saved workspace.
-fn load(i18n: &I18n) -> Result<Workspace, ExitCode> {
+pub(crate) fn load(i18n: &I18n) -> Result<Workspace, ExitCode> {
     match perform(infrastructure::workspace::load()) {
         Some(Ok((workspace, _))) => Ok(workspace),
         _ => Err(failure(
@@ -295,7 +297,7 @@ fn load(i18n: &I18n) -> Result<Workspace, ExitCode> {
 }
 
 /// Save the workspace.
-fn save(i18n: &I18n, workspace: Workspace) -> Result<(), ExitCode> {
+pub(crate) fn save(i18n: &I18n, workspace: Workspace) -> Result<(), ExitCode> {
     match perform(infrastructure::workspace::save(workspace)) {
         Some(Ok(())) => Ok(()),
         _ => Err(failure(
@@ -323,7 +325,7 @@ fn failure(i18n: &I18n, key: Key, arguments: FluentArgs<'_>, code: ExitCode) -> 
 }
 
 /// Print one localized message to stdout and succeed.
-fn message(i18n: &I18n, key: Key, arguments: FluentArgs<'_>) -> ExitCode {
+pub(crate) fn message(i18n: &I18n, key: Key, arguments: FluentArgs<'_>) -> ExitCode {
     println!("{}", i18n.format(key, &arguments));
     ExitCode::SUCCESS
 }

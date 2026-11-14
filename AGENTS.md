@@ -46,14 +46,15 @@ Always read:
 
 Read additional rules for the task:
 
-| Task                                                               | Required rules                                     |
-| ------------------------------------------------------------------ | -------------------------------------------------- |
-| Prepare a commit, version, release, or website release notes       | [Release notes](docs/rules/release-notes.md)       |
-| Change code, modules, dependencies, or architecture                | [Architecture](docs/rules/architecture.md)         |
-| Change Iced state, messages, views, styling, or animation          | [Iced and interface design](docs/rules/iced-ui.md) |
-| Add or change application text or language behavior                | [Internationalization](docs/rules/i18n.md)         |
-| Work on graph visualization, editing, audio, or AI                 | [Subsystem rules](docs/rules/subsystems.md)        |
-| Change entities, storage, queries, search indexes, or file formats | [Entities and data access](docs/rules/data.md)     |
+| Task                                                                     | Required rules                                           |
+| ------------------------------------------------------------------------ | -------------------------------------------------------- |
+| Prepare a commit, version, release, or website release notes             | [Release notes](docs/rules/release-notes.md)             |
+| Change code, modules, dependencies, or architecture                      | [Architecture](docs/rules/architecture.md)               |
+| Change Iced state, messages, views, styling, or animation                | [Iced and interface design](docs/rules/iced-ui.md)       |
+| Add or change application text or language behavior                      | [Internationalization](docs/rules/i18n.md)               |
+| Work on graph visualization, editing, audio, or AI                       | [Subsystem rules](docs/rules/subsystems.md)              |
+| Change entities, storage, queries, search indexes, or file formats       | [Entities and data access](docs/rules/data.md)           |
+| Work on the command line, MCP server, or external opening and deep links | [External interfaces](docs/rules/external-interfaces.md) |
 
 Read [the current architecture](docs/architecture.md) and affected feature documents before
 implementation. Subsystem rules guide development within shared layers and module boundaries. Do not

@@ -57,13 +57,13 @@ async fn reports_unknown_tools_as_tool_errors() {
 }
 
 #[tokio::test]
-async fn lists_seven_tools_with_unique_names() {
+async fn lists_eleven_tools_with_unique_names() {
     let Response::Result { value, .. } = Server.handle(request("tools/list", json!({}))).await
     else {
         panic!("expected a result response");
     };
     let tools = value.get("tools").and_then(Value::as_array).expect("tools");
-    assert_eq!(tools.len(), 7);
+    assert_eq!(tools.len(), 11);
     let mut names: Vec<_> = tools
         .iter()
         .filter_map(|tool| tool.get("name").and_then(Value::as_str))
@@ -76,6 +76,10 @@ async fn lists_seven_tools_with_unique_names() {
         "search_files",
         "git_status",
         "git_log",
+        "list_deployments",
+        "resolve_deployment_path",
+        "deployment_read_remote",
+        "deployment_compare",
     ];
     assert_eq!(names, expected);
     names.sort();

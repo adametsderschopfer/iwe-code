@@ -3,6 +3,7 @@ pub(crate) mod editor;
 
 pub(crate) mod auth;
 mod credentials;
+pub(crate) mod deployment;
 pub(crate) mod external;
 pub(crate) mod graphics;
 pub(crate) mod http;

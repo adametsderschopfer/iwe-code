@@ -101,6 +101,9 @@ under `docs/`. Documentation topics do not define source architecture.
 - Module state coordinates tasks and subscriptions. It may compose its own external adapters.
 - Keep filesystem, process, and network operations inside module adapters. Adapters must not import
   Iced or presentation code.
+- Move a module's external adapter to `infrastructure` when the command line shares it. The
+  deployment transfer engine lives in `infrastructure/deployment/` for this reason; the module state
+  and the `cli` both call it.
 - Keep module-specific styles inside the module. Reuse shared theme tokens instead of duplicating
   common colors.
 - Keep module translations under `modules/<name>/locales/`. Keep shared application translations

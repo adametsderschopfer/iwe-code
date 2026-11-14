@@ -118,6 +118,50 @@ fn all_catalogs_have_the_complete_key_set_and_resolve_without_errors() {
                 Key::CliErrorMissingArgument => {
                     args.set("value", "--space");
                 }
+                Key::CliDeploymentHumanProfile => {
+                    args.set("root", "/var/www");
+                }
+                Key::CliDeploymentHumanMapping => {
+                    args.set("local", "web");
+                    args.set("root", "/var/www");
+                    args.set("remote", "assets");
+                }
+                Key::CliConnectionAdded
+                | Key::CliConnectionUpdated
+                | Key::CliConnectionRemoved
+                | Key::CliKeyAdded
+                | Key::CliKeyRemoved
+                | Key::CliProfileAdded
+                | Key::CliProfileUpdated
+                | Key::CliProfileRemoved
+                | Key::CliDeploymentConnected
+                | Key::CliErrorConnectionNotFound
+                | Key::CliErrorKeyNotFound
+                | Key::CliErrorProfileNotFound
+                | Key::CliErrorAmbiguousConnection
+                | Key::CliErrorAmbiguousKeyName
+                | Key::CliErrorAmbiguousProfile
+                | Key::CliErrorConnectionInUse
+                | Key::CliErrorKeyInUse => {
+                    args.set("name", "server");
+                }
+                Key::CliDeploymentTransferred => {
+                    args.set("count", 3);
+                    args.set("bytes", 1024);
+                }
+                Key::CliDeploymentUnknownHost => {
+                    args.set("fingerprint", "SHA256:abcd");
+                }
+                Key::CliErrorInvalidProtocol
+                | Key::CliErrorInvalidPort
+                | Key::CliErrorInvalidAuth
+                | Key::CliErrorInvalidMapping
+                | Key::CliErrorInvalidPath => {
+                    args.set("value", "sftpx");
+                }
+                Key::CliErrorPathNotFound => {
+                    args.set("path", "/tmp/missing");
+                }
                 _ => {}
             }
             let value =

@@ -41,7 +41,9 @@ pub(super) fn write_payload(payload: &[u8]) -> bool {
 /// Each accepted connection serves exactly one payload. The loop recreates
 /// the server instance so the next launch can always connect.
 pub(super) async fn accept(listener: Option<Listener>) {
-    listener?;
+    if listener.is_none() {
+        return;
+    }
     loop {
         let Ok(server) = ServerOptions::new().create(PIPE_NAME) else {
             return;

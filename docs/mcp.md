@@ -8,9 +8,9 @@ iwe --mcp
 ```
 
 The server reads the same workspace metadata as the application. AI assistants connect to it and
-browse the configured spaces and projects, read and edit project files, search file names, and read
-Git status and history. The server never starts the interface. The flag works before every other
-startup step, including the command line and update handling.
+browse the configured spaces and projects, read and edit project files, search file names, read Git
+status and history, and read files on deployment servers. The server never starts the interface. The
+flag works before every other startup step, including the command line and update handling.
 
 ## Transport
 
@@ -25,20 +25,32 @@ JSON-RPC method-not-found error.
 
 ## Tools
 
-The server exposes seven read-oriented tools. One tool writes files.
+The server exposes eleven read-oriented tools. One tool writes files.
 
-| Tool            | Input                                     | Behavior                                                                                                  |
-| --------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `list_projects` | —                                         | Lists spaces and projects with the selected marks and pinned flags.                                       |
-| `list_files`    | `project?`, `directory?`                  | Lists one directory level. Skips `.git` and symlinks. Rejects levels above 5,000 entries.                 |
-| `read_file`     | `project?`, `path`                        | Reads a UTF-8 text file. Rejects files above 512 KiB or 100,000 lines. Returns a revision token.          |
-| `write_file`    | `project?`, `path`, `content`, `revision` | Replaces the content of an existing text file. Requires the revision token.                               |
-| `search_files`  | `query`, `project?`, `limit?`             | Ranks file names and paths with the same fuzzy matcher as the workspace search. Returns up to 50 results. |
-| `git_status`    | `project?`                                | Shows the current branch and the changed files of every repository in the project.                        |
-| `git_log`       | `project?`, `limit?`                      | Shows recent commits with authors, dates, and refs. The default limit is 50; the maximum is 250.          |
+| Tool                      | Input                                     | Behavior                                                                                                   |
+| ------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `list_projects`           | —                                         | Lists spaces and projects with the selected marks and pinned flags.                                        |
+| `list_files`              | `project?`, `directory?`                  | Lists one directory level. Skips `.git` and symlinks. Rejects levels above 5,000 entries.                  |
+| `read_file`               | `project?`, `path`                        | Reads a UTF-8 text file. Rejects files above 512 KiB or 100,000 lines. Returns a revision token.           |
+| `write_file`              | `project?`, `path`, `content`, `revision` | Replaces the content of an existing text file. Requires the revision token.                                |
+| `search_files`            | `query`, `project?`, `limit?`             | Ranks file names and paths with the same fuzzy matcher as the workspace search. Returns up to 50 results.  |
+| `git_status`              | `project?`                                | Shows the current branch and the changed files of every repository in the project.                         |
+| `git_log`                 | `project?`, `limit?`                      | Shows recent commits with authors, dates, and refs. The default limit is 50; the maximum is 250.           |
+| `list_deployments`        | —                                         | Lists deployment connections, SSH keys, and profiles with their mappings. Carries no secrets.              |
+| `resolve_deployment_path` | `profile`, `local` or `remote`            | Translates one path across a profile mapping. Local paths are project-relative; remote paths are absolute. |
+| `deployment_read_remote`  | `profile`, `path`                         | Reads one remote UTF-8 text file through the profile connection. Rejects files above 512 KiB.              |
+| `deployment_compare`      | `profile`, `path`                         | Reads the remote counterpart of one project file and returns both texts with an identical flag.            |
 
 The `project` argument selects a project by name. Without it, the tools use the selected project.
 Unknown names fail with the list of available names.
+
+The deployment tools split into two groups. `list_deployments` and `resolve_deployment_path` stay on
+workspace metadata: they never expose passwords, passphrases, or key files, and they connect to no
+server. `deployment_read_remote` and `deployment_compare` connect to the server of one profile with
+its stored credentials and read text files. They never modify the remote server and never return
+credentials. Transfers and remote writes belong to the command line. An untrusted server key fails
+with its fingerprint and points at `iwe deployment test --trust-host-key`; the tools never trust a
+key on their own.
 
 All results arrive as text content with a JSON payload. Tool failures carry `isError: true` and a
 short message. The messages stay generic and never contain file paths.
@@ -68,8 +80,10 @@ symlinks. The search walk reuses the background tree limits: 4,096 directories, 
 depth of 24. The walk skips the same directories as the background indexer, such as `node_modules`
 and `target`.
 
-The server only reads workspace metadata. It never writes `workspace.json`. It never reads stored
-credentials. Git reads run the `git` command with read-only arguments, without optional locks.
+The server only reads. It never writes `workspace.json` and never changes project files or remote
+servers. `deployment_read_remote` and `deployment_compare` read the stored credentials of one
+profile to open their connections; no tool returns a credential. Git reads run the `git` command
+with read-only arguments, without optional locks.
 
 ## Connecting a client
 
@@ -108,10 +122,12 @@ not available on the macOS development machine.
 ## Testing
 
 Protocol parsing, version negotiation, and transport limits carry unit tests in
-`src/infrastructure/mcp/tests.rs`. Tool helpers and path validation carry unit tests beside
-`src/app/mcp/tools.rs`. The integration test `tests/mcp_server.rs` starts the binary with a
-temporary data directory and exercises the full protocol: handshake, tool catalog, workspace reads,
-search, Git reads, and revision-checked writes. Tests never touch the user's data directory.
+`src/infrastructure/mcp/tests.rs`. Tool helpers, path validation, and the deployment tools carry
+unit tests beside `src/app/mcp/tools.rs`; the deployment tests connect to the in-memory SSH fixture
+from `infrastructure/deployment/transport/fixtures`. The integration test `tests/mcp_server.rs`
+starts the binary with a temporary data directory and exercises the full protocol: handshake, tool
+catalog, workspace reads, search, Git reads, and revision-checked writes. Tests never touch the
+user's data directory.
 
 Run `make check` to run formatting, lint, type checks, tests, and security checks. The website
 explains client setup for users on the

@@ -59,7 +59,7 @@ fn menu_actions_track_dialogs_like_the_native_menu() {
 
 #[test]
 fn header_menu_titles_open_their_menus() {
-    let mut app = app();
+    let app = app();
     let id = app.window_id.unwrap();
     let mut ui = iced_test::Simulator::with_size(
         iced::Settings::default(),

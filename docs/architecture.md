@@ -4,11 +4,12 @@ The application provides named spaces, projects, source previews, Git history, p
 settings. Bundled modules add optional capabilities through a typed catalog and application-owned
 runtimes.
 
-`modules/deployment/` owns remote browsing, connection forms, profile forms, transfer coordination,
-and protocol adapters. `domain/deployment/` defines connection metadata, profiles, exclusions, and
-reversible path mappings without external access. Workspace metadata stores shared connections and
-keys. Each space stores its deployment profiles. Older configurations receive empty deployment
-collections through Serde defaults.
+`modules/deployment/` owns remote browsing, connection forms, profile forms, and transfer
+coordination. The transfer engine and protocol adapters live in `infrastructure/deployment/` because
+the command line shares them. `domain/deployment/` defines connection metadata, profiles,
+exclusions, and reversible path mappings without external access. Workspace metadata stores shared
+connections and keys. Each space stores its deployment profiles. Older configurations receive empty
+deployment collections through Serde defaults.
 
 `app/modules/deployment.rs` connects module events to persistence, notifications, settings, and
 source tabs. The right deployment panel uses the shared resize widget with reversed drag direction.

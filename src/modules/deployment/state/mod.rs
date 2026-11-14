@@ -1,12 +1,13 @@
-use super::{
-    transfer::{self, Operation, Output, Request},
-    transport::{self, Entry, Progress, Secret},
-};
 use crate::{
     domain::deployment::{
         Authentication, Connection, Connections, Error, Mapping, PrivateKey, Profile, Protocol,
     },
     i18n::Key,
+    infrastructure::deployment::{
+        identifier,
+        transfer::{self, Operation, Output, Request},
+        transport::{self, Entry, Progress, Secret},
+    },
 };
 use iced::{Subscription, Task};
 use std::{
@@ -201,12 +202,6 @@ pub(crate) struct State {
     request: u64,
     credential_request: u64,
     context: Option<(usize, PathBuf)>,
-}
-
-fn identifier() -> Result<String, Error> {
-    let mut bytes = [0; 16];
-    getrandom::fill(&mut bytes).map_err(|_| Error::Configuration)?;
-    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 impl State {

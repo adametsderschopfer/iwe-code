@@ -3,10 +3,13 @@
 use crate::domain::{
     Failure,
     changes::FileStatus,
+    deployment::{Authentication, Connections, Error as DeploymentError, Profile, Protocol},
     editor::LIMIT,
     search::{self, FileCandidate},
     workspace::{Project, Workspace},
 };
+use crate::infrastructure::deployment::transfer::{self, Operation, Output, Request};
+use crate::infrastructure::deployment::transport::Progress;
 use crate::infrastructure::editor::{Error as SaveError, save as save_file};
 use crate::infrastructure::{project_index, repository, workspace};
 use serde_json::{Value, json};
@@ -18,6 +21,10 @@ use std::{
 };
 
 const DEFAULT_LOG_LIMIT: usize = 50;
+
+/// The response budget for remote file content. It matches the local `read_file` limit and keeps
+/// one response under the transport line limit.
+const REMOTE_LIMIT: usize = 512 * 1024;
 
 const CHANGED: &str = "The file changed after it was read. Read it again, then apply your change.";
 const WRITE_UNAVAILABLE: &str =
@@ -125,6 +132,69 @@ pub(crate) fn list() -> Value {
                     }
                 }),
             ),
+            tool(
+                "list_deployments",
+                "List the deployment connections, SSH keys, and profiles of the workspace. Profiles map project folders to remote server folders. The response never carries secrets.",
+                json!({ "type": "object", "properties": {} }),
+            ),
+            tool(
+                "resolve_deployment_path",
+                "Translate one path across a deployment profile mapping. Provide a project-relative local path to get its remote path, or an absolute remote path to get its project-relative local path. Planning only: run transfers with the iwe command line.",
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "profile": {
+                            "type": "string",
+                            "description": "Deployment profile name."
+                        },
+                        "local": {
+                            "type": "string",
+                            "description": "Project-relative local path to translate to a remote path."
+                        },
+                        "remote": {
+                            "type": "string",
+                            "description": "Absolute remote path to translate to a project-relative local path."
+                        }
+                    },
+                    "required": ["profile"]
+                }),
+            ),
+            tool(
+                "deployment_read_remote",
+                "Read one remote UTF-8 text file through a deployment profile connection. Files above 512 KiB are rejected. The response never carries credentials and the server is never modified.",
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "profile": {
+                            "type": "string",
+                            "description": "Deployment profile name."
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "Absolute remote file path."
+                        }
+                    },
+                    "required": ["profile", "path"]
+                }),
+            ),
+            tool(
+                "deployment_compare",
+                "Compare one local project file with its remote counterpart through a deployment profile. Returns both texts and an identical flag. Files above 512 KiB are rejected. The server is never modified.",
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "profile": {
+                            "type": "string",
+                            "description": "Deployment profile name."
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "Project-relative local file path."
+                        }
+                    },
+                    "required": ["profile", "path"]
+                }),
+            ),
         ]
     })
 }
@@ -150,6 +220,10 @@ pub(crate) async fn dispatch(name: &str, arguments: &Value) -> Result<Value, Str
         "search_files" => search_files(arguments).await,
         "git_status" => git_status(arguments).await,
         "git_log" => git_log(arguments).await,
+        "list_deployments" => list_deployments().await,
+        "resolve_deployment_path" => resolve_deployment_path(arguments).await,
+        "deployment_read_remote" => deployment_read_remote(arguments).await,
+        "deployment_compare" => deployment_compare(arguments).await,
         _ => Err(format!(
             "Unknown tool '{name}'. Call tools/list for the available tools."
         )),
@@ -360,6 +434,297 @@ async fn git_log(arguments: &Value) -> Result<Value, String> {
         })
         .collect::<Vec<_>>();
     Ok(json!({ "head": repository.head, "commits": commits }))
+}
+
+/// List deployment connections, keys, and profiles without secrets.
+async fn list_deployments() -> Result<Value, String> {
+    let workspace = workspace_metadata().await?;
+    let settings = &workspace.deployment;
+    let connections = settings
+        .connections
+        .iter()
+        .map(|connection| {
+            json!({
+                "name": connection.name,
+                "protocol": protocol_name(connection.protocol),
+                "host": connection.host,
+                "port": connection.port,
+                "username": connection.username,
+                "authentication": authentication_name(&connection.authentication),
+                "key": key_name(settings, &connection.authentication),
+            })
+        })
+        .collect::<Vec<_>>();
+    let keys = settings
+        .keys
+        .iter()
+        .map(|key| {
+            json!({
+                "name": key.name,
+                "path": key.path.display().to_string(),
+            })
+        })
+        .collect::<Vec<_>>();
+    let spaces = workspace
+        .spaces
+        .iter()
+        .map(|space| {
+            json!({
+                "name": space.name,
+                "profiles": space
+                    .deployments
+                    .iter()
+                    .map(|profile| profile_json(settings, profile))
+                    .collect::<Vec<_>>(),
+            })
+        })
+        .collect::<Vec<_>>();
+    Ok(json!({
+        "connections": connections,
+        "keys": keys,
+        "spaces": spaces,
+    }))
+}
+
+/// Resolve one deployment profile by name across the workspace spaces.
+fn deployment_profile<'a>(workspace: &'a Workspace, name: &str) -> Result<&'a Profile, String> {
+    let matches: Vec<&Profile> = workspace
+        .spaces
+        .iter()
+        .flat_map(|space| space.deployments.iter())
+        .filter(|profile| profile.name == name || profile.id == name)
+        .collect();
+    match matches.as_slice() {
+        [profile] => Ok(profile),
+        [] => Err(format!(
+            "No deployment profile matches '{name}'. Call list_deployments for the profiles."
+        )),
+        _ => Err(format!(
+            "Several profiles are named '{name}'. Profiles must have unique names to resolve paths."
+        )),
+    }
+}
+
+/// Run one deployment transfer for a profile and map failures to tool messages.
+async fn deployment_transfer(
+    workspace: &Workspace,
+    profile: &Profile,
+    operation: Operation,
+) -> Result<Output, String> {
+    deployment_transfer_with_secret(workspace, profile, operation, None).await
+}
+
+/// Run one deployment transfer with an explicit secret. Production reads the stored credentials,
+/// so the secret stays empty there.
+async fn deployment_transfer_with_secret(
+    workspace: &Workspace,
+    profile: &Profile,
+    operation: Operation,
+    secret: Option<crate::infrastructure::deployment::transport::Secret>,
+) -> Result<Output, String> {
+    let connection = workspace
+        .deployment
+        .connections
+        .iter()
+        .find(|connection| connection.id == profile.connection)
+        .cloned()
+        .ok_or_else(|| "The profile references a missing connection.".to_owned())?;
+    let request = Request {
+        connection,
+        settings: workspace.deployment.clone(),
+        profile: profile.clone(),
+        operation,
+        secret,
+    };
+    tokio::task::spawn_blocking(move || transfer::execute(request, &Progress::default()))
+        .await
+        .map_err(|_| "The deployment operation failed.".to_owned())?
+        .map_err(deployment_transfer_message)
+}
+
+/// Read one remote UTF-8 text file through a profile connection.
+async fn deployment_read_remote(arguments: &Value) -> Result<Value, String> {
+    let workspace = workspace_metadata().await?;
+    let name = required_string(arguments, "profile")?;
+    let profile = deployment_profile(&workspace, &name)?;
+    let path = required_string(arguments, "path")?;
+    let output = deployment_transfer(&workspace, profile, Operation::Preview(path.clone())).await?;
+    let Output::Preview { text, .. } = output else {
+        return Err("The deployment operation failed.".to_owned());
+    };
+    if text.len() > REMOTE_LIMIT {
+        return Err(too_large());
+    }
+    Ok(json!({
+        "profile": profile.name,
+        "path": path,
+        "content": *text,
+    }))
+}
+
+/// Compare one local project file with its remote counterpart.
+async fn deployment_compare(arguments: &Value) -> Result<Value, String> {
+    let workspace = workspace_metadata().await?;
+    let name = required_string(arguments, "profile")?;
+    let profile = deployment_profile(&workspace, &name)?;
+    let local = relative_path(&required_string(arguments, "path")?, "path")?;
+    let output = deployment_transfer(
+        &workspace,
+        profile,
+        Operation::Compare(profile.project.join(&local)),
+    )
+    .await?;
+    let Output::Preview {
+        text,
+        previous,
+        remote,
+        ..
+    } = output
+    else {
+        return Err("The deployment operation failed.".to_owned());
+    };
+    let Some(previous) = previous else {
+        return Err("The deployment operation failed.".to_owned());
+    };
+    if text.len() > REMOTE_LIMIT || previous.len() > REMOTE_LIMIT {
+        return Err(too_large());
+    }
+    Ok(json!({
+        "profile": profile.name,
+        "local": forward_slashes(&local),
+        "remote": remote,
+        "identical": *text == *previous,
+        "localText": *text,
+        "remoteText": *previous,
+    }))
+}
+
+fn too_large() -> String {
+    "This file is too large for the deployment tools. Use the iwe deployment command line for bigger transfers.".to_owned()
+}
+
+/// Translate one path across one profile mapping.
+async fn resolve_deployment_path(arguments: &Value) -> Result<Value, String> {
+    let workspace = workspace_metadata().await?;
+    let name = required_string(arguments, "profile")?;
+    let profile = deployment_profile(&workspace, &name)?;
+    let local = optional_string(arguments, "local")?;
+    let remote = optional_string(arguments, "remote")?;
+    match (local, remote) {
+        (Some(local), None) => {
+            let relative = relative_path(&local, "local")?;
+            let absolute = profile.project.join(relative);
+            let remote = profile.to_remote(&absolute).map_err(deployment_message)?;
+            Ok(json!({
+                "profile": profile.name,
+                "local": forward_slashes(absolute.strip_prefix(&profile.project).unwrap_or(&absolute)),
+                "remote": remote,
+            }))
+        }
+        (None, Some(remote)) => {
+            let local = profile.to_local(&remote).map_err(deployment_message)?;
+            Ok(json!({
+                "profile": profile.name,
+                "remote": remote,
+                "local": forward_slashes(local.strip_prefix(&profile.project).unwrap_or(&local)),
+            }))
+        }
+        (Some(_), Some(_)) => {
+            Err("Provide either the 'local' or the 'remote' argument, not both.".to_owned())
+        }
+        (None, None) => {
+            Err("Provide the 'local' or the 'remote' argument to translate.".to_owned())
+        }
+    }
+}
+
+fn profile_json(settings: &Connections, profile: &Profile) -> Value {
+    json!({
+        "name": profile.name,
+        "project": profile.project.display().to_string(),
+        "connection": settings
+            .connections
+            .iter()
+            .find(|connection| connection.id == profile.connection)
+            .map(|connection| connection.name.clone())
+            .unwrap_or_else(|| profile.connection.clone()),
+        "root": profile.root,
+        "mappings": profile
+            .mappings
+            .iter()
+            .map(|mapping| {
+                json!({
+                    "local": mapping.local.display().to_string(),
+                    "remote": mapping.remote,
+                })
+            })
+            .collect::<Vec<_>>(),
+        "excluded": profile
+            .excluded
+            .iter()
+            .map(|path| path.display().to_string())
+            .collect::<Vec<_>>(),
+        "default": profile.default,
+    })
+}
+
+fn protocol_name(protocol: Protocol) -> &'static str {
+    match protocol {
+        Protocol::Sftp => "sftp",
+        Protocol::Ftp => "ftp",
+        Protocol::Ftps => "ftps",
+        Protocol::FtpsImplicit => "ftps-implicit",
+    }
+}
+
+fn authentication_name(authentication: &Authentication) -> &'static str {
+    match authentication {
+        Authentication::Password => "password",
+        Authentication::Agent => "agent",
+        Authentication::Key(_) => "key",
+    }
+}
+
+fn key_name(
+    settings: &crate::domain::deployment::Connections,
+    authentication: &Authentication,
+) -> Option<String> {
+    match authentication {
+        Authentication::Key(id) => settings
+            .keys
+            .iter()
+            .find(|key| &key.id == id)
+            .map(|key| key.name.clone()),
+        _ => None,
+    }
+}
+
+/// Map deployment domain errors to tool messages.
+fn deployment_message(error: DeploymentError) -> String {
+    match error {
+        DeploymentError::Mapping => "The path is outside the profile mappings.".to_owned(),
+        DeploymentError::Excluded => "The path is excluded by the profile.".to_owned(),
+        _ => "The profile settings are not valid.".to_owned(),
+    }
+}
+
+/// Map one deployment transfer error to a generic tool message.
+fn deployment_transfer_message(error: DeploymentError) -> String {
+    match error {
+        DeploymentError::Connection => "IWE Code could not connect to the deployment server. Check that the server is reachable and the connection settings are current.".to_owned(),
+        DeploymentError::Credentials => "The deployment server rejected the stored credentials. Update the connection or key.".to_owned(),
+        DeploymentError::HostUnknown(fingerprint) => format!(
+            "The server key fingerprint {fingerprint} is not trusted. Verify the key, then run: iwe deployment test <profile> --trust-host-key {fingerprint}"
+        ),
+        DeploymentError::HostChanged => "The server key changed since the last connection. Verify the server before connecting again.".to_owned(),
+        DeploymentError::TooLarge => too_large(),
+        DeploymentError::Binary => "This file is not a UTF-8 text file.".to_owned(),
+        DeploymentError::Mapping => "The path is outside the profile mappings.".to_owned(),
+        DeploymentError::Excluded => "The path is excluded by the profile.".to_owned(),
+        DeploymentError::Access => "IWE Code could not read this file or folder on the server.".to_owned(),
+        DeploymentError::Configuration => "The deployment profile settings are not valid.".to_owned(),
+        _ => "The deployment operation failed.".to_owned(),
+    }
 }
 
 /// Load workspace metadata from disk without applying launch arguments.
