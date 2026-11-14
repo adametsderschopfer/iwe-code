@@ -15,8 +15,8 @@ use tokio::sync::mpsc as events;
 use tokio_util::sync::CancellationToken;
 
 pub(crate) type Tree = BTreeMap<PathBuf, Vec<FileEntry>>;
-const MAX_DIRECTORIES: usize = 4096;
-const MAX_ENTRIES: usize = 100_000;
+pub(crate) const MAX_DIRECTORIES: usize = 4096;
+pub(crate) const MAX_ENTRIES: usize = 100_000;
 const MAX_CACHE_BYTES: u64 = 32 * 1024 * 1024;
 const MAX_DEPTH: usize = 24;
 
@@ -246,7 +246,7 @@ impl Worker {
     }
 }
 
-fn prefetch(root: &Path, path: &Path) -> bool {
+pub(crate) fn prefetch(root: &Path, path: &Path) -> bool {
     let Ok(relative) = path.strip_prefix(root) else {
         return false;
     };

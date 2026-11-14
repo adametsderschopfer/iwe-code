@@ -220,6 +220,8 @@ unavailable = Esta información no está disponible. Intenta actualizar.
 storage-load-failed = No se pudieron cargar los ajustes. Los datos existentes se conservan; los cambios no se guardarán.
 storage-save-failed = No se guardaron los cambios. Comprueba el espacio libre y los permisos.
 open-failed = No se pudo abrir el enlace en el navegador.
+external-file-missing = No se pudo abrir este archivo. Comprueba que sigue existiendo.
+external-project-missing = No se pudo encontrar este proyecto. Añádelo antes a un espacio.
 greeting = ¿En qué vas a trabajar?
 message-unavailable = Este texto no está disponible.
 graphics-unavailable = iwe: no se pudo iniciar ningún motor gráfico
@@ -299,3 +301,43 @@ editor-symlink = Abre el archivo original para guardar los cambios.
 editor-save-failed = No se pudo guardar. Tus cambios siguen aquí. Comprueba los permisos e inténtalo de nuevo.
 editor-deployment-disabled = Activa Deployment para guardar este archivo remoto.
 editor-busy = Espera a que termine la transferencia y vuelve a guardar.
+
+# Command line
+cli-about = Un espacio de trabajo nativo para proyectos, código fuente, historial de Git y pipelines.
+cli-help-usage = Uso:
+cli-help-arguments = Argumentos
+cli-help-options = Opciones
+cli-help-commands = Comandos
+cli-help-flag = Mostrar la ayuda
+cli-version-flag = Mostrar la versión
+cli-open-about = Inicia la aplicación. Con un directorio, abre ese proyecto.
+cli-open-directory-help = Directorio del proyecto que se abrirá.
+cli-add-directory-help = Directorio del proyecto que se añadirá.
+cli-remove-target-help = Directorio del proyecto o su nombre exacto.
+cli-workspace-about = Muestra y cambia el espacio de trabajo.
+cli-workspace-list-about = Muestra los espacios y sus proyectos.
+cli-workspace-add-project-about = Añade un directorio de proyecto a un espacio.
+cli-workspace-remove-project-about = Elimina un proyecto por directorio o nombre.
+cli-space-option-help = Añade el proyecto a este espacio. Sin él, se usa el primer espacio.
+cli-json-flag-help = Muestra JSON para programas.
+cli-project-added = Se añadió {$name} al espacio de trabajo.
+cli-project-already-present = {$name} ya está en el espacio de trabajo.
+cli-project-removed = Se eliminó {$name} del espacio de trabajo.
+cli-projects-removed = { $count ->
+    [one] Se eliminó {$count} proyecto del espacio de trabajo.
+    [many] Se eliminaron {$count} proyectos del espacio de trabajo.
+    *[other] Se eliminaron {$count} proyectos del espacio de trabajo.
+}
+cli-human-space = Espacio: {$name}
+cli-human-project = {$name}: {$directory}
+cli-error-directory-not-found = El directorio no existe: {$path}
+cli-error-project-not-found = Ningún proyecto coincide con {$target}.
+cli-error-space-not-found = No hay ningún espacio llamado {$name}.
+cli-error-ambiguous-name = Hay varios proyectos llamados {$name}. Usa el directorio del proyecto.
+cli-error-unknown-argument = Opción desconocida {$value}. Ejecuta iwe --help para ver los comandos disponibles.
+cli-error-unknown-command = Comando desconocido {$value}. Ejecuta iwe --help para ver los comandos disponibles.
+cli-error-missing-argument = Falta un valor para {$value}.
+cli-error-load-failed = No se pudo leer el archivo del espacio de trabajo.
+cli-error-save-failed = No se pudo guardar el archivo del espacio de trabajo.
+cli-error-launch-failed = No se pudo iniciar la aplicación.
+cli-error-unexpected = El comando falló. Ejecuta iwe --help para ver los comandos disponibles.

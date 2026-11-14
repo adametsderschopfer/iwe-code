@@ -6,4 +6,5 @@ Exec=iwe %f
 Icon=iwe
 Terminal=false
 Categories=Development;IDE;
+MimeType=x-scheme-handler/iwe;
 StartupWMClass=iwe

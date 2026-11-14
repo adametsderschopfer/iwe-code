@@ -543,6 +543,8 @@ message_keys! {
     StorageLoadFailed => "storage-load-failed",
     StorageSaveFailed => "storage-save-failed",
     OpenFailed => "open-failed",
+    ExternalFileMissing => "external-file-missing",
+    ExternalProjectMissing => "external-project-missing",
     Greeting => "greeting",
     MessageUnavailable => "message-unavailable",
     GraphicsUnavailable => "graphics-unavailable",
@@ -551,6 +553,41 @@ message_keys! {
     UnsupportedOs => "unsupported-os",
     GraphicsInitializationFailed => "graphics-initialization-failed",
     ApplicationFailed => "application-failed",
+
+    CliAbout => "cli-about",
+    CliHelpUsage => "cli-help-usage",
+    CliHelpArguments => "cli-help-arguments",
+    CliHelpOptions => "cli-help-options",
+    CliHelpCommands => "cli-help-commands",
+    CliHelpFlag => "cli-help-flag",
+    CliVersionFlag => "cli-version-flag",
+    CliOpenAbout => "cli-open-about",
+    CliOpenDirectoryHelp => "cli-open-directory-help",
+    CliAddDirectoryHelp => "cli-add-directory-help",
+    CliRemoveTargetHelp => "cli-remove-target-help",
+    CliWorkspaceAbout => "cli-workspace-about",
+    CliWorkspaceListAbout => "cli-workspace-list-about",
+    CliWorkspaceAddProjectAbout => "cli-workspace-add-project-about",
+    CliWorkspaceRemoveProjectAbout => "cli-workspace-remove-project-about",
+    CliSpaceOptionHelp => "cli-space-option-help",
+    CliJsonFlagHelp => "cli-json-flag-help",
+    CliProjectAdded => "cli-project-added",
+    CliProjectAlreadyPresent => "cli-project-already-present",
+    CliProjectRemoved => "cli-project-removed",
+    CliProjectsRemoved => "cli-projects-removed",
+    CliHumanSpace => "cli-human-space",
+    CliHumanProject => "cli-human-project",
+    CliErrorDirectoryNotFound => "cli-error-directory-not-found",
+    CliErrorProjectNotFound => "cli-error-project-not-found",
+    CliErrorSpaceNotFound => "cli-error-space-not-found",
+    CliErrorAmbiguousName => "cli-error-ambiguous-name",
+    CliErrorUnknownArgument => "cli-error-unknown-argument",
+    CliErrorUnknownCommand => "cli-error-unknown-command",
+    CliErrorMissingArgument => "cli-error-missing-argument",
+    CliErrorLoadFailed => "cli-error-load-failed",
+    CliErrorSaveFailed => "cli-error-save-failed",
+    CliErrorLaunchFailed => "cli-error-launch-failed",
+    CliErrorUnexpected => "cli-error-unexpected",
 }
 
 pub(crate) struct I18n {
@@ -597,6 +634,9 @@ impl I18n {
 fn bundle(language: Language, source: &str) -> Option<FluentBundle<FluentResource>> {
     let resource = FluentResource::try_new(source.to_owned()).ok()?;
     let mut bundle = FluentBundle::new(vec![language.identifier()]);
+    // The supported languages write left to right, so bidi isolation marks
+    // only add invisible characters to interface and console text.
+    bundle.set_use_isolating(false);
     bundle.add_resource(resource).ok()?;
     Some(bundle)
 }

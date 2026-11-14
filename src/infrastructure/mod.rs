@@ -3,9 +3,11 @@ pub(crate) mod editor;
 
 pub(crate) mod auth;
 mod credentials;
+pub(crate) mod external;
 pub(crate) mod graphics;
 pub(crate) mod http;
 pub(crate) mod locale;
+pub(crate) mod mcp;
 pub(crate) mod modules;
 #[cfg(target_os = "macos")]
 pub(crate) mod native_menu;

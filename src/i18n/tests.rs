@@ -90,6 +90,34 @@ fn all_catalogs_have_the_complete_key_set_and_resolve_without_errors() {
                 Key::StartFailed | Key::GraphicsInitializationFailed | Key::ApplicationFailed => {
                     args.set("error", "E_TEST");
                 }
+                Key::CliProjectAdded | Key::CliProjectAlreadyPresent | Key::CliProjectRemoved => {
+                    args.set("name", "repo");
+                }
+                Key::CliHumanSpace => {
+                    args.set("name", "Work");
+                }
+                Key::CliHumanProject => {
+                    args.set("name", "repo");
+                    args.set("directory", "/tmp/repo");
+                }
+                Key::CliProjectsRemoved => {
+                    args.set("count", 3);
+                }
+                Key::CliErrorDirectoryNotFound => {
+                    args.set("path", "/tmp/missing");
+                }
+                Key::CliErrorProjectNotFound => {
+                    args.set("target", "repo");
+                }
+                Key::CliErrorSpaceNotFound | Key::CliErrorAmbiguousName => {
+                    args.set("name", "Work");
+                }
+                Key::CliErrorUnknownArgument | Key::CliErrorUnknownCommand => {
+                    args.set("value", "--space");
+                }
+                Key::CliErrorMissingArgument => {
+                    args.set("value", "--space");
+                }
                 _ => {}
             }
             let value =

@@ -229,3 +229,88 @@ fn moving_spaces_in_both_directions_keeps_each_selected_project_and_metadata() {
         }
     }
 }
+
+#[test]
+fn project_for_path_prefers_the_most_specific_project() {
+    let mut workspace = Workspace::default();
+    workspace.create_space(
+        "Work".to_owned(),
+        ["/repo", "/repo/crates/app"].map(PathBuf::from).to_vec(),
+    );
+    workspace.create_space("Home".to_owned(), ["/notes"].map(PathBuf::from).to_vec());
+    assert_eq!(
+        workspace.project_for_path(Path::new("/repo/crates/app/src/main.rs")),
+        Some((0, 1))
+    );
+    assert_eq!(
+        workspace.project_for_path(Path::new("/repo/src/main.rs")),
+        Some((0, 0))
+    );
+    assert_eq!(
+        workspace.project_for_path(Path::new("/notes/todo.md")),
+        Some((1, 0))
+    );
+}
+
+#[test]
+fn project_for_path_requires_a_directory_prefix() {
+    let mut workspace = Workspace::default();
+    workspace.create_space("Work".to_owned(), vec![PathBuf::from("/repo")]);
+    assert_eq!(
+        workspace.project_for_path(Path::new("/repository/file")),
+        None
+    );
+    assert_eq!(workspace.project_for_path(Path::new("/other/file")), None);
+    assert_eq!(workspace.project_for_path(Path::new("/repo")), Some((0, 0)));
+}
+
+#[test]
+fn project_for_path_handles_empty_workspaces() {
+    assert_eq!(
+        Workspace::default().project_for_path(Path::new("/repo/file")),
+        None
+    );
+}
+
+#[test]
+fn removing_projects_removes_every_occurrence_and_selects_a_remaining_project() {
+    let mut workspace = Workspace::default();
+    workspace.create_space(
+        "Work".to_owned(),
+        vec![PathBuf::from("/repo"), PathBuf::from("/web")],
+    );
+    workspace.create_space("Home".to_owned(), vec![PathBuf::from("/repo")]);
+    workspace.select_project(1, 0);
+    let removed = workspace.remove_projects(&PathBuf::from("/repo"));
+    assert_eq!(removed.len(), 2);
+    assert!(
+        removed
+            .iter()
+            .all(|project| project.directory == PathBuf::from("/repo"))
+    );
+    assert_eq!(workspace.spaces[0].projects.len(), 1);
+    assert!(workspace.spaces[1].projects.is_empty());
+    assert_eq!(workspace.directory(), Some(&PathBuf::from("/web")));
+    assert!(
+        workspace
+            .remove_projects(&PathBuf::from("/missing"))
+            .is_empty()
+    );
+    assert_eq!(workspace.spaces.len(), 2);
+    assert_eq!(workspace.directory(), Some(&PathBuf::from("/web")));
+}
+
+#[test]
+fn removing_the_selected_project_selects_the_next_remaining_project() {
+    let mut workspace = Workspace::default();
+    workspace.create_space(
+        "Work".to_owned(),
+        vec![PathBuf::from("a"), PathBuf::from("b"), PathBuf::from("c")],
+    );
+    workspace.select_project(0, 1);
+    let removed = workspace.remove_projects(&PathBuf::from("b"));
+    assert_eq!(removed.len(), 1);
+    assert_eq!(removed[0].name, "b");
+    assert_eq!(workspace.spaces[0].projects.len(), 2);
+    assert_eq!(workspace.directory(), Some(&PathBuf::from("a")));
+}

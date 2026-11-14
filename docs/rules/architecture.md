@@ -60,6 +60,7 @@ the following directories as implementation needs arise:
 | `application/`    | Coordinate user operations when reusable application scenarios require a separate layer    |
 | `domain/`         | Define workspace entities, repository data, graph algorithms, and business rules           |
 | `infrastructure/` | Implement storage, operating-system access, graphics startup, audio, and external services |
+| `cli/`            | Parse command-line arguments and run headless commands before the interface starts         |
 | `i18n/`           | Resolve supported languages and format translated messages                                 |
 | `modules/`        | Register bundled modules and contain their runtime, interface, adapters, and tests         |
 
@@ -69,8 +70,8 @@ in adjacent `tests.rs` files. Reserve root `tests/` for integration tests. Follo
 [test organization rules](quality.md#testing--verification) for module declarations and private
 access.
 
-The current application uses `app`, `domain`, `ui`, `infrastructure`, `i18n`, and `modules`. `app`
-coordinates shared operations. `domain` owns workspace entities and repository data. Add
+The current application uses `app`, `cli`, `domain`, `ui`, `infrastructure`, `i18n`, and `modules`.
+`app` coordinates shared operations. `domain` owns workspace entities and repository data. Add
 `application` when concrete scenarios require it. Keep its contracts and operations independent of
 presentation. Add `ui/components` when multiple screens need reusable components. Do not create
 empty directories, placeholder types, or one file for every trivial method.
@@ -131,6 +132,9 @@ Apply application-layer rules when concrete scenarios require that layer. Read
   replacement tests.
 - `infrastructure` may implement those contracts and use domain types.
 - Infrastructure modules must not import `app` or `ui`.
+- `cli` may use `domain`, `infrastructure`, and `i18n` for localized console output.
+- `cli` must not import `app`, `ui`, or `modules`. Only `main` routes between `cli` and the
+  interface.
 - Startup diagnostics may use `i18n`. Keep those messages outside the interface.
 - `ui` may use application results, read-only domain data, and `i18n`.
 - UI modules must not import concrete infrastructure or the application composition layer.

@@ -220,6 +220,8 @@ unavailable = This information is temporarily unavailable. Try refreshing.
 storage-load-failed = Could not load saved settings. Existing data is preserved; changes will not be saved.
 storage-save-failed = Could not save changes. Check available disk space and permissions.
 open-failed = Could not open the link in your browser.
+external-file-missing = We could not open this file. Check that it still exists.
+external-project-missing = We could not find this project. Add it to a space first.
 greeting = What are you working on?
 message-unavailable = This text is unavailable.
 graphics-unavailable = iwe: none of the graphics backends could start
@@ -299,3 +301,42 @@ editor-symlink = Open the original file to save changes.
 editor-save-failed = Could not save. Your changes remain here. Check file permissions and try again.
 editor-deployment-disabled = Enable Deployment to save this server file.
 editor-busy = Wait for the current transfer, then save again.
+
+# Command line
+cli-about = A native workspace for projects, source code, Git history, and pipelines.
+cli-help-usage = Usage:
+cli-help-arguments = Arguments
+cli-help-options = Options
+cli-help-commands = Commands
+cli-help-flag = Print help
+cli-version-flag = Print version
+cli-open-about = Start the application. Add a directory to open that project.
+cli-open-directory-help = Project directory to open.
+cli-add-directory-help = Project directory to add.
+cli-remove-target-help = Project directory or exact project name.
+cli-workspace-about = Show and change the workspace.
+cli-workspace-list-about = List spaces and their projects.
+cli-workspace-add-project-about = Add a project directory to a space.
+cli-workspace-remove-project-about = Remove a project by directory or name.
+cli-space-option-help = Add the project to this space. Without it, the first space is used.
+cli-json-flag-help = Print machine-readable JSON.
+cli-project-added = Added {$name} to the workspace.
+cli-project-already-present = {$name} is already in the workspace.
+cli-project-removed = Removed {$name} from the workspace.
+cli-projects-removed = { $count ->
+    [one] Removed {$count} project from the workspace.
+    *[other] Removed {$count} projects from the workspace.
+}
+cli-human-space = Space: {$name}
+cli-human-project = {$name}: {$directory}
+cli-error-directory-not-found = The directory does not exist: {$path}
+cli-error-project-not-found = No project matches {$target}.
+cli-error-space-not-found = No space is named {$name}.
+cli-error-ambiguous-name = Several projects are named {$name}. Use the project directory instead.
+cli-error-unknown-argument = Unknown option {$value}. Run iwe --help to see available commands.
+cli-error-unknown-command = Unknown command {$value}. Run iwe --help to see available commands.
+cli-error-missing-argument = Missing a value for {$value}.
+cli-error-load-failed = We could not read your workspace file.
+cli-error-save-failed = We could not save your workspace file.
+cli-error-launch-failed = We could not start the application.
+cli-error-unexpected = The command failed. Run iwe --help to see available commands.

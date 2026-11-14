@@ -18,8 +18,8 @@ View bundled modules under **Settings → Modules**. The first system module pro
 terminal for the selected project. System modules are always enabled and cannot be removed. Install
 external modules from `.iwe-module` package files in the same place. See
 [modules and terminal sessions](docs/modules.md) for controls and limits, and the module development
-guide on [the website](https://adametsderschopfer.github.io/iwe-code/modules/) for building your
-own.
+guide on [the website](https://adametsderschopfer.github.io/iwe-code/docs/module-development/) for
+building your own.
 
 The Deployment module browses SFTP, FTP, and FTPS servers. Configure shared connections and
 deployment profiles within each space. Compare remote files, upload local files, and download files
@@ -30,6 +30,20 @@ source contents when files open. File previews leave repository files unchanged,
 stay local until an explicit deployment upload. Terminal commands can change files and use the
 network with your account's permissions. See [workspace behavior](docs/workspace.md) for limits,
 authentication, and keyboard shortcuts.
+
+Files opened outside the application join the project that owns them. Files without a project open
+on their own. The `iwe://` deep link scheme targets files and existing projects. See
+[external opening](docs/external-opening.md) for sources and registration.
+
+The binary also serves a small command line for scripts: `iwe open`, `iwe workspace list --json`,
+`iwe workspace add-project`, and `iwe workspace remove-project`. See [the command line](docs/cli.md)
+for commands, JSON output, and exit codes.
+
+The same binary runs a Model Context Protocol (MCP) server with `iwe --mcp`. AI assistants connect
+over standard input and output, browse the workspace projects, read and edit text files, and read
+Git status and history. Writes reuse the editor's conflict checks. See [the MCP server](docs/mcp.md)
+for tools and limits, and the [MCP guide](https://adametsderschopfer.github.io/iwe-code/docs/mcp/)
+for client configuration.
 
 One version tag publishes a GitHub Release for macOS, Windows, and Linux. Packages cover macOS Apple
 Silicon and Intel, Windows x86 and x64, and Linux x86 and x64. Windows packages include a per-user
@@ -80,6 +94,12 @@ cargo run --locked -- /path/to/project
 ```
 
 Existing project folders open in their saved space. New folders appear in the space creation form.
+Files and deep links work the same way:
+
+```sh
+cargo run --locked -- /path/to/file.md
+cargo run --locked -- "iwe://open?path=/path/to/file.md"
+```
 
 The application uses the system language. Set `IWE_LANG` to override it:
 

@@ -30,6 +30,22 @@ case "$RUNNER_OS" in
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$version</string>
   <key>CFBundleVersion</key><string>$version</string>
+  <key>CFBundleURLTypes</key><array><dict>
+    <key>CFBundleURLName</key><string>com.adametsderschopfer.iwe</string>
+    <key>CFBundleURLSchemes</key><array><string>iwe</string></array>
+  </dict></array>
+  <key>CFBundleDocumentTypes</key><array><dict>
+    <key>CFBundleTypeName</key><string>Text and Source Files</string>
+    <key>CFBundleTypeRole</key><string>Viewer</string>
+    <key>LSHandlerRank</key><string>Alternate</string>
+    <key>LSItemContentTypes</key><array>
+      <string>public.plain-text</string>
+      <string>public.source-code</string>
+      <string>public.shell-script</string>
+      <string>public.json</string>
+      <string>public.xml</string>
+    </array>
+  </dict></array>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>NSHighResolutionCapable</key><true/>
 </dict></plist>

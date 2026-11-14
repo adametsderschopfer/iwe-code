@@ -4,6 +4,7 @@ pub(crate) mod editor;
 pub(crate) mod auth;
 pub(crate) mod changes;
 pub(crate) mod deployment;
+pub(crate) mod external;
 pub(crate) mod git;
 pub(crate) mod jobs;
 pub(crate) mod modules;

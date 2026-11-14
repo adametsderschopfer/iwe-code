@@ -81,6 +81,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#PayloadDirectory}\iwe.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDirectory}\README.md"; DestDir: "{app}"; Flags: ignoreversion
 
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\iwe"; ValueType: string; ValueData: "URL:IWE Code"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\iwe"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\iwe\DefaultIcon"; ValueType: string; ValueData: "{app}\iwe.exe,0"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\iwe\shell\open\command"; ValueType: string; ValueData: """{app}\iwe.exe"" ""%1"""; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Applications\iwe.exe"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "{#AppName}"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Applications\iwe.exe\shell\open\command"; ValueType: string; ValueData: """{app}\iwe.exe"" ""%1"""; Flags: uninsdeletekey
+
 [Icons]
 Name: "{userprograms}\{#AppName}"; Filename: "{app}\iwe.exe"; WorkingDir: "{app}"
 Name: "{userdesktop}\{#AppName}"; Filename: "{app}\iwe.exe"; WorkingDir: "{app}"; Tasks: desktopicon

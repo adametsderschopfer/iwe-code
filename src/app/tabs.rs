@@ -525,6 +525,18 @@ impl App {
         self.open_working_file(path, false)
     }
 
+    /// Open a file outside every project on its own.
+    pub(super) fn open_standalone_file(&mut self, path: PathBuf) -> Task<Message> {
+        let Some(root) = path.parent().map(Path::to_path_buf) else {
+            return Task::none();
+        };
+        self.open_source(Source::Working {
+            root,
+            path,
+            compare: false,
+        })
+    }
+
     pub(super) fn open_working_change(&mut self, path: PathBuf) -> Task<Message> {
         self.open_working_file(path, true)
     }

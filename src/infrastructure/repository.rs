@@ -19,7 +19,7 @@ use crate::domain::repository::{
 };
 use std::path::{Path, PathBuf};
 
-const HISTORY_PAGE_SIZE: usize = 250;
+pub(crate) const HISTORY_PAGE_SIZE: usize = 250;
 
 async fn git(root: &Path, args: &[&str]) -> Result<Vec<u8>, Failure> {
     let mut arguments = vec![

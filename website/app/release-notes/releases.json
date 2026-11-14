@@ -1658,6 +1658,82 @@
           "src/ui/screens/search_everywhere/mod.rs",
           "src/app/shortcuts/mod.rs"
         ]
+      },
+      {
+        "id": "command-line-workspace-commands",
+        "category": "added",
+        "text": {
+          "en": "The application binary gains a command line: iwe open starts the interface, iwe workspace list prints spaces and projects, and add-project or remove-project change the workspace. The --json flag prints machine-readable output, and help text follows the interface language.",
+          "ru": "У бинарника приложения появилась командная строка: iwe open запускает интерфейс, iwe workspace list показывает пространства и проекты, а add-project и remove-project изменяют рабочее пространство. Флаг --json печатает вывод для программ, справка следует за языком интерфейса.",
+          "es": "El binario de la aplicación incorpora una línea de comandos: iwe open inicia la interfaz, iwe workspace list muestra espacios y proyectos, y add-project o remove-project cambian el espacio de trabajo. La opción --json imprime salida para programas y la ayuda sigue el idioma de la interfaz."
+        },
+        "sources": ["src/cli/mod.rs", "src/cli/args.rs", "src/cli/output.rs", "docs/cli.md"]
+      },
+      {
+        "id": "command-line-guide-page",
+        "category": "added",
+        "text": {
+          "en": "The website publishes a command line guide with the commands, JSON output, and exit codes.",
+          "ru": "На сайте опубликована инструкция по командной строке: команды, вывод JSON и коды выхода.",
+          "es": "El sitio web publica una guía de la línea de comandos con los comandos, la salida JSON y los códigos de salida."
+        },
+        "sources": ["website/app/components/CliPage.vue"]
+      },
+      {
+        "id": "unknown-arguments-stop-with-an-error",
+        "category": "changed",
+        "text": {
+          "en": "Unknown command-line arguments now stop with an error instead of silently opening the workspace. Directories, files, deep links, and internal update flags keep their behavior.",
+          "ru": "Неизвестные аргументы командной строки теперь завершаются ошибкой вместо тихого открытия рабочего пространства. Директории, файлы, deep links и внутренние флаги обновления работают как раньше.",
+          "es": "Los argumentos desconocidos de la línea de comandos ahora terminan con un error en lugar de abrir el espacio de trabajo en silencio. Los directorios, los archivos, los deep links y las opciones internas de actualización conservan su comportamiento."
+        },
+        "sources": ["src/cli/mod.rs", "src/cli/args.rs"]
+      },
+      {
+        "id": "mcp-server",
+        "category": "added",
+        "text": {
+          "en": "The application binary serves a Model Context Protocol server with iwe --mcp. AI assistants browse workspace projects, read and edit text files with revision checks, search file names, and read Git status and history.",
+          "ru": "Бинарник приложения обслуживает сервер Model Context Protocol через iwe --mcp. AI-ассистенты просматривают проекты рабочего пространства, читают и изменяют текстовые файлы с проверкой ревизий, ищут файлы и читают статус и историю Git.",
+          "es": "El binario de la aplicación sirve un servidor de Model Context Protocol con iwe --mcp. Los asistentes de IA exploran los proyectos del espacio de trabajo, leen y editan archivos de texto con comprobación de revisiones, buscan archivos y leen el estado y el historial de Git."
+        },
+        "sources": [
+          "src/main.rs",
+          "src/app/mcp/mod.rs",
+          "src/app/mcp/tools.rs",
+          "src/infrastructure/mcp/mod.rs",
+          "docs/mcp.md"
+        ]
+      },
+      {
+        "id": "mcp-server-guide-page",
+        "category": "added",
+        "text": {
+          "en": "The website publishes an MCP guide with client configuration, the tool list, the editing flow, and security notes.",
+          "ru": "На сайте опубликована инструкция по MCP: настройка клиентов, список инструментов, порядок редактирования и замечания по безопасности.",
+          "es": "El sitio web publica una guía de MCP con la configuración de clientes, la lista de herramientas, el flujo de edición y notas de seguridad."
+        },
+        "sources": ["website/app/components/McpPage.vue", "website/app/i18n/en.json"]
+      },
+      {
+        "id": "external-file-opening",
+        "category": "added",
+        "text": {
+          "en": "Files from the file manager, the command line, and iwe:// links open in the running application instead of a second window.",
+          "ru": "Файлы из файлового менеджера, командной строки и ссылки iwe:// открываются в работающем приложении вместо второго окна.",
+          "es": "Los archivos del gestor de archivos, la línea de comandos y los enlaces iwe:// se abren en la aplicación en ejecución en lugar de una segunda ventana."
+        },
+        "sources": ["src/app/external/mod.rs", "docs/external-opening.md"]
+      },
+      {
+        "id": "website-documentation-section",
+        "category": "added",
+        "text": {
+          "en": "The website keeps every guide in one documentation section with a sidebar menu, and release notes join the section.",
+          "ru": "На сайте все руководства собраны в одном разделе документации с боковым меню, включая релизноуты.",
+          "es": "El sitio reúne todas las guías en una sección de documentación con un menú lateral, incluidas las notas de versión."
+        },
+        "sources": ["website/app/components/DocsLayout.vue", "docs/website.md"]
       }
     ]
   },

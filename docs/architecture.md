@@ -45,9 +45,23 @@ expanded branch groups. Project switches restore cached data before starting gen
 repository reads. Temporary errors preserve cached content. Confirmed missing repositories
 invalidate their entries.
 
+`main` routes each launch through three gates. The update helper handles internal flags. The command
+line in `cli/` handles commands such as `workspace list` and exits headless. External request
+handling forwards files and deep links to a running instance, or accepts them. What remains starts
+the graphics launcher. See [the command line](cli.md) for commands, output formats, and exit codes.
+
+The `--mcp` flag starts the Model Context Protocol server before all gates. The transport in
+`infrastructure/mcp/` exchanges JSON-RPC messages over standard input and output, one per line.
+`app/mcp/` routes tool calls to workspace metadata, bounded file reads and writes, the fuzzy search
+walk, and read-only Git commands. File writes reuse the editor's conflict-checked save with a
+revision token from the latest read. See [the MCP server](mcp.md) for tools and limits.
+
 | Module                                                | Responsibility                                                                           |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `main.rs`                                             | Select the language and start the graphics launcher                                      |
+| `main.rs`                                             | Route the command line and external requests, then start the graphics launcher           |
+| `cli/`                                                | Parse command-line arguments and run headless workspace commands                         |
+| `infrastructure/mcp/`                                 | Serve JSON-RPC transport lines and negotiate the MCP protocol                            |
+| `app/mcp/`                                            | Route MCP tool calls to workspace, file, search, and Git reads                           |
 | `app/`                                                | Configure the window, own interface state, and process native material results           |
 | `app/notifications.rs`                                | Bound operation notifications, coalesce duplicates, and manage dismissal timers          |
 | `app/project_changes/`                                | Refresh sidebar change indicators for inactive projects with bounded Git status reads    |

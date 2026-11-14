@@ -1,5 +1,6 @@
 //! Coordinate asynchronous reads, workspace state, and the native window.
 pub(crate) mod editor;
+pub(crate) mod external;
 use crate::modules::ModuleId;
 pub(crate) use crate::modules::{git::GitPanel, pipelines::PipelineState};
 
@@ -10,6 +11,7 @@ pub(crate) mod files;
 pub(crate) use modules::git::git_actions;
 pub(crate) use modules::pipelines::jobs;
 pub(crate) mod line_navigation;
+pub(crate) mod mcp;
 #[cfg(target_os = "windows")]
 pub(crate) mod menu_bar;
 pub(crate) mod modules;
@@ -99,6 +101,7 @@ fn application(
             #[cfg(target_os = "macos")]
             app.native_menu_subscription(),
             window_state_subscription(),
+            external::subscription(),
             iced::event::listen_with(|event, status, id| {
                 if let iced::Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) = event {
                     Some(Message::BranchSelection(
@@ -200,6 +203,7 @@ pub(crate) struct App {
     pub project_add: Option<project_add::Draft>,
     pub line_navigation: Option<line_navigation::Dialog>,
     pub search_everywhere: search_everywhere::State,
+    pub external: external::State,
     pub account_username: Option<String>,
     pub disconnecting: bool,
     pub notifications: notifications::State,
@@ -297,6 +301,7 @@ pub(crate) enum Message {
     Worktree(changes::Event),
     ProjectChanges(project_changes::Event),
     OpenFile(PathBuf),
+    External(crate::domain::external::Request),
     OpenWorkingChange(PathBuf),
     GoToLine(line_navigation::Event),
     SearchEverywhere(search_everywhere::Event),
@@ -399,6 +404,7 @@ impl App {
             project_add: None,
             line_navigation: None,
             search_everywhere: search_everywhere::State::default(),
+            external: external::State::default(),
             account_username: None,
             disconnecting: false,
             notifications: notifications::State::default(),
@@ -742,6 +748,7 @@ impl App {
                     self.refresh_project_changes(),
                     self.save(),
                     dialog,
+                    external::flush(self),
                 ]);
             }
             Message::Saved(result) => {
@@ -1048,6 +1055,7 @@ impl App {
                 }
             }
             Message::OpenFile(path) => return self.open_file(path),
+            Message::External(request) => return external::open(self, request),
             Message::OpenWorkingChange(path) => return self.open_working_change(path),
             Message::OpenCommitFile(index) => return self.open_commit_file(index),
             Message::FilePrepared(generation, request, stage, result)

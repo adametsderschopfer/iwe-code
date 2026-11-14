@@ -131,6 +131,29 @@ impl Workspace {
         self.project().map(|project| &project.directory)
     }
 
+    /// Find the space and project whose directory contains the path.
+    ///
+    /// The path and the stored project directories must be canonical. Nested
+    /// projects win over their parents, so the most specific project matches.
+    pub(crate) fn project_for_path(&self, path: &Path) -> Option<(usize, usize)> {
+        let mut best: Option<(usize, usize, usize)> = None;
+        for (space, space_data) in self.spaces.iter().enumerate() {
+            for (project, project_data) in space_data.projects.iter().enumerate() {
+                if !path.starts_with(&project_data.directory) {
+                    continue;
+                }
+                let depth = project_data.directory.components().count();
+                if best
+                    .as_ref()
+                    .is_none_or(|&(_, _, best_depth)| depth > best_depth)
+                {
+                    best = Some((space, project, depth));
+                }
+            }
+        }
+        best.map(|(space, project, _)| (space, project))
+    }
+
     pub(crate) fn normalize(&mut self) {
         self.preferences.shortcuts.normalize();
         let mut panels = Vec::new();
@@ -337,6 +360,30 @@ impl Workspace {
                 .map(|project| (space, project))
         });
         selected.is_some_and(|(space, project)| self.select_project(space, project))
+    }
+
+    /// Remove every project with the given directory across all spaces.
+    ///
+    /// Returns the removed projects in space order. Selection resets through
+    /// `normalize` so it never points at a shifted project.
+    pub(crate) fn remove_projects(&mut self, directory: &Path) -> Vec<Project> {
+        let mut removed = Vec::new();
+        for space in &mut self.spaces {
+            space.projects.retain(|project| {
+                if project.directory == directory {
+                    removed.push(project.clone());
+                    false
+                } else {
+                    true
+                }
+            });
+        }
+        if !removed.is_empty() {
+            self.selected_space = None;
+            self.selected_project = None;
+            self.normalize();
+        }
+        removed
     }
 }
 

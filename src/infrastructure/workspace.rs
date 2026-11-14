@@ -11,7 +11,7 @@ pub(crate) mod pages;
 
 pub(crate) const PREVIEW_LIMIT: u64 = 512 * 1024;
 
-fn config_path() -> Result<PathBuf, Failure> {
+pub(crate) fn config_path() -> Result<PathBuf, Failure> {
     if let Some(path) = std::env::var_os("IWE_DATA_DIR") {
         return Ok(PathBuf::from(path).join("workspace.json"));
     }
@@ -37,6 +37,18 @@ pub(crate) async fn load() -> Result<(Workspace, Option<PathBuf>), Failure> {
             }
         }
         Ok((workspace, pending_directory))
+    })
+    .await
+    .map_err(|_| Failure::Storage)?
+}
+
+/// Load the workspace metadata without applying launch-argument selection.
+pub(crate) async fn load_metadata() -> Result<Workspace, Failure> {
+    tokio::task::spawn_blocking(|| {
+        let path = config_path()?;
+        let mut workspace = load_at(&path)?;
+        workspace.normalize();
+        Ok(workspace)
     })
     .await
     .map_err(|_| Failure::Storage)?
@@ -111,7 +123,7 @@ pub(crate) async fn entries(root: PathBuf, directory: PathBuf) -> Result<Vec<Fil
         .map_err(|_| Failure::Read)?
 }
 
-pub(super) fn entries_at(root: &Path, directory: &Path) -> Result<Vec<FileEntry>, Failure> {
+pub(crate) fn entries_at(root: &Path, directory: &Path) -> Result<Vec<FileEntry>, Failure> {
     let root = root.canonicalize().map_err(|_| Failure::Read)?;
     let resolved = directory.canonicalize().map_err(|_| Failure::Read)?;
     if !resolved.starts_with(&root) {

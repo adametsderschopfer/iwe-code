@@ -220,6 +220,8 @@ unavailable = Данные временно недоступны. Попробу
 storage-load-failed = Не удалось загрузить настройки. Существующие данные сохранены; новые изменения не сохраняются.
 storage-save-failed = Не удалось сохранить изменения. Проверьте свободное место и права доступа.
 open-failed = Не удалось открыть ссылку в браузере.
+external-file-missing = Не удалось открыть этот файл. Проверьте, что он ещё существует.
+external-project-missing = Не удалось найти этот проект. Сначала добавьте его в пространство.
 greeting = С чего начнём?
 message-unavailable = Этот текст недоступен.
 graphics-unavailable = iwe: не удалось запустить ни один графический бэкенд
@@ -300,3 +302,44 @@ editor-symlink = Откройте исходный файл для сохран�
 editor-save-failed = Не удалось сохранить. Изменения остались во вкладке. Проверьте права доступа и повторите.
 editor-deployment-disabled = Включите модуль деплоймента для сохранения серверного файла.
 editor-busy = Дождитесь завершения передачи и сохраните файл ещё раз.
+
+# Command line
+cli-about = Нативное рабочее пространство для проектов, исходного кода, истории Git и пайплайнов.
+cli-help-usage = Использование:
+cli-help-arguments = Аргументы
+cli-help-options = Параметры
+cli-help-commands = Команды
+cli-help-flag = Показать справку
+cli-version-flag = Показать версию
+cli-open-about = Запустить приложение. С директорией — открыть этот проект.
+cli-open-directory-help = Директория проекта для открытия.
+cli-add-directory-help = Директория добавляемого проекта.
+cli-remove-target-help = Директория проекта или точное имя проекта.
+cli-workspace-about = Показать и изменить рабочее пространство.
+cli-workspace-list-about = Показать пространства и их проекты.
+cli-workspace-add-project-about = Добавить директорию проекта в пространство.
+cli-workspace-remove-project-about = Удалить проект по директории или имени.
+cli-space-option-help = Добавить проект в указанное пространство. Без него используется первое пространство.
+cli-json-flag-help = Показать JSON для программ.
+cli-project-added = Проект {$name} добавлен в рабочее пространство.
+cli-project-already-present = Проект {$name} уже есть в рабочем пространстве.
+cli-project-removed = Проект {$name} удалён из рабочего пространства.
+cli-projects-removed = { $count ->
+    [one] Из рабочего пространства удалён {$count} проект.
+    [few] Из рабочего пространства удалены {$count} проекта.
+    [many] Из рабочего пространства удалено {$count} проектов.
+    *[other] Из рабочего пространства удалено {$count} проектов.
+}
+cli-human-space = Пространство: {$name}
+cli-human-project = {$name}: {$directory}
+cli-error-directory-not-found = Такой директории нет: {$path}
+cli-error-project-not-found = Нет проекта, совпадающего с {$target}.
+cli-error-space-not-found = Пространства с именем {$name} нет.
+cli-error-ambiguous-name = Несколько проектов с именем {$name}. Укажите директорию проекта.
+cli-error-unknown-argument = Неизвестный параметр {$value}. Запустите iwe --help, чтобы увидеть доступные команды.
+cli-error-unknown-command = Неизвестная команда {$value}. Запустите iwe --help, чтобы увидеть доступные команды.
+cli-error-missing-argument = Не хватает значения для {$value}.
+cli-error-load-failed = Не удалось прочитать файл рабочего пространства.
+cli-error-save-failed = Не удалось сохранить файл рабочего пространства.
+cli-error-launch-failed = Не удалось запустить приложение.
+cli-error-unexpected = Команда завершилась ошибкой. Запустите iwe --help, чтобы увидеть доступные команды.
