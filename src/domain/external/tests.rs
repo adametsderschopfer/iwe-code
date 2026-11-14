@@ -1,0 +1,85 @@
+use super::{Link, Request};
+use std::path::{Path, PathBuf};
+
+fn open_link(path: &str) -> String {
+    format!("iwe://open?path={path}")
+}
+
+fn project_link(path: &str) -> String {
+    format!("iwe://project?path={path}")
+}
+
+#[test]
+fn parse_open_link() {
+    let link = Link::parse(&open_link("/notes/ideas.md")).expect("valid link");
+    assert_eq!(link, Link::Open(PathBuf::from("/notes/ideas.md")));
+}
+
+#[test]
+fn parse_project_link() {
+    let link = Link::parse(&project_link("/work/site")).expect("valid link");
+    assert_eq!(link, Link::Project(PathBuf::from("/work/site")));
+}
+
+#[test]
+fn parse_link_percent_decodes_the_path() {
+    let link = Link::parse(&open_link("/notes/my%20file.txt")).expect("valid link");
+    assert_eq!(link, Link::Open(PathBuf::from("/notes/my file.txt")));
+}
+
+#[test]
+fn parse_link_accepts_action_case_insensitively() {
+    let link = Link::parse("iwe://OPEN?path=/notes/a.txt").expect("valid link");
+    assert_eq!(link, Link::Open(PathBuf::from("/notes/a.txt")));
+}
+
+#[test]
+fn reject_other_schemes() {
+    assert_eq!(Link::parse("https://open?path=/notes/a.txt"), None);
+    assert_eq!(Link::parse("iwas://open?path=/notes/a.txt"), None);
+}
+
+#[test]
+fn reject_unknown_actions() {
+    assert_eq!(Link::parse("iwe://close?path=/notes/a.txt"), None);
+    assert_eq!(Link::parse("iwe:///notes/a.txt"), None);
+}
+
+#[test]
+fn reject_missing_or_relative_paths() {
+    assert_eq!(Link::parse("iwe://open"), None);
+    assert_eq!(Link::parse("iwe://open?target=/notes/a.txt"), None);
+    assert_eq!(Link::parse(&open_link("notes/a.txt")), None);
+    assert_eq!(Link::parse(&project_link("")), None);
+}
+
+#[test]
+fn parse_broken_links() {
+    assert_eq!(Link::parse(""), None);
+    assert_eq!(Link::parse("iwe://open?path="), None);
+    assert_eq!(Link::parse("not a link"), None);
+}
+
+#[test]
+fn round_trip_request_through_json() {
+    let file = Request::File {
+        path: PathBuf::from("/notes/ideas.md"),
+    };
+    let project = Request::Project {
+        directory: PathBuf::from("/work/site"),
+    };
+    for request in [file, project] {
+        let text = serde_json::to_string(&request).expect("serialize");
+        let parsed: Request = serde_json::from_str(&text).expect("deserialize");
+        assert_eq!(parsed, request);
+    }
+}
+
+#[test]
+fn open_text_produces_a_parsed_link() {
+    let text = Link::open_text(Path::new("/notes/ideas.md"));
+    assert_eq!(
+        Link::parse(&text),
+        Some(Link::Open(PathBuf::from("/notes/ideas.md")))
+    );
+}
