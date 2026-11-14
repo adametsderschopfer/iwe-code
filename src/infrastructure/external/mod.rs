@@ -146,29 +146,6 @@ async fn deliver(line: &str) {
     }
 }
 
-/// The directory that holds the local endpoint, shared with saved settings.
-fn storage_directory() -> Option<PathBuf> {
-    if let Some(directory) = std::env::var_os("IWE_DATA_DIR") {
-        return Some(PathBuf::from(directory));
-    }
-    directories::ProjectDirs::from("", "", "iwe").map(|dirs| dirs.config_dir().to_path_buf())
-}
-
-/// Prepare the parent directory for platform endpoint functions.
-///
-/// The directory holds the forwarding endpoint, so it is restricted to the
-/// current user where the platform supports directory modes.
-pub(super) fn endpoint_parent() -> Option<PathBuf> {
-    let directory = storage_directory()?;
-    std::fs::create_dir_all(&directory).ok()?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(&directory, std::fs::Permissions::from_mode(0o700));
-    }
-    Some(directory)
-}
-
 #[cfg(unix)]
 mod unix;
 #[cfg(unix)]

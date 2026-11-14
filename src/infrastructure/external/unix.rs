@@ -19,7 +19,23 @@ const ENDPOINT_NAME: &str = "external.sock";
 const PAYLOAD_LIMIT: usize = 1024 * 1024;
 
 fn endpoint_path() -> Option<PathBuf> {
-    super::endpoint_parent().map(|directory| directory.join(ENDPOINT_NAME))
+    endpoint_parent().map(|directory| directory.join(ENDPOINT_NAME))
+}
+
+/// The directory that holds the local endpoint, shared with saved settings.
+fn storage_directory() -> Option<PathBuf> {
+    if let Some(directory) = std::env::var_os("IWE_DATA_DIR") {
+        return Some(PathBuf::from(directory));
+    }
+    directories::ProjectDirs::from("", "", "iwe").map(|dirs| dirs.config_dir().to_path_buf())
+}
+
+/// Prepare the endpoint parent directory, restricted to the current user.
+fn endpoint_parent() -> Option<PathBuf> {
+    let directory = storage_directory()?;
+    std::fs::create_dir_all(&directory).ok()?;
+    let _ = std::fs::set_permissions(&directory, std::fs::Permissions::from_mode(0o700));
+    Some(directory)
 }
 
 /// Bind the local socket so later instances can forward requests.

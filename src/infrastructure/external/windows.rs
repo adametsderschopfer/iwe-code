@@ -2,7 +2,7 @@
 
 use super::deliver;
 use std::{fs::File, io::Write, time::Duration};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 
 /// The server end of the first named pipe instance.
@@ -78,7 +78,7 @@ async fn serve_instance(server: NamedPipeServer) {
     let mut payload = Vec::new();
     let mut limited = server.take(PAYLOAD_LIMIT);
     let read = limited.read_to_end(&mut payload).await;
-    let mut server = limited.into_inner();
+    let server = limited.into_inner();
     if read.is_ok() {
         let text = String::from_utf8_lossy(&payload);
         if let Some(line) = text.lines().next() {
