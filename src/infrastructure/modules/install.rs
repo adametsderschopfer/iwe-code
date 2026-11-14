@@ -16,7 +16,13 @@ pub(crate) fn install(
     current: &ModuleRegistry,
 ) -> Result<(ModuleRegistry, String), Error> {
     let root = super::modules_root()?;
-    install_into(archive, current, &root, &registry::path()?)
+    install_into(
+        archive,
+        current,
+        &root,
+        &registry::path()?,
+        package::verification_key(),
+    )
 }
 
 /// Remove an installed module and persist the updated registry.
@@ -29,8 +35,9 @@ pub(super) fn install_into(
     current: &ModuleRegistry,
     root: &Path,
     registry_file: &Path,
+    key: Option<&[u8; 32]>,
 ) -> Result<(ModuleRegistry, String), Error> {
-    let manifest = package::manifest(archive)?;
+    let manifest = package::manifest_with(archive, key)?;
     if let Some(installed) = current.get(&manifest.id)
         && manifest.version <= installed.manifest.version
     {

@@ -75,6 +75,7 @@ pub(crate) fn error_key(error: Failure) -> Key {
         Failure::Access => Key::AccessRequired,
         Failure::Unavailable => Key::Unavailable,
         Failure::Storage => Key::StorageSaveFailed,
+        Failure::NewerVersion => Key::StorageNewerVersion,
         Failure::Credentials => Key::CredentialsUnavailable,
         Failure::AuthNotConfigured => Key::AuthNotConfigured,
         Failure::AuthCancelled => Key::Cancelled,

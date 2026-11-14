@@ -13,6 +13,8 @@ pub(crate) const MAX_WIDGET_NODES: usize = 512;
 pub(crate) const MAX_WIDGET_TEXT: usize = 8192;
 /// Longest allowed widget identifier.
 pub(crate) const MAX_WIDGET_ID: usize = 128;
+/// Largest allowed digest map inside one package manifest.
+pub(crate) const MAX_DIGESTS: usize = 1024;
 
 /// Operations an external module declares in its manifest.
 #[derive(
@@ -81,6 +83,12 @@ pub(crate) struct Manifest {
     pub entry: BTreeMap<String, String>,
     pub permissions: BTreeSet<Permission>,
     pub placement: Placement,
+    /// SHA-256 digest per packaged file, bound by the package signature.
+    ///
+    /// Every archive file except `manifest.json` and `manifest.sig` carries
+    /// one entry, so the signature vouches for the packaged binaries too.
+    #[serde(default)]
+    pub digests: BTreeMap<String, String>,
 }
 
 /// Platform identifier of the current build.
@@ -126,6 +134,9 @@ impl Manifest {
                 .entry
                 .keys()
                 .all(|target| valid_component(target) && target.len() <= MAX_WIDGET_ID)
+            && self.digests.len() <= MAX_DIGESTS
+            && self.digests.keys().all(|path| valid_entry_path(path))
+            && self.digests.values().all(|digest| valid_digest(digest))
     }
 
     /// Executable file name for the current platform.
@@ -151,6 +162,18 @@ fn valid_component(value: &str) -> bool {
         && !value.starts_with(['.', '/'])
         && !value.contains(['/', '\\', ':'])
         && !value.contains("..")
+}
+
+fn valid_digest(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+/// Check a slash-separated archive entry path component by component.
+fn valid_entry_path(path: &str) -> bool {
+    path.split('/').all(valid_component) && path.split('/').count() <= 16
 }
 
 /// Interaction an interface widget reports to an external module.

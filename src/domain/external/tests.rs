@@ -68,11 +68,18 @@ fn round_trip_request_through_json() {
     let project = Request::Project {
         directory: PathBuf::from("/work/site"),
     };
-    for request in [file, project] {
+    let focus = Request::Focus;
+    for request in [file, project, focus] {
         let text = serde_json::to_string(&request).expect("serialize");
         let parsed: Request = serde_json::from_str(&text).expect("deserialize");
         assert_eq!(parsed, request);
     }
+}
+
+#[test]
+fn focus_request_uses_its_own_tag() {
+    let text = serde_json::to_string(&Request::Focus).expect("serialize");
+    assert_eq!(text, r#"{"type":"focus"}"#);
 }
 
 #[test]

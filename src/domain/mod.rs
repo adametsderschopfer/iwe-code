@@ -24,6 +24,8 @@ pub(crate) enum Failure {
     Access,
     Unavailable,
     Storage,
+    /// Stored data uses a format version this application cannot read.
+    NewerVersion,
     Credentials,
     AuthNotConfigured,
     AuthCancelled,

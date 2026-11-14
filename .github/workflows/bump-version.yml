@@ -172,6 +172,11 @@ jobs:
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
       IWE_GITHUB_CLIENT_ID: ${{ vars.IWE_GITHUB_CLIENT_ID }}
       IWE_GITLAB_CLIENT_ID: ${{ vars.IWE_GITLAB_CLIENT_ID }}
+      IWE_MACOS_SIGNING_ENABLED: ${{ vars.IWE_MACOS_SIGNING_ENABLED }}
+      IWE_MACOS_SIGNING_IDENTITY: ${{ secrets.IWE_MACOS_SIGNING_IDENTITY }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

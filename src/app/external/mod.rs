@@ -55,6 +55,7 @@ pub(crate) fn open(app: &mut App, request: Request) -> Task<Message> {
         .map(window::gain_focus)
         .unwrap_or_else(Task::none);
     match request {
+        Request::Focus => focus,
         Request::File { path } => Task::batch([focus, open_file(app, path)]),
         Request::Project { directory } => Task::batch([focus, select_project(app, directory)]),
     }

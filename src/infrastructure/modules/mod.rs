@@ -20,6 +20,10 @@ pub(crate) enum Error {
     Incompatible,
     /// An update must use a newer module version.
     OlderVersion,
+    /// The package carries no signature.
+    Unsigned,
+    /// The package signature or packaged content does not verify.
+    Signature,
     /// The stored registry cannot be read.
     Storage,
 }

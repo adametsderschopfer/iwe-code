@@ -571,6 +571,13 @@ sidebar and About settings. The startup entry point handles installer and cleanu
 starting the graphics launcher. See [application updates](updates.md) for trust boundaries, package
 limits, and recovery behavior.
 
+## Accessibility
+
+The interface provides keyboard access through remappable shortcuts, visible focus, and Escape
+handling on every surface. Screen readers cannot consume the interface: Iced renders into one GPU
+surface, and the pinned Iced version carries no AccessKit integration. The limitation, its cause,
+and the revisit criteria are recorded in [ADR 0004](adr/0004-accessibility.md).
+
 ## Localization
 
 The executable embeds shared English, Russian, and Spanish catalogs from root `locales/`. Each

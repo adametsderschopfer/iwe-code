@@ -8,6 +8,8 @@ use url::Url;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub(crate) enum Request {
+    /// Raise the running instance without opening content.
+    Focus,
     /// Open a file from the local file system.
     File { path: PathBuf },
     /// Switch to an existing project with the given directory.

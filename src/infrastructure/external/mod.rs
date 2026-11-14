@@ -35,9 +35,17 @@ use windows::Listener;
 
 /// Parse the command line, forward requests to a running instance, or claim
 /// the receiver and listener for this process.
+///
+/// A launch without requests still forwards a focus request, so a second
+/// launch always raises the running instance instead of competing with it.
 pub(crate) fn startup() -> Startup {
     let requests = requests_from_args(std::env::args_os().skip(1));
-    if !requests.is_empty() && forward(&requests) {
+    let requests = if requests.is_empty() {
+        vec![Request::Focus]
+    } else {
+        requests
+    };
+    if forward(&requests) {
         return Startup::Forwarded;
     }
     let (sender, receiver) = mpsc::unbounded_channel();
@@ -47,13 +55,25 @@ pub(crate) fn startup() -> Startup {
     let _ = SENDER.set(sender);
     #[cfg(target_os = "macos")]
     macos::install();
-    for request in requests {
+    for request in requests.clone() {
         send(request);
     }
+    let listener = bind();
+    if listener.is_none() && forward(&requests) {
+        // Another process claimed the endpoint between the forward attempt
+        // and the bind. It serves the requests instead.
+        return Startup::Forwarded;
+    }
     if let Ok(mut slot) = LISTENER.lock() {
-        *slot = bind();
+        *slot = listener;
     }
     Startup::Primary
+}
+
+/// Release the local endpoint before the application exits.
+pub(crate) fn shutdown() {
+    #[cfg(unix)]
+    unix::release();
 }
 
 /// Take the receiver that turns external requests into application messages.
@@ -135,9 +155,17 @@ fn storage_directory() -> Option<PathBuf> {
 }
 
 /// Prepare the parent directory for platform endpoint functions.
+///
+/// The directory holds the forwarding endpoint, so it is restricted to the
+/// current user where the platform supports directory modes.
 pub(super) fn endpoint_parent() -> Option<PathBuf> {
     let directory = storage_directory()?;
     std::fs::create_dir_all(&directory).ok()?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&directory, std::fs::Permissions::from_mode(0o700));
+    }
     Some(directory)
 }
 

@@ -27,6 +27,7 @@ if (release.draft || release.prerelease || !/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(rel
 }
 const version = release.tag_name.slice(1)
 const downloads: Record<string, string> = {}
+// The six established packages must exist in every published release.
 for (const suffix of [
   'macos-arm64.dmg',
   'macos-x64.dmg',
@@ -40,6 +41,13 @@ for (const suffix of [
     throw new Error(`The latest release is missing the download package: ${suffix}`)
   }
   downloads[suffix] = asset.browser_download_url
+}
+// Packages added later stay optional until a release ships them.
+for (const suffix of ['linux-x64.deb', 'linux-x86.deb', 'linux-x64.AppImage']) {
+  const asset = release.assets.find((item) => item.name === `iwe-code-${version}-${suffix}`)
+  if (asset && asset.size > 0) {
+    downloads[suffix] = asset.browser_download_url
+  }
 }
 
 export default defineNuxtConfig({

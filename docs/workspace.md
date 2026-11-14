@@ -186,6 +186,10 @@ The directory index contains no source contents. IWE Code reads file contents on
 opened. Source contents remain in memory. Settings storage contains project metadata and
 preferences. No source code is uploaded.
 
+Saved settings carry an explicit format version. Documents from a newer application version open
+without changes and stay untouched; IWE Code explains that the application needs an update and
+pauses saving instead of overwriting them.
+
 ## Source preview
 
 The code area uses a separate neutral background from surrounding panels. Dark appearance uses a

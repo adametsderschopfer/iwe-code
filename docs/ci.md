@@ -37,8 +37,8 @@ tied to one build configuration.
 | macOS    | Intel, 64-bit        | x86_64-apple-darwin      | macos-15-intel | DMG containing IWE Code.app |
 | Windows  | x64, 64-bit          | x86_64-pc-windows-msvc   | windows-2022   | Setup EXE and portable ZIP  |
 | Windows  | x86, 32-bit          | i686-pc-windows-msvc     | windows-2022   | Setup EXE and portable ZIP  |
-| Linux    | x64, 64-bit          | x86_64-unknown-linux-gnu | ubuntu-22.04   | tar.gz containing iwe       |
-| Linux    | x86, 32-bit          | i686-unknown-linux-gnu   | ubuntu-22.04   | tar.gz containing iwe       |
+| Linux    | x64, 64-bit          | x86_64-unknown-linux-gnu | ubuntu-22.04   | tar.gz, deb, and AppImage   |
+| Linux    | x86, 32-bit          | i686-unknown-linux-gnu   | ubuntu-22.04   | tar.gz and deb              |
 
 Windows x86 builds use the MSVC target on a 64-bit runner. Windows release binaries link the C
 runtime statically. Linux x86 builds install multilib compilers and i386 development libraries.
@@ -55,13 +55,18 @@ graphics driver. Git remains an external dependency on every platform.
 Every package uses the IWE Code display name and generated application icon. macOS bundles include
 an ICNS resource. Windows executables embed an ICO resource during compilation. Linux archives
 include `iwe.desktop` and `iwe.png`. Install the executable on PATH, the desktop entry under
-`~/.local/share/applications`, and the icon under `~/.local/share/icons`.
+`~/.local/share/applications`, and the icon under `~/.local/share/icons`. The deb package installs
+those locations system-wide as `/usr/bin/iwe` and refreshes the desktop database. The AppImage
+packages the launcher as a single executable file and ships for x86_64 only; the 32-bit builds use
+the tar.gz and deb packages.
 
-macOS bundles use ad-hoc signatures. Apple notarization is not configured. Windows installers use
-Inno Setup 7.1.1 with modern light and dark pages. They support English, Russian, and Spanish.
-Installation uses the current user's Programs directory without administrator access. The installer
-creates a Start menu shortcut and offers a desktop shortcut. Uninstalling preserves workspace data.
-CI checks silent installation, registration, and removal on both Windows architectures.
+macOS bundles use ad-hoc signatures by default. Optional Developer ID signing with the hardened
+runtime and Apple notarization of the disk image activate when an owner configures them. See
+[macOS signing setup](macos-signing.md). Windows installers use Inno Setup 7.1.1 with modern light
+and dark pages. They support English, Russian, and Spanish. Installation uses the current user's
+Programs directory without administrator access. The installer creates a Start menu shortcut and
+offers a desktop shortcut. Uninstalling preserves workspace data. CI checks silent installation,
+registration, and removal on both Windows architectures.
 
 Windows packages remain unsigned by default. Optional Microsoft Artifact Signing covers the
 application, installer, and uninstaller. See [Windows signing setup](windows-signing.md). Operating
@@ -102,12 +107,14 @@ prepared commit. The workflow never moves an existing tag.
 
 Start releases through Release New Version on main. Choose patch, minor, or major. Tag pushes do not
 start separate workflows. Retry failed jobs within the original run after transient build or
-deployment errors. Website failures leave the published application release available. Release build
+deployment errors. Website failures leave the published application release available. The website
+download page lists only the packages the latest published release carries; the six established
+packages stay mandatory, and packages added later appear once a release ships them. Release build
 jobs validate tag syntax, release notes, and package version. They build the prepared commit.
 Installer installation checks remain part of Windows packaging. All six builds and both Windows
 installer jobs must succeed before publication.
 
-The publication job signs one update manifest and publishes one GitHub Release with all eight
+The publication job signs one update manifest and publishes one GitHub Release with all eleven
 installation packages and six update archives. It verifies the required files and adds SHA256SUMS.
 Configure `IWE_UPDATE_SIGNING_KEY` before publishing. See
 [application updates](updates.md#release-signing) for key handling. The version workflow and

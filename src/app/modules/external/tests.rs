@@ -37,6 +37,7 @@ fn installed(id: &str, placement: Placement) -> InstalledModule {
             entry,
             permissions: BTreeSet::new(),
             placement,
+            digests: BTreeMap::new(),
         },
         installed_at: 0,
     }

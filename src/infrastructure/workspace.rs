@@ -11,6 +11,13 @@ pub(crate) mod pages;
 
 pub(crate) const PREVIEW_LIMIT: u64 = 512 * 1024;
 
+/// The version written into every saved document.
+///
+/// Files without a version field predate explicit versioning and are read
+/// through the same structural migration. Files with a higher version were
+/// written by a newer application and are never modified.
+const FORMAT_VERSION: u8 = 2;
+
 pub(crate) fn config_path() -> Result<PathBuf, Failure> {
     if let Some(path) = std::env::var_os("IWE_DATA_DIR") {
         return Ok(PathBuf::from(path).join("workspace.json"));
@@ -63,13 +70,25 @@ fn load_at(path: &Path) -> Result<Workspace, Failure> {
         Err(_) => return Err(Failure::Storage),
     };
     let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| Failure::Storage)?;
+    match value.get("version").and_then(serde_json::Value::as_u64) {
+        Some(version) if version > u64::from(FORMAT_VERSION) => Err(Failure::NewerVersion),
+        None | Some(1) => load_legacy(value, path, &bytes),
+        _ => serde_json::from_value(value).map_err(|_| Failure::Storage),
+    }
+}
+
+/// Read a document written before the format carried a version field.
+///
+/// The pre-spaces layout is backed up once so the migration never loses the
+/// original file.
+fn load_legacy(value: serde_json::Value, path: &Path, bytes: &[u8]) -> Result<Workspace, Failure> {
     let legacy = value.get("spaces").is_none() && value.get("projects").is_some();
     let workspace = serde_json::from_value(value).map_err(|_| Failure::Storage)?;
     if legacy {
         let parent = path.parent().ok_or(Failure::Storage)?;
         let mut temporary =
             tempfile::NamedTempFile::new_in(parent).map_err(|_| Failure::Storage)?;
-        temporary.write_all(&bytes).map_err(|_| Failure::Storage)?;
+        temporary.write_all(bytes).map_err(|_| Failure::Storage)?;
         temporary
             .as_file()
             .sync_all()
@@ -89,10 +108,22 @@ pub(crate) async fn save(workspace: Workspace) -> Result<(), Failure> {
         .map_err(|_| Failure::Storage)?
 }
 
+/// The stored document with its explicit format version.
+#[derive(serde::Serialize)]
+struct Stored<'a> {
+    version: u8,
+    #[serde(flatten)]
+    workspace: &'a Workspace,
+}
+
 fn save_at(path: &Path, workspace: &Workspace) -> Result<(), Failure> {
     let parent = path.parent().ok_or(Failure::Storage)?;
     std::fs::create_dir_all(parent).map_err(|_| Failure::Storage)?;
-    let bytes = serde_json::to_vec_pretty(workspace).map_err(|_| Failure::Storage)?;
+    let document = Stored {
+        version: FORMAT_VERSION,
+        workspace,
+    };
+    let bytes = serde_json::to_vec_pretty(&document).map_err(|_| Failure::Storage)?;
     let mut temporary = tempfile::NamedTempFile::new_in(parent).map_err(|_| Failure::Storage)?;
     temporary.write_all(&bytes).map_err(|_| Failure::Storage)?;
     temporary

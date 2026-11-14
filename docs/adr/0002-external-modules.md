@@ -15,10 +15,17 @@ Run external modules as separate operating-system processes. Exchange one JSON d
 over the module's stdin and stdout. Version this protocol as `api: 1` in every package manifest.
 
 Distribute modules as `.iwe-module` archives: a gzipped tar archive with `manifest.json`,
-`binaries/<target>/<executable>` for each supported platform, and optional `assets`. The manifest
-carries the module identifier, localized name and description, semantic version, protocol version,
-minimum application version, entry names, declared permissions, and the panel placement. Placement
-selects one workspace zone: header, top, left, right, or bottom.
+`manifest.sig`, `binaries/<target>/<executable>` for each supported platform, and optional `assets`.
+The manifest carries the module identifier, localized name and description, semantic version,
+protocol version, minimum application version, entry names, declared permissions, the panel
+placement, and a SHA-256 digest per packaged file. Placement selects one workspace zone: header,
+top, left, right, or bottom.
+
+Require a valid package signature before installation. `manifest.sig` holds an Ed25519 signature
+over the exact manifest bytes, and the manifest digests bind every packaged file. The application
+embeds the matching public key, refuses unsigned or modified packages before unpacking, and checks
+each unpacked file against its digest. Distribution packages are signed with the maintainer's
+private key through the repository signing script.
 
 Keep the local registry in `modules.json` next to `workspace.json`. Install module files under the
 application data directory at `modules/<id>/<version>`. Updates must increase the module version and
@@ -49,7 +56,8 @@ It would not constrain a hostile process that bypasses the broker, and it would 
 protocol surface.
 
 Signed packages would improve provenance but require a key distribution story before launch. The
-installation confirmation and the permission list cover the first release.
+original decision deferred them; the application now embeds the module verification key, so signed
+packages are required and the deferral is closed.
 
 ## Consequences
 
@@ -57,4 +65,6 @@ The packaging, registry, protocol, and panel schemas become public interface. Th
 a module development guide. The reference module under `examples/hello-module` doubles as a
 template. Integration tests exercise the protocol against a compiled test module. Unsupported
 protocol versions and packages without a binary for the current platform fail installation with
-clear messages.
+clear messages. Unsigned, re-signed by another key, and modified packages fail verification before
+any packaged file is unpacked. Third-party module authors cannot sign packages with the embedded
+key; a key distribution story for external publishers remains open.

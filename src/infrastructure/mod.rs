@@ -7,6 +7,7 @@ pub(crate) mod deployment;
 pub(crate) mod external;
 pub(crate) mod graphics;
 pub(crate) mod http;
+pub(crate) mod ipc;
 pub(crate) mod locale;
 pub(crate) mod mcp;
 pub(crate) mod modules;

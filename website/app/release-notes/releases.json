@@ -1763,7 +1763,16 @@
           "es": "Las reglas de desarrollo ahora cubren el trabajo con la línea de comandos, el servidor MCP y los deep links."
         },
         "sources": ["AGENTS.md", "docs/rules/external-interfaces.md"]
-      },
+      }
+    ]
+  },
+  {
+    "version": "unreleased",
+    "status": "prepared",
+    "publishedAt": null,
+    "tags": [],
+    "source": null,
+    "items": [
       {
         "id": "deployment-command-line",
         "category": "added",
@@ -1793,15 +1802,95 @@
           "es": "La preparación de la versión ahora espera la ejecución de Code Checks del commit preparado y se detiene si falla."
         },
         "sources": [".github/workflows/bump-version.yml", "docs/ci.md"]
+      },
+      {
+        "id": "single-instance-focus",
+        "category": "added",
+        "text": {
+          "en": "A second launch without requests now raises the running application window instead of starting another instance.",
+          "ru": "Повторный запуск без аргументов теперь поднимает окно работающего приложения вместо запуска второго экземпляра.",
+          "es": "Un segundo inicio sin argumentos ahora trae al frente la ventana de la aplicación en ejecución en lugar de abrir otra instancia."
+        },
+        "sources": ["src/infrastructure/external/mod.rs", "src/domain/external/mod.rs"]
+      },
+      {
+        "id": "external-endpoint-hardening",
+        "category": "changed",
+        "text": {
+          "en": "The local forwarding endpoint is restricted to the current user, caps payload size on every platform, and reserves its Windows pipe name for the first instance.",
+          "ru": "Локальный endpoint пересылки ограничен текущим пользователем, ограничивает размер сообщения на всех платформах и резервирует имя pipe Windows за первым экземпляром.",
+          "es": "El endpoint local de reenvío queda restringido al usuario actual, limita el tamaño del mensaje en todas las plataformas y reserva el nombre del pipe de Windows para la primera instancia."
+        },
+        "sources": ["src/infrastructure/external/unix.rs", "src/infrastructure/external/windows.rs"]
+      },
+      {
+        "id": "graceful-exit",
+        "category": "changed",
+        "text": {
+          "en": "Closing the application waits for an in-flight settings save, releases the forwarding endpoint, and cancels pending authentication.",
+          "ru": "Закрытие приложения дожидается сохранения настроек, освобождает endpoint пересылки и отменяет незавершённую аутентификацию.",
+          "es": "Al cerrar la aplicación se espera a que termine el guardado de ajustes, se libera el endpoint de reenvío y se cancela la autenticación pendiente."
+        },
+        "sources": ["src/app/mod.rs", "src/infrastructure/external/mod.rs"]
+      },
+      {
+        "id": "workspace-format-version",
+        "category": "added",
+        "text": {
+          "en": "Saved settings carry an explicit format version. Files written by a newer application version open unchanged and saving pauses for them.",
+          "ru": "Сохранённые настройки несут явную версию формата. Файлы более новой версии приложения открываются без изменений, и сохранение для них приостанавливается.",
+          "es": "Los ajustes guardados llevan una versión de formato explícita. Los archivos escritos por una versión más reciente se abren sin cambios y el guardado se pausa para ellos."
+        },
+        "sources": ["src/infrastructure/workspace.rs", "docs/workspace.md"]
+      },
+      {
+        "id": "module-package-signatures",
+        "category": "added",
+        "text": {
+          "en": "Module packages carry a signature over the manifest and digests of every packaged file. Installation refuses unsigned or modified packages.",
+          "ru": "Пакеты модулей содержат подпись манифеста и дайджесты всех упакованных файлов. Установка отклоняет неподписанные и изменённые пакеты.",
+          "es": "Los paquetes de módulos llevan una firma del manifiesto y resúmenes de cada archivo empaquetado. La instalación rechaza paquetes sin firma o modificados."
+        },
+        "sources": [
+          "src/infrastructure/modules/package.rs",
+          ".github/scripts/sign-module.py",
+          "docs/modules.md"
+        ]
+      },
+      {
+        "id": "macos-signing-notarization",
+        "category": "added",
+        "text": {
+          "en": "Release builds can sign the macOS bundle with a Developer ID certificate, notarize the disk image, and staple the ticket when configured.",
+          "ru": "Release-сборки могут подписывать бандл macOS сертификатом Developer ID, нотаризировать образ диска и прикреплять билет при настройке.",
+          "es": "Las compilaciones de release pueden firmar el bundle de macOS con un certificado Developer ID, notarizar la imagen de disco y adjuntar el ticket cuando esté configurado."
+        },
+        "sources": [".github/scripts/package-release.sh", "docs/macos-signing.md"]
+      },
+      {
+        "id": "linux-deb-appimage",
+        "category": "added",
+        "text": {
+          "en": "Linux releases ship Debian packages for both architectures and an AppImage for x86_64 beside the existing archives. The website lists the packages a release carries.",
+          "ru": "Linux-релизы поставляют deb-пакеты для обеих архитектур и AppImage для x86_64 вместе с существующими архивами. Сайт показывает пакеты конкретного релиза.",
+          "es": "Las releases de Linux incluyen paquetes Debian para ambas arquitecturas y un AppImage para x86_64 junto a los archivos existentes. El sitio web lista los paquetes de cada release."
+        },
+        "sources": [
+          ".github/scripts/package-release.sh",
+          "docs/ci.md",
+          "website/app/components/DownloadSection.vue"
+        ]
+      },
+      {
+        "id": "accessibility-limitation-adr",
+        "category": "maintenance",
+        "text": {
+          "en": "An architecture decision records the current screen reader limitation, its cause, and the criteria for revisiting it.",
+          "ru": "Архитектурное решение фиксирует текущее ограничение поддержки экранных дикторов, его причину и критерии пересмотра.",
+          "es": "Una decisión de arquitectura registra la limitación actual de los lectores de pantalla, su causa y los criterios para revisarla."
+        },
+        "sources": ["docs/adr/0004-accessibility.md", "docs/architecture.md"]
       }
     ]
-  },
-  {
-    "version": "unreleased",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
-    "items": []
   }
 ]

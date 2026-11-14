@@ -1,35 +1,64 @@
 //! Local socket endpoint for request forwarding on Unix platforms.
 
 use super::deliver;
+use crate::infrastructure::ipc::{Line, read_line};
 use std::{
     io::Write,
+    os::unix::fs::PermissionsExt,
     os::unix::net::{UnixListener as StdListener, UnixStream},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
+use tokio::io::BufReader;
 
 /// The bound local socket that later instances forward requests to.
 pub(super) struct Listener(StdListener);
 
 const ENDPOINT_NAME: &str = "external.sock";
 
+/// Cap one forwarded payload, matching the other local transports.
+const PAYLOAD_LIMIT: usize = 1024 * 1024;
+
 fn endpoint_path() -> Option<PathBuf> {
     super::endpoint_parent().map(|directory| directory.join(ENDPOINT_NAME))
 }
 
 /// Bind the local socket so later instances can forward requests.
+///
+/// Forwarding has already failed, so any leftover socket file belongs to a
+/// crashed instance and is reclaimed here. The socket is restricted to the
+/// current user: connecting requires write permission on the socket file.
 pub(super) fn bind() -> Option<Listener> {
     let path = endpoint_path()?;
-    // A crashed instance can leave the socket file behind. Reclaim it.
-    let _ = std::fs::remove_file(&path);
-    let listener = StdListener::bind(&path).ok()?;
+    bind_at(&path)
+}
+
+fn bind_at(path: &Path) -> Option<Listener> {
+    let _ = std::fs::remove_file(path);
+    let listener = StdListener::bind(path).ok()?;
+    let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
     Some(Listener(listener))
+}
+
+/// Remove the socket file so no stale endpoint survives this process.
+pub(super) fn release() {
+    if let Some(path) = endpoint_path() {
+        release_at(&path);
+    }
+}
+
+fn release_at(path: &Path) {
+    let _ = std::fs::remove_file(path);
 }
 
 /// Send the payload to the running instance.
 pub(super) fn write_payload(payload: &[u8]) -> bool {
-    let Some(path) = endpoint_path() else {
-        return false;
-    };
+    match endpoint_path() {
+        Some(path) => write_payload_at(&path, payload),
+        None => false,
+    }
+}
+
+fn write_payload_at(path: &Path, payload: &[u8]) -> bool {
     let Ok(mut stream) = UnixStream::connect(path) else {
         return false;
     };
@@ -52,16 +81,12 @@ pub(super) async fn accept(listener: Option<Listener>) {
         let Ok((stream, _)) = listener.accept().await else {
             return;
         };
-        if let Ok(line) = read_line(stream).await {
+        let mut reader = BufReader::new(stream);
+        if let Ok(Some(Line::Text(line))) = read_line(&mut reader, PAYLOAD_LIMIT).await {
             deliver(&line).await;
         }
     }
 }
 
-async fn read_line(stream: tokio::net::UnixStream) -> std::io::Result<String> {
-    use tokio::io::{AsyncBufReadExt, BufReader};
-    let mut reader = BufReader::new(stream);
-    let mut line = String::new();
-    reader.read_line(&mut line).await?;
-    Ok(line)
-}
+#[cfg(test)]
+mod tests;

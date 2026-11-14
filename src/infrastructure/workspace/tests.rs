@@ -73,6 +73,43 @@ fn storage_roundtrip_preserves_preferences_and_overwrites_atomically() {
     assert_eq!(restored.spaces[0].projects.len(), 1);
 }
 
+#[test]
+fn saves_carry_an_explicit_format_version() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("workspace.json");
+    save_at(&path, &Workspace::default()).unwrap();
+    let value: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    assert_eq!(value["version"], 2);
+    load_at(&path).unwrap();
+}
+
+#[test]
+fn documents_from_a_newer_version_are_rejected_without_changes() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("workspace.json");
+    let bytes = br#"{"version":3,"spaces":[]}"#;
+    std::fs::write(&path, bytes).unwrap();
+    assert!(matches!(load_at(&path), Err(Failure::NewerVersion)));
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+}
+
+#[test]
+fn version_one_documents_read_like_current_ones() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("workspace.json");
+    let mut workspace = Workspace::default();
+    workspace.create_space("Team".to_owned(), vec![directory.path().to_path_buf()]);
+    save_at(&path, &workspace).unwrap();
+    let mut value: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    value["version"] = serde_json::json!(1);
+    std::fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+    let restored = load_at(&path).unwrap();
+    assert_eq!(restored.spaces[0].name, "Team");
+    // Only the pre-spaces layout earns a backup.
+    assert!(!path.with_extension("v1.json").exists());
+}
+
 #[tokio::test]
 async fn directory_reads_are_shallow_sorted_and_exclude_git_metadata() {
     let root = tempfile::tempdir().unwrap();

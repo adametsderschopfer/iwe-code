@@ -11,6 +11,8 @@ assets=(
   "dist/iwe-code-$version-windows-x64.zip" "dist/iwe-code-$version-windows-x86.zip"
   "dist/iwe-code-$version-windows-x64-setup.exe" "dist/iwe-code-$version-windows-x86-setup.exe"
   "dist/iwe-code-$version-linux-x64.tar.gz" "dist/iwe-code-$version-linux-x86.tar.gz"
+  "dist/iwe-code-$version-linux-x64.deb" "dist/iwe-code-$version-linux-x86.deb"
+  "dist/iwe-code-$version-linux-x64.AppImage"
 )
 for platform in macos-arm64 macos-x64 windows-x64 windows-x86 linux-x64 linux-x86; do
   assets+=("dist/iwe-$version-$platform-update.tar.gz")

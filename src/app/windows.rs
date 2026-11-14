@@ -160,7 +160,7 @@ impl App {
                 if self.protect_editor(&Message::Window(Event::Close(id))) {
                     return self.flush_editor();
                 }
-                return iced::exit();
+                return self.exit();
             }
             Event::Closed(id) if self.windows.settings == Some(id) => {
                 self.windows.settings = None;
@@ -177,7 +177,7 @@ impl App {
                     crate::modules::deployment::Event::CloseSettings(connections),
                 ));
             }
-            Event::Closed(id) if self.window_id == Some(id) => return iced::exit(),
+            Event::Closed(id) if self.window_id == Some(id) => return self.exit(),
             #[cfg(any(target_os = "macos", target_os = "windows"))]
             Event::Drag(id) if self.windows.is_secondary(id) => return window::drag(id),
             #[cfg(target_os = "macos")]

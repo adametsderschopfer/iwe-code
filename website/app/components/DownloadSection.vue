@@ -10,6 +10,7 @@ import {
 
 withDefaults(defineProps<{ messages: Messages; locale?: Locale }>(), { locale: 'en' })
 const release = useRuntimeConfig().public.downloadRelease
+const downloads = release.downloads as Record<string, string>
 const version = release.version
 const platforms = [
   {
@@ -38,8 +39,11 @@ const platforms = [
     icon: 'linux',
     description: 'linux',
     files: [
-      { label: 'x64', slug: 'linux-x64.tar.gz', architecture: 'x64' },
-      { label: 'x86', slug: 'linux-x86.tar.gz', architecture: 'x86' },
+      { label: 'x64 tar.gz', slug: 'linux-x64.tar.gz', architecture: 'x64' },
+      { label: 'x64 deb', slug: 'linux-x64.deb', architecture: 'x64' },
+      { label: 'x64 AppImage', slug: 'linux-x64.AppImage', architecture: 'x64' },
+      { label: 'x86 tar.gz', slug: 'linux-x86.tar.gz', architecture: 'x86' },
+      { label: 'x86 deb', slug: 'linux-x86.deb', architecture: 'x86' },
     ],
   },
 ] as const
@@ -51,6 +55,10 @@ const orderedPlatforms = computed(() =>
       Number(right.id === detected.value.system) - Number(left.id === detected.value.system),
   ),
 )
+// The download page lists only the packages the latest release carries.
+function availableFiles(platform: (typeof platforms)[number]) {
+  return platform.files.filter((file) => Boolean(downloads[file.slug]))
+}
 let disposed = false
 
 function isPriority(system: DesktopSystem, architecture: DesktopArchitecture) {
@@ -127,9 +135,9 @@ onMounted(async () => {
         <p>{{ messages.download[platform.description] }}</p>
         <div class="platform-downloads">
           <a
-            v-for="file in platform.files"
+            v-for="file in availableFiles(platform)"
             :key="file.slug"
-            :href="release.downloads[file.slug]"
+            :href="downloads[file.slug]"
             :aria-label="`${messages.download.download} IWE Code ${platform.name} ${file.label}`"
             :class="{ 'download-priority': isPriority(platform.id, file.architecture) }"
             >{{ file.label }}<SiteIcon name="download"

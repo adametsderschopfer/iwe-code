@@ -423,6 +423,8 @@ fn external_error_key(error: Error) -> Key {
         Error::UnsupportedTarget => Key::ModuleUnsupportedTarget,
         Error::Incompatible => Key::ModuleIncompatible,
         Error::OlderVersion => Key::ModuleOlderVersion,
+        Error::Unsigned => Key::ModuleUnsigned,
+        Error::Signature => Key::ModuleSignatureInvalid,
         Error::Invalid | Error::Storage => Key::ModuleInstallFailed,
     }
 }

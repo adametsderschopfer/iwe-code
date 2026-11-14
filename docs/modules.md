@@ -37,16 +37,24 @@ and stdout. The protocol version is `api: 1`. See [ADR 0002](adr/0002-external-m
 decision record and the module development guide on the website for the protocol and package
 reference.
 
-A package is a gzipped tar archive with the `.iwe-module` extension. It contains `manifest.json`,
-one executable per platform under `binaries/<target>/`, and optional `assets`. The manifest declares
-the identifier, localized name and description, semantic version, protocol version, minimum
-application version, entry names, permissions, and the panel placement. Package files are limited to
-128 MiB. Updates must increase the module version.
+A package is a gzipped tar archive with the `.iwe-module` extension. It contains `manifest.json`, a
+`manifest.sig` signature, one executable per platform under `binaries/<target>/`, and optional
+`assets`. The manifest declares the identifier, localized name and description, semantic version,
+protocol version, minimum application version, entry names, permissions, panel placement, and a
+SHA-256 digest per packaged file. The signature covers the manifest bytes and, through the digests,
+every packaged file. Package files are limited to 128 MiB. Updates must increase the module version.
 
-**Settings → Modules → Install from file…** reads the package, shows the requested access, and asks
-for confirmation. Installation stores files under `modules/<id>/<version>` in the application data
-directory and records the module in `modules.json` next to `workspace.json`. The `IWE_DATA_DIR`
-environment variable redirects both locations, as everywhere else.
+IWE Code accepts only packages signed with its embedded module signing key. Unsigned or tampered
+packages fail installation with an explanation before anything is unpacked or run. Distribution
+packages are signed with `.github/scripts/sign-module.py` and the maintainer's private key.
+Development builds can skip signature enforcement with the `IWE_ALLOW_UNSIGNED_MODULES` environment
+variable; the application tests use their own fixture keys.
+
+**Settings → Modules → Install from file…** reads the package, verifies the signature, shows the
+requested access, and asks for confirmation. Installation stores files under
+`modules/<id>/<version>` in the application data directory and records the module in `modules.json`
+next to `workspace.json`. The `IWE_DATA_DIR` environment variable redirects both locations, as
+everywhere else.
 
 Permissions are declarative: `filesystem-read`, `filesystem-write`, `network`, and `process`. The
 application shows them before installation and requires confirmation. Module processes run with

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for the hardened-runtime Developer ID build. The application
+  renders through Metal via wgpu and needs no runtime exemptions, so the
+  dictionary stays empty: the hardened runtime defaults apply in full.
+-->
+<plist version="1.0">
+  <dict/>
+</plist>

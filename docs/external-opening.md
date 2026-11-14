@@ -37,8 +37,16 @@ queue.
 ## Single instance
 
 The first launch binds a local endpoint in the settings directory. Later launches forward their
-requests to that endpoint and exit. macOS delivers open events directly, so LaunchServices handles
-the same deduplication.
+requests to that endpoint and exit. A launch without requests forwards a focus request, so a second
+launch always raises the running window instead of starting a second one. macOS delivers open events
+directly, so LaunchServices handles the same deduplication.
+
+The endpoint is private to your account. The Unix socket and its directory restrict access to the
+current user, and connecting requires write permission on the socket file. The Windows named pipe
+reserves its name for the first instance, rejects remote clients, and caps payload size. Shared
+systems remain an open limitation: the pipe's access control cannot be narrowed to one user without
+security-descriptor access outside the supported safe APIs. Payloads are size-capped on every
+platform.
 
 ## Platform registration
 

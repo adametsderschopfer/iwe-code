@@ -58,5 +58,6 @@ fn manifest(id: &str) -> crate::domain::modules::Manifest {
         entry,
         permissions: BTreeSet::new(),
         placement: crate::domain::modules::Placement::Bottom,
+        digests: BTreeMap::new(),
     }
 }

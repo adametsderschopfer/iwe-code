@@ -228,6 +228,7 @@ pub(crate) struct App {
     saving: bool,
     save_pending: bool,
     save_blocked: bool,
+    exit_pending: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -433,6 +434,7 @@ impl App {
             saving: false,
             save_pending: false,
             save_blocked: false,
+            exit_pending: false,
         };
         if matches!(app.updates, updates::State::Failed(_)) {
             app.notifications.error(Key::UpdateInstallFailed, None);
@@ -737,6 +739,10 @@ impl App {
                             dialog = self.open_space(vec![directory]);
                         }
                     }
+                    Err(Failure::NewerVersion) => {
+                        self.notifications.error(Key::StorageNewerVersion, None);
+                        self.save_blocked = true;
+                    }
                     Err(_) => {
                         self.notifications.error(Key::StorageLoadFailed, None);
                         self.save_blocked = true;
@@ -765,6 +771,10 @@ impl App {
                 }
                 if matches!(self.updates, updates::State::Saving(_)) {
                     return self.restart_after_save(true);
+                }
+                if self.exit_pending {
+                    self.exit_pending = false;
+                    return self.finalize_exit();
                 }
             }
             Message::Navigate(Navigation::Settings) => return self.open_settings(),
@@ -1342,6 +1352,30 @@ impl App {
         }
         self.saving = true;
         Task::perform(workspace::save(self.workspace.clone()), Message::Saved)
+    }
+
+    /// Leave the application, letting an in-flight workspace save finish.
+    ///
+    /// Saves are atomic, but waiting for the current one keeps the last
+    /// changes from being silently dropped. The save completion message
+    /// re-enters this path through `exit_pending`.
+    fn exit(&mut self) -> Task<Message> {
+        if self.saving && !self.save_blocked {
+            self.exit_pending = true;
+            return Task::none();
+        }
+        self.finalize_exit()
+    }
+
+    /// Release external endpoints and background work, then exit.
+    fn finalize_exit(&mut self) -> Task<Message> {
+        if let Some(cancel) = self.auth_cancel.take() {
+            cancel.cancel();
+        }
+        crate::infrastructure::external::shutdown();
+        // Child processes of modules and terminals die with the process when
+        // their input pipes close; background tasks end with the runtime.
+        iced::exit()
     }
 
     fn apply_language(&mut self) {

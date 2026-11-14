@@ -27,6 +27,7 @@ fn manifest(id: &str) -> Manifest {
         entry,
         permissions: BTreeSet::from([Permission::Network]),
         placement: Placement::Bottom,
+        digests: BTreeMap::new(),
     }
 }
 
