@@ -1821,7 +1821,11 @@
           "ru": "Локальный endpoint пересылки ограничен текущим пользователем, ограничивает размер сообщения на всех платформах и резервирует имя pipe Windows за первым экземпляром.",
           "es": "El endpoint local de reenvío queda restringido al usuario actual, limita el tamaño del mensaje en todas las plataformas y reserva el nombre del pipe de Windows para la primera instancia."
         },
-        "sources": ["src/infrastructure/external/unix.rs", "src/infrastructure/external/windows.rs"]
+        "sources": [
+          "src/infrastructure/external/unix.rs",
+          "src/infrastructure/external/windows.rs",
+          "tests/external_forward.rs"
+        ]
       },
       {
         "id": "graceful-exit",

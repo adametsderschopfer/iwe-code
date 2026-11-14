@@ -2,6 +2,9 @@
 //!
 //! The companion instance exits before any window opens, so the test runs
 //! without a graphical session on the Unix continuous-integration runners.
+//! The Unix socket transport keeps this target Unix-only; Windows forwarding
+//! is exercised through the release CI build instead.
+#![cfg(unix)]
 
 use std::io::{ErrorKind, Read};
 use std::os::unix::net::UnixListener;
