@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { languages, licensePath, modulesPath, repository, type Locale, type Messages } from '~/i18n'
-import { releaseNotesPath } from '~/release-notes'
+import { docsPath, languages, localizedPath, repository, type Locale, type Messages } from '~/i18n'
 
 const props = withDefaults(
   defineProps<{
     messages: Messages
     locale: Locale
-    section?: 'home' | 'releases' | 'license' | 'modules'
-    releaseVersion?: string
+    section?: 'home' | 'docs' | 'license'
   }>(),
-  { section: 'home', releaseVersion: undefined },
+  { section: 'home' },
 )
+const route = useRoute()
 const base = useRuntimeConfig().app.baseURL
 const homeHref = computed(() => `${base}${props.locale === 'en' ? '' : `${props.locale}/`}`)
 </script>
@@ -33,16 +32,9 @@ const homeHref = computed(() => `${base}${props.locale === 'en' ? '' : `${props.
       <a :href="section === 'home' ? '#workflow' : `${homeHref}#workflow`">{{
         messages.nav.workflow
       }}</a>
-      <NuxtLink
-        :to="releaseNotesPath(locale)"
-        :aria-current="section === 'releases' ? 'page' : undefined"
-        >{{ messages.releaseNotes.label }}</NuxtLink
-      >
-      <NuxtLink
-        :to="modulesPath(locale)"
-        :aria-current="section === 'modules' ? 'page' : undefined"
-        >{{ messages.modules.label }}</NuxtLink
-      >
+      <NuxtLink :to="docsPath(locale)" :aria-current="section === 'docs' ? 'page' : undefined">{{
+        messages.docs.label
+      }}</NuxtLink>
       <a :href="repository">GitHub <SiteIcon name="arrow" /></a>
     </nav>
     <div class="header-actions">
@@ -50,15 +42,7 @@ const homeHref = computed(() => `${base}${props.locale === 'en' ? '' : `${props.
         <NuxtLink
           v-for="language in languages"
           :key="language.code"
-          :to="
-            section === 'releases'
-              ? releaseNotesPath(language.code, releaseVersion)
-              : section === 'license'
-                ? licensePath(language.code)
-                : section === 'modules'
-                  ? modulesPath(language.code)
-                  : language.path
-          "
+          :to="localizedPath(route.path, language.code)"
           :lang="language.code"
           :aria-label="language.name"
           :aria-current="locale === language.code ? 'page' : undefined"

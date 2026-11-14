@@ -3,5 +3,5 @@ definePageMeta({ validate: (route) => ['ru', 'es'].includes(String(route.params.
 </script>
 
 <template>
-  <ModuleDevPage />
+  <DocsPage slug="git" />
 </template>

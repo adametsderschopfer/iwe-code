@@ -184,14 +184,14 @@ const releaseNotes = JSON.parse(
 
 for (const { language, route } of locales) {
   test(`${language} release history links every authored version`, () => {
-    const html = readPage(`${route}releases/`)
+    const html = readPage(`${route}docs/release-notes/`)
     const catalog = readCatalog(language)
     assert.equal(elements(html, 'html')[0]?.lang, language)
     assert.equal(elements(html, 'h1').length, 1)
     assert.ok(decode(html).includes(catalog.releaseNotes.title))
     const links = elements(html, 'a')
     for (const release of releaseNotes) {
-      const path = `${baseURL}${route}releases/${release.version}/`
+      const path = `${baseURL}${route}docs/release-notes/${release.version}/`
       assert.ok(
         links.some((link) => link.href === path),
         `Missing release link: ${path}`,
@@ -203,7 +203,7 @@ for (const { language, route } of locales) {
   test(`${language} version pages preserve translations, publication status, and navigation`, () => {
     const catalog = readCatalog(language)
     for (const release of releaseNotes) {
-      const path = `${route}releases/${release.version}/`
+      const path = `${route}docs/release-notes/${release.version}/`
       const html = readPage(path)
       const content = decode(html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''))
       assert.equal(elements(html, 'html')[0]?.lang, language)
@@ -224,7 +224,7 @@ for (const { language, route } of locales) {
       )
       const links = elements(html, 'a')
       for (const locale of locales) {
-        const alternate = `${locale.route}releases/${release.version}/`
+        const alternate = `${locale.route}docs/release-notes/${release.version}/`
         assert.equal(
           metadata.find((link) => link.hreflang === locale.language)?.href,
           new URL(alternate, siteURL).href,
@@ -286,22 +286,26 @@ for (const { language, route } of locales) {
 
 for (const { language, route } of locales) {
   test(`${language} module guide documents the package format and protocol`, () => {
-    const html = readPage(`${route}modules/`)
+    const html = readPage(`${route}docs/module-development/`)
     const catalog = readCatalog(language)
     assert.equal(elements(html, 'html')[0]?.lang, language)
     assert.equal(elements(html, 'h1').length, 1)
-    assert.ok(decode(html).includes(catalog.modules.title))
+    const guide = catalog.docs.pages['module-development']
+    assert.ok(decode(html).includes(guide.title))
     const visibleText = decode(
       html
         .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
         .replace(/<[^>]*>/g, ' '),
     ).replace(/\s+/g, ' ')
-    for (const key of ['conceptTitle', 'manifestTitle', 'protocolTitle', 'permissionsTitle']) {
-      assert.ok(visibleText.includes(catalog.modules[key]), `Missing module section: ${key}`)
+    for (const section of guide.sections) {
+      assert.ok(visibleText.includes(section.heading), `Missing module section: ${section.heading}`)
     }
-    for (const entry of catalog.modules.manifestFields) {
-      assert.ok(visibleText.includes(entry.field), `Missing manifest field: ${entry.field}`)
+    const terms = guide.sections.flatMap((section) =>
+      section.table ? section.table.rows.map((row) => row.term) : [],
+    )
+    for (const term of terms) {
+      assert.ok(visibleText.includes(term), `Missing module fact: ${term}`)
     }
     const code = decode(html.match(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi)?.join(' ') ?? '')
     assert.ok(code.includes('"id": "hello-module"'), 'The guide must show a manifest example')
@@ -310,17 +314,56 @@ for (const { language, route } of locales) {
     const links = elements(html, 'link')
     assert.equal(
       links.find((link) => link.rel === 'canonical')?.href,
-      new URL(`${route}modules/`, siteURL).href,
+      new URL(`${route}docs/module-development/`, siteURL).href,
     )
     for (const locale of locales) {
       assert.equal(
         links.find((link) => link.hreflang === locale.language)?.href,
-        new URL(`${locale.route}modules/`, siteURL).href,
+        new URL(`${locale.route}docs/module-development/`, siteURL).href,
       )
     }
     for (const anchor of elements(html, 'a')) {
-      const url = new URL(anchor.href, new URL(`${baseURL}${route}modules/`, localOrigin))
+      const url = new URL(
+        anchor.href,
+        new URL(`${baseURL}${route}docs/module-development/`, localOrigin),
+      )
       if (url.origin === localOrigin) staticTarget(url)
+    }
+  })
+}
+
+for (const { language, route } of locales) {
+  test(`${language} documentation section renders the sidebar and every page`, () => {
+    const catalog = readCatalog(language)
+    const slugs = ['overview', ...Object.keys(catalog.docs.pages), 'release-notes']
+    const paths = slugs.map((slug) =>
+      slug === 'overview' ? `${route}docs/` : `${route}docs/${slug}/`,
+    )
+    for (const path of paths) {
+      const html = readPage(path)
+      assert.equal(elements(html, 'html')[0]?.lang, language)
+      assert.equal(elements(html, 'h1').length, 1, `Missing main heading: ${path}`)
+      const links = elements(html, 'link')
+      assert.equal(
+        links.find((link) => link.rel === 'canonical')?.href,
+        new URL(path, siteURL).href,
+      )
+    }
+    const overviewAnchors = elements(readPage(`${route}docs/`), 'a')
+    for (const path of paths) {
+      assert.ok(
+        overviewAnchors.some((link) => link.href === `${baseURL}${path}`),
+        `The docs overview misses the link: ${path}`,
+      )
+    }
+    for (const path of paths) {
+      const html = readPage(path)
+      const sidebar = elements(html, 'a').filter((link) =>
+        link.href?.startsWith(`${baseURL}${route}docs/`),
+      )
+      for (const link of sidebar) {
+        staticTarget(new URL(link.href, new URL(`${baseURL}${path}`, localOrigin)))
+      }
     }
   })
 }

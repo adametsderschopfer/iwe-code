@@ -10,7 +10,7 @@
     "language": "Idioma",
     "skip": "Saltar al contenido",
     "home": "Inicio de IWE Code",
-    "modules": "Módulos"
+    "docs": "Documentación"
   },
   "hero": {
     "release": "Conoce IWE Code",
@@ -156,7 +156,8 @@
   "error": {
     "title": "Esta página no está disponible.",
     "description": "Vuelve al sitio web de IWE Code para continuar.",
-    "back": "Ir al inicio"
+    "back": "Ir al inicio",
+    "redirect": "Esta página se trasladó a la documentación."
   },
   "releaseNotes": {
     "label": "Notas de versión",
@@ -189,143 +190,908 @@
     "fullText": "Texto completo de la licencia",
     "source": "Ver la licencia en GitHub"
   },
-  "modules": {
-    "label": "Módulos",
-    "metaTitle": "Desarrollo de módulos — IWE Code",
-    "title": "Crea tu propio módulo.",
-    "description": "Amplía IWE Code con módulos externos. Empaqueta un programa, describe su panel en JSON e instálalo desde un archivo.",
-    "intro": "Un módulo externo es un programa aparte que IWE Code ejecuta y con el que habla mediante un protocolo JSON sencillo. Escríbelo en cualquier lenguaje, incluye binarios para tus plataformas e instala el paquete sin recompilar la aplicación.",
-    "conceptTitle": "Cómo funciona",
-    "concept": [
-      "Tu módulo se ejecuta como un proceso propio. IWE Code lo inicia al activar el módulo y lo detiene al desactivarlo o eliminarlo.",
-      "La aplicación y el módulo intercambian un documento JSON por línea a través de la entrada y salida estándar del proceso.",
-      "El módulo describe su panel con un árbol declarativo de widgets. IWE Code dibuja el panel con sus propios componentes nativos.",
-      "El módulo traduce el texto de su panel. La aplicación informa del idioma de la interfaz al iniciar."
-    ],
-    "manifestTitle": "El manifiesto",
-    "manifestIntro": "Cada paquete contiene un archivo manifest.json que describe el módulo.",
-    "manifestFields": [
-      {
-        "field": "id",
-        "description": "Identificador único en minúsculas con guiones, por ejemplo hello-module."
+  "docs": {
+    "label": "Documentación",
+    "metaTitle": "Documentación — IWE Code",
+    "overview": {
+      "label": "Resumen",
+      "title": "Todas las funciones.\nEn una referencia.",
+      "description": "Guías de espacios de trabajo, edición, Git, pipelines, terminal, despliegue, módulos y automatización.",
+      "intro": "Elige una página en el menú lateral. Cada página trata un tema y enlaza las páginas relacionadas."
+    },
+    "groups": {
+      "start": "Inicio",
+      "workspace": "Espacio de trabajo",
+      "tools": "Herramientas",
+      "modules": "Módulos",
+      "automation": "Automatización",
+      "releases": "Versiones"
+    },
+    "pages": {
+      "getting-started": {
+        "label": "Primeros pasos",
+        "title": "Empieza en pocos minutos.",
+        "metaTitle": "Primeros pasos — IWE Code",
+        "description": "Descarga IWE Code para macOS, Windows o Linux, crea tu primer espacio y añade tus carpetas de proyecto.",
+        "intro": "IWE Code es una aplicación nativa para macOS, Windows y Linux. Instálala, crea un espacio y añade tus carpetas de proyecto.",
+        "sections": [
+          {
+            "heading": "Instala la aplicación",
+            "paragraphs": [
+              "Descarga el paquete para tu sistema desde este sitio o desde las publicaciones de GitHub.",
+              "Los paquetes cubren macOS en Apple Silicon e Intel, Windows en x64 y x86, y Linux en x64 y x86.",
+              "Windows ofrece un instalador por usuario y un archivo ZIP portátil."
+            ]
+          },
+          {
+            "heading": "Elige tu idioma",
+            "paragraphs": [
+              "La aplicación usa el idioma del sistema.",
+              "Define la variable de entorno IWE_LANG para elegir inglés, ruso o español.",
+              "Los idiomas no compatibles vuelven al inglés."
+            ]
+          },
+          {
+            "heading": "Crea tu primer espacio",
+            "steps": [
+              "Pulsa el signo más junto al encabezado Espacios.",
+              "Escribe el nombre del espacio.",
+              "Selecciona una o varias carpetas de proyecto.",
+              "Pulsa Crear espacio."
+            ]
+          },
+          {
+            "heading": "Los proyectos quedan donde están",
+            "bullets": [
+              "IWE Code añade carpetas existentes sin moverlas.",
+              "El árbol de archivos conserva tu estructura de carpetas.",
+              "Quitar un proyecto lo separa del espacio. La carpeta sigue en el disco."
+            ]
+          },
+          {
+            "heading": "Mantente al día",
+            "bullets": [
+              "La aplicación consulta las publicaciones de GitHub al arrancar y cerca de una vez por hora.",
+              "Una fila de descarga aparece junto al botón de ajustes cuando hay una versión nueva.",
+              "Pulsa Descargar actualización y después Instalar y reiniciar.",
+              "Abre Ajustes → Acerca de para buscar actualizaciones de forma manual."
+            ]
+          }
+        ]
       },
-      {
-        "field": "name, description",
-        "description": "Textos traducidos. El inglés es obligatorio; el ruso y el español son opcionales."
+      "workspaces": {
+        "label": "Espacios de trabajo",
+        "title": "Espacios, proyectos y archivos.",
+        "metaTitle": "Espacios de trabajo — IWE Code",
+        "description": "Organiza proyectos en espacios, cambia su orden, clona repositorios y copia rutas de archivos.",
+        "intro": "Un espacio de trabajo guarda espacios con nombre. Cada espacio contiene proyectos, y cada proyecto apunta a una carpeta de tu equipo.",
+        "sections": [
+          {
+            "heading": "Gestiona los espacios",
+            "bullets": [
+              "Crea un espacio con el signo más junto al encabezado Espacios.",
+              "Edita un espacio con el botón de ajustes junto a su nombre.",
+              "Arrastra el encabezado de un espacio para cambiar el orden.",
+              "El proyecto abierto y los espacios plegados conservan su estado."
+            ]
+          },
+          {
+            "heading": "Gestiona los proyectos",
+            "bullets": [
+              "Pulsa Añadir proyecto para elegir carpetas existentes o clonar un repositorio.",
+              "Fija un proyecto para mantenerlo al inicio de la lista.",
+              "Quita un proyecto desde su menú contextual. Solo desaparece la entrada del espacio.",
+              "Al quitar el proyecto activo se elige otro proyecto o el espacio vacío."
+            ]
+          },
+          {
+            "heading": "Clona un repositorio",
+            "bullets": [
+              "La clonación acepta URL de repositorio por HTTPS y SSH.",
+              "El campo de destino sugiere una carpeta superior a partir de los proyectos del espacio.",
+              "Edita la ruta sugerida o elige otra carpeta antes de clonar.",
+              "Sin sugerencias, la clonación propone una carpeta IWE Code en tu directorio personal."
+            ]
+          },
+          {
+            "heading": "Copia rutas de archivos",
+            "bullets": [
+              "Pulsa con el botón derecho sobre un archivo o carpeta y elige Copiar.",
+              "Deja el puntero sobre Copiar para elegir una ruta absoluta o una ruta desde la raíz del repositorio.",
+              "Los repositorios anidados usan su propia raíz."
+            ]
+          },
+          {
+            "heading": "Sigue los repositorios en la cabecera",
+            "bullets": [
+              "La cabecera muestra hasta dos insignias de repositorio con sus ramas actuales.",
+              "Los proyectos con más repositorios listan el resto en un menú desplegable.",
+              "Pulsa una insignia para abrir el historial de Git de ese repositorio."
+            ]
+          }
+        ]
       },
-      {
-        "field": "version",
-        "description": "Versión semántica del módulo. Las actualizaciones deben incrementarla."
+      "editing": {
+        "label": "Edición",
+        "title": "Un editor rápido para tu código.",
+        "metaTitle": "Edición — IWE Code",
+        "description": "Resaltado de sintaxis, autoguardado, pestañas, archivos grandes y búsqueda en un solo editor.",
+        "intro": "El editor abre los archivos de código en pestañas. Resalta la sintaxis, numera las líneas y guarda tus cambios.",
+        "sections": [
+          {
+            "heading": "Escribe y guarda",
+            "bullets": [
+              "Los archivos se guardan tras una breve pausa al escribir.",
+              "Deshacer revierte tus cambios recientes.",
+              "Si un guardado falla, el editor conserva tu borrador y muestra un error."
+            ]
+          },
+          {
+            "heading": "Trabaja con pestañas",
+            "bullets": [
+              "Los archivos se abren en pestañas sobre el área de código.",
+              "Los nombres largos se acortan y las pestañas ocultas aparecen en una lista desplegable.",
+              "Las pestañas cerradas liberan memoria. Los documentos preparados no superan 16 MiB."
+            ]
+          },
+          {
+            "heading": "Abre archivos grandes",
+            "bullets": [
+              "Los archivos grandes se abren por partes.",
+              "Salta a una línea concreta desde los controles del editor."
+            ]
+          },
+          {
+            "heading": "Encuentra archivos rápido",
+            "bullets": [
+              "Pulsa Shift dos veces para abrir la búsqueda global.",
+              "La búsqueda encuentra archivos por nombre en todo el espacio de trabajo.",
+              "Usa Ir al archivo para abrir directamente una ruta."
+            ]
+          },
+          {
+            "heading": "Compara versiones",
+            "bullets": [
+              "Las comparaciones muestran la versión anterior y la actual lado a lado o en una columna.",
+              "Pliega las líneas sin cambios para ver solo las diferencias.",
+              "Los controles de comparación aparecen para cambios sin confirmar."
+            ]
+          },
+          {
+            "heading": "Personaliza atajos",
+            "bullets": [
+              "Los ajustes listan atajos de código, pestañas y despliegue.",
+              "La aplicación rechaza las combinaciones duplicadas."
+            ]
+          }
+        ]
       },
-      {
-        "field": "api",
-        "description": "Versión del protocolo. La versión actual es 1."
+      "git": {
+        "label": "Git",
+        "title": "Historial, ramas y cambios.",
+        "metaTitle": "Git — IWE Code",
+        "description": "Explora ramas y commits, compara versiones de archivos y gestiona ramas en varios repositorios.",
+        "intro": "El módulo de Git muestra el historial del proyecto junto a tu código.",
+        "sections": [
+          {
+            "heading": "Explora el historial",
+            "bullets": [
+              "El grafo del historial lista commits con autores, fechas y referencias.",
+              "Los hashes aparecen junto al título. Pulsa un hash para copiar el identificador completo.",
+              "Los proyectos reabiertos muestran el historial guardado mientras llegan los datos nuevos."
+            ]
+          },
+          {
+            "heading": "Trabaja con ramas",
+            "bullets": [
+              "La lista de ramas filtra el historial por rama.",
+              "Mantén pulsado Command o Ctrl para seleccionar varias ramas y carpetas.",
+              "Envía, actualiza o elimina la selección en una sola acción.",
+              "Al eliminar una rama se avisa si está abierta en otra copia de trabajo."
+            ]
+          },
+          {
+            "heading": "Compara versiones de archivos",
+            "bullets": [
+              "Elige un commit o un archivo sin confirmar para comparar versiones.",
+              "Muestra ambos archivos lado a lado o en una columna.",
+              "Pliega las líneas sin cambios para centrarte en las diferencias."
+            ]
+          },
+          {
+            "heading": "Sigue los cambios locales",
+            "bullets": [
+              "El espacio de trabajo lista los archivos sin confirmar de cada repositorio.",
+              "La lista de proyectos marca los que tienen cambios sin confirmar.",
+              "El progreso de Git aparece en la barra de estado inferior."
+            ]
+          },
+          {
+            "heading": "Inicia sesión con proveedores",
+            "bullets": [
+              "El inicio de sesión de GitHub y GitLab abre tu navegador.",
+              "Un servidor GitLab propio acepta un token de acceso personal.",
+              "Las credenciales permanecen en tu equipo."
+            ]
+          }
+        ]
       },
-      {
-        "field": "minAppVersion",
-        "description": "Versión mínima de la aplicación que admite el módulo."
+      "pipelines": {
+        "label": "Pipelines",
+        "title": "Vigila tus pipelines.",
+        "metaTitle": "Pipelines — IWE Code",
+        "description": "Conecta GitHub Actions o GitLab y sigue ejecuciones, etapas y trabajos junto a tu proyecto.",
+        "intro": "El módulo de pipelines muestra las ejecuciones junto al proyecto al que pertenecen.",
+        "sections": [
+          {
+            "heading": "Conecta un proveedor",
+            "bullets": [
+              "IWE Code admite GitHub Actions y GitLab.",
+              "El inicio de sesión se hace desde el navegador.",
+              "Un servidor GitLab propio usa un token de acceso personal.",
+              "Las ejecuciones privadas necesitan una cuenta de proveedor conectada."
+            ]
+          },
+          {
+            "heading": "Sigue las ejecuciones",
+            "bullets": [
+              "La lista muestra cada ejecución con sus etapas.",
+              "Los resúmenes de trabajos aparecen directamente en la lista.",
+              "Revisa etapas y trabajos sin salir del espacio de trabajo."
+            ]
+          },
+          {
+            "heading": "Activa o desactiva",
+            "bullets": [
+              "Los pipelines empiezan activados y se pueden desactivar en Ajustes → Módulos.",
+              "El módulo funciona incluso con el módulo de Git desactivado."
+            ]
+          }
+        ]
       },
-      {
-        "field": "entry",
-        "description": "Nombre del ejecutable por plataforma, por ejemplo macos-aarch64."
+      "terminal": {
+        "label": "Terminal",
+        "title": "Ejecuta comandos en su sitio.",
+        "metaTitle": "Terminal — IWE Code",
+        "description": "Abre sesiones de terminal para el proyecto seleccionado sin salir del espacio de trabajo.",
+        "intro": "El módulo de terminal abre un panel junto a tu código.",
+        "sections": [
+          {
+            "heading": "Abre sesiones",
+            "bullets": [
+              "Elige Terminal en la barra inferior.",
+              "Cada sesión se ejecuta en la carpeta del proyecto seleccionado.",
+              "Abre varias sesiones como pestañas."
+            ]
+          },
+          {
+            "heading": "Gestiona el panel",
+            "bullets": [
+              "Cambia el tamaño del panel u ocúltalo con el botón de menos.",
+              "Las sesiones ocultas siguen ejecutándose.",
+              "Solo hay un panel inferior abierto a la vez."
+            ]
+          },
+          {
+            "heading": "Conoce los límites",
+            "bullets": [
+              "Los comandos se ejecutan con los permisos de tu usuario.",
+              "Los comandos pueden cambiar archivos y usar la red.",
+              "Las sesiones terminadas conservan su última salida."
+            ]
+          }
+        ]
       },
-      {
-        "field": "permissions",
-        "description": "Acceso declarado: filesystem-read, filesystem-write, network, process."
+      "deployment": {
+        "label": "Despliegue",
+        "title": "Lleva tus archivos a tus servidores.",
+        "metaTitle": "Despliegue — IWE Code",
+        "description": "Conéctate por SFTP, FTP o FTPS, compara archivos del servidor y envía o descarga cambios.",
+        "intro": "El módulo de despliegue transfiere archivos del proyecto entre tu equipo y un servidor. Las transferencias siempre son manuales.",
+        "sections": [
+          {
+            "heading": "Servidores y conexiones",
+            "bullets": [
+              "Los perfiles de despliegue se llaman servidores. Cada servidor pertenece a un proyecto.",
+              "Las conexiones se comparten entre todos los espacios.",
+              "Varios servidores pueden apuntar al mismo proyecto.",
+              "Abre Despliegue → Servidores para ver los servidores de todos los proyectos."
+            ]
+          },
+          {
+            "heading": "Elige un protocolo",
+            "bullets": [
+              "Los servidores funcionan por SFTP, FTP o FTPS.",
+              "FTPS admite TLS explícito e implícito y verifica certificados.",
+              "FTP y FTPS usan conexiones pasivas y transferencias binarias."
+            ]
+          },
+          {
+            "heading": "Autentícate con seguridad",
+            "bullets": [
+              "SFTP acepta contraseñas, archivos de clave privada y el agente SSH del sistema.",
+              "Añade y gestiona claves SSH en los ajustes de la conexión.",
+              "Las contraseñas y frases de contraseña se guardan en archivos locales privados.",
+              "Pulsa Probar conexión antes de guardar. El resultado aparece sobre el botón."
+            ]
+          },
+          {
+            "heading": "Confía en el servidor",
+            "bullets": [
+              "Un servidor nuevo pide confirmar su huella digital.",
+              "Una clave de servidor cambiada bloquea la conexión hasta que la verifiques."
+            ]
+          },
+          {
+            "heading": "Mapea carpetas y transfiere",
+            "bullets": [
+              "Las asignaciones conectan carpetas locales con carpetas del servidor.",
+              "Las rutas excluidas quedan fuera de las transferencias.",
+              "Explora, compara, envía y descarga archivos en el panel del servidor.",
+              "Enviar usa Command+Shift+A y comparar Command+Shift+C. Windows y Linux usan Ctrl.",
+              "Las transferencias muestran su progreso en la barra de estado."
+            ]
+          }
+        ]
       },
-      {
-        "field": "placement",
-        "description": "Zona del espacio de trabajo del panel: header, top, left, right o bottom."
+      "modules": {
+        "label": "Módulos",
+        "title": "Activa y desactiva herramientas.",
+        "metaTitle": "Módulos — IWE Code",
+        "description": "Git, pipelines, terminal y despliegue empiezan activados. Desactiva cualquiera en los ajustes.",
+        "intro": "IWE Code monta sus herramientas con módulos. Desactivar un módulo nunca borra datos.",
+        "sections": [
+          {
+            "heading": "Gestiona los módulos",
+            "bullets": [
+              "Ajustes → Módulos lista Git, pipelines, terminal y despliegue.",
+              "Cada módulo empieza activado.",
+              "El interruptor aplica el cambio al momento y lo mantiene tras reiniciar.",
+              "Las conexiones, los perfiles y los atajos guardados no cambian."
+            ]
+          },
+          {
+            "heading": "Qué hace la desactivación",
+            "bullets": [
+              "Los módulos desactivados ocultan sus controles y paneles.",
+              "Las sesiones de terminal terminan y las transferencias de despliegue se cancelan.",
+              "Las operaciones ya enviadas al proveedor pueden terminar en su lado.",
+              "Reactivar un módulo nunca repite una escritura completada."
+            ]
+          },
+          {
+            "heading": "Paneles",
+            "bullets": [
+              "Los paneles empiezan plegados en los espacios de trabajo nuevos.",
+              "La barra inferior alterna Terminal, Git y pipelines.",
+              "Solo hay un panel inferior abierto a la vez.",
+              "El despliegue se abre desde el icono de servidor a la derecha."
+            ]
+          },
+          {
+            "heading": "Amplía con módulos externos",
+            "paragraphs": [
+              "Los módulos externos añaden funciones sin recompilar la aplicación.",
+              "Instálalos desde paquetes .iwe-module en Ajustes → Módulos."
+            ],
+            "links": [
+              {
+                "text": "Lee la guía de desarrollo de módulos",
+                "page": "module-development"
+              }
+            ]
+          }
+        ]
+      },
+      "module-development": {
+        "label": "Desarrollo de módulos",
+        "title": "Crea tu propio módulo.",
+        "metaTitle": "Desarrollo de módulos — IWE Code",
+        "description": "Amplía IWE Code con módulos externos. Empaqueta un programa, describe su panel en JSON e instálalo desde un archivo.",
+        "intro": "Un módulo externo es un programa independiente que IWE Code ejecuta y con el que se comunica mediante un protocolo JSON sencillo. Escríbelo en cualquier lenguaje, adjunta binarios para tus plataformas e instala el paquete sin recompilar la aplicación.",
+        "sections": [
+          {
+            "heading": "Cómo funciona",
+            "bullets": [
+              "Tu módulo se ejecuta como un proceso propio. IWE Code lo inicia al activar el módulo y lo detiene al desactivarlo o quitarlo.",
+              "El anfitrión y el módulo intercambian un documento JSON por línea a través de la entrada y salida estándar del proceso.",
+              "El módulo describe su panel con un árbol de widgets declarativo. IWE Code lo dibuja con sus propios componentes nativos.",
+              "El módulo localiza el texto de su propio panel. El anfitrión informa del idioma de la interfaz al arrancar."
+            ]
+          },
+          {
+            "heading": "El manifiesto",
+            "paragraphs": [
+              "Cada paquete contiene un archivo manifest.json que describe el módulo."
+            ],
+            "codes": [
+              {
+                "text": "{\n  \"id\": \"hello-module\",\n  \"name\": { \"en\": \"Hello module\", \"ru\": \"Модуль приветствия\" },\n  \"description\": { \"en\": \"Shows a friendly panel.\" },\n  \"version\": \"1.0.0\",\n  \"api\": 1,\n  \"minAppVersion\": \"1.0.8\",\n  \"entry\": { \"macos-aarch64\": \"hello-module\", \"linux-x86_64\": \"hello-module\" },\n  \"permissions\": [],\n  \"placement\": \"bottom\"\n}"
+              }
+            ],
+            "table": {
+              "kind": "code",
+              "rows": [
+                {
+                  "term": "id",
+                  "text": "Identificador único en kebab-case en minúsculas, por ejemplo hello-module."
+                },
+                {
+                  "term": "name, description",
+                  "text": "Textos localizados. El inglés es obligatorio; el ruso y el español son opcionales."
+                },
+                {
+                  "term": "version",
+                  "text": "Versión semántica del módulo. Las actualizaciones deben aumentarla."
+                },
+                {
+                  "term": "api",
+                  "text": "Versión del protocolo. La versión actual es 1."
+                },
+                {
+                  "term": "minAppVersion",
+                  "text": "Versión mínima de la aplicación que admite el módulo."
+                },
+                {
+                  "term": "entry",
+                  "text": "Nombre del ejecutable por destino de plataforma, por ejemplo macos-aarch64."
+                },
+                {
+                  "term": "permissions",
+                  "text": "Acceso declarado: filesystem-read, filesystem-write, network, process."
+                },
+                {
+                  "term": "placement",
+                  "text": "Zona del espacio de trabajo para el panel: header, top, left, right o bottom."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "Estructura del paquete",
+            "paragraphs": [
+              "Un paquete es un archivo tar comprimido con gzip y extensión .iwe-module."
+            ],
+            "codes": [
+              {
+                "text": "hello-module/\n├── manifest.json\n└── binaries/\n    ├── macos-aarch64/hello-module\n    └── linux-x86_64/hello-module"
+              }
+            ]
+          },
+          {
+            "heading": "Mensajes del protocolo",
+            "paragraphs": [
+              "Cada mensaje es una línea JSON. Los mensajes desconocidos se ignoran, así que los módulos pueden ser sencillos."
+            ],
+            "codes": [
+              {
+                "text": "{\"type\":\"initialize\",\"api\":1,\"appVersion\":\"1.0.8\",\"language\":\"en\",\"installPath\":\"/…/modules/hello-module/1.0.0\"}\n{\"type\":\"panel\",\"content\":{\"type\":\"column\",\"children\":[{\"type\":\"text\",\"content\":\"Hello!\"}]}}\n{\"type\":\"event\",\"id\":\"click\",\"action\":{\"type\":\"click\"}}\n{\"type\":\"notify\",\"level\":\"info\",\"message\":\"Done\"}\n{\"type\":\"shutdown\"}"
+              }
+            ]
+          },
+          {
+            "heading": "De IWE Code al módulo",
+            "table": {
+              "kind": "code",
+              "rows": [
+                {
+                  "term": "initialize",
+                  "text": "Se envía una vez al arrancar. Informa de la versión del protocolo, la de la aplicación, el idioma de la interfaz y la ruta de instalación."
+                },
+                {
+                  "term": "event",
+                  "text": "Informa de una interacción con un widget: un clic, un cambio de estado o de texto."
+                },
+                {
+                  "term": "shutdown",
+                  "text": "Pide al módulo que termine."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "Del módulo a IWE Code",
+            "table": {
+              "kind": "code",
+              "rows": [
+                {
+                  "term": "panel",
+                  "text": "Sustituye el contenido del panel por un nuevo árbol de widgets."
+                },
+                {
+                  "term": "notify",
+                  "text": "Muestra un mensaje breve con nivel info, warning o error."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "Widgets del panel",
+            "paragraphs": [
+              "Un panel es un árbol de nodos simples. Cada nodo tiene un tipo y sus propios campos."
+            ],
+            "table": {
+              "kind": "code",
+              "rows": [
+                {
+                  "term": "column, row",
+                  "text": "Apilan nodos hijos en vertical o en horizontal con un espaciado opcional."
+                },
+                {
+                  "term": "text",
+                  "text": "Muestra texto con estilo body, heading, caption, muted o danger."
+                },
+                {
+                  "term": "button",
+                  "text": "Un botón con etiqueta que informa del clic. Estilos: primary, secondary, danger."
+                },
+                {
+                  "term": "text-input",
+                  "text": "Un campo de una línea que informa de los cambios de valor."
+                },
+                {
+                  "term": "checkbox, toggle",
+                  "text": "Controles booleanos que informan de su nuevo estado."
+                },
+                {
+                  "term": "progress",
+                  "text": "Una barra de progreso entre 0 y 1."
+                },
+                {
+                  "term": "separator, scroll, spacer",
+                  "text": "Ayudas de diseño para dividir, desplazar y llenar espacio."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "Permisos",
+            "paragraphs": [
+              "El manifiesto declara el acceso que necesita el módulo. IWE Code muestra esta lista antes de la instalación y pide confirmación. Los módulos se ejecutan con los permisos de tu usuario; IWE Code no los aísla. Instala solo módulos de confianza."
+            ],
+            "table": {
+              "kind": "code",
+              "rows": [
+                {
+                  "term": "filesystem-read",
+                  "text": "Leer archivos de tu equipo."
+                },
+                {
+                  "term": "filesystem-write",
+                  "text": "Cambiar archivos de tu equipo."
+                },
+                {
+                  "term": "network",
+                  "text": "Acceder a la red."
+                },
+                {
+                  "term": "process",
+                  "text": "Iniciar otros programas."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "Compila un paquete",
+            "paragraphs": [
+              "Compila el módulo de referencia, monta la carpeta del paquete y comprímela. El ejemplo es un módulo completo en Rust que puedes copiar."
+            ],
+            "codes": [
+              {
+                "text": "cargo build --release --example hello-module\nmkdir -p hello-module/binaries/macos-aarch64\ncp target/release/examples/hello-module hello-module/binaries/macos-aarch64/\ncp manifest.json hello-module/\ntar -czf hello-module.iwe-module -C hello-module manifest.json binaries"
+              }
+            ]
+          },
+          {
+            "heading": "Instalación",
+            "paragraphs": [
+              "Abre Ajustes → Módulos en IWE Code, elige Instalar desde archivo…, revisa el acceso solicitado y confirma. Las actualizaciones se instalan igual con un número de versión mayor."
+            ]
+          },
+          {
+            "heading": "Módulo de referencia",
+            "paragraphs": [
+              "El repositorio contiene un ejemplo funcional en examples/hello-module."
+            ],
+            "links": [
+              {
+                "text": "Abre el ejemplo en GitHub",
+                "href": "https://github.com/adametsderschopfer/iwe-code/tree/main/examples/hello-module"
+              }
+            ]
+          }
+        ]
+      },
+      "cli": {
+        "label": "Línea de comandos",
+        "title": "Tu espacio de trabajo,\ndesde cualquier script.",
+        "metaTitle": "Línea de comandos — IWE Code",
+        "description": "El binario de la aplicación incluye una línea de comandos pequeña. Lista espacios, añade o quita proyectos y muestra JSON estable.",
+        "intro": "Cada comando funciona sin interfaz: sin ventana y sin acceso a la red. Los comandos leen y escriben el mismo archivo de espacio de trabajo que la aplicación, así que los scripts ven los mismos espacios y proyectos. La ayuda sigue el idioma de tu interfaz.",
+        "sections": [
+          {
+            "heading": "Comandos",
+            "paragraphs": [
+              "Estos comandos se ejecutan desde el binario de la aplicación. Las carpetas, los archivos y los enlaces siguen abriendo el espacio de trabajo como antes."
+            ],
+            "table": {
+              "kind": "code",
+              "rows": [
+                {
+                  "term": "iwe open [directory]",
+                  "text": "Inicia la aplicación. Con una carpeta, abre ese proyecto."
+                },
+                {
+                  "term": "iwe workspace list [--json]",
+                  "text": "Muestra los espacios con sus proyectos."
+                },
+                {
+                  "term": "iwe workspace add-project <directory> [--space NAME] [--json]",
+                  "text": "Añade una carpeta de proyecto a un espacio. Sin --space, la recibe el primer espacio."
+                },
+                {
+                  "term": "iwe workspace remove-project <project> [--json]",
+                  "text": "Quita un proyecto por carpeta o por nombre exacto."
+                },
+                {
+                  "term": "iwe --help, iwe --version",
+                  "text": "Muestra la ayuda localizada o la versión."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "Salida legible por programas",
+            "paragraphs": [
+              "El indicador --json muestra JSON estable con sangría de dos espacios. Las claves usan snake_case, igual que el archivo guardado del espacio de trabajo."
+            ],
+            "codes": [
+              {
+                "text": "{\n  \"spaces\": [\n    {\n      \"name\": \"Work\",\n      \"projects\": [\n        {\n          \"name\": \"app\",\n          \"directory\": \"/Users/name/code/app\",\n          \"pinned\": false\n        }\n      ]\n    }\n  ]\n}"
+              }
+            ]
+          },
+          {
+            "heading": "Códigos de salida",
+            "paragraphs": ["Los scripts pueden distinguir el resultado por el código de salida."],
+            "table": {
+              "kind": "code",
+              "rows": [
+                {
+                  "term": "0",
+                  "text": "El comando terminó correctamente."
+                },
+                {
+                  "term": "1",
+                  "text": "El comando falló: faltaba una carpeta, el archivo del espacio de trabajo no se pudo leer o ningún proyecto coincidió."
+                },
+                {
+                  "term": "2",
+                  "text": "La llamada no fue válida: comando u opción desconocida, falta un valor u open recibió una carpeta inexistente."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "Conviene saber",
+            "bullets": [
+              "Cierra la aplicación antes de cambiar el espacio de trabajo desde la línea de comandos. Ambos procesos guardan sin bloqueos.",
+              "IWE_LANG o el idioma del sistema eligen el idioma de la salida, incluida la ayuda.",
+              "Los comandos desconocidos ahora terminan con un error en lugar de abrir la ventana."
+            ]
+          }
+        ]
+      },
+      "mcp": {
+        "label": "Servidor MCP",
+        "title": "Tu espacio de trabajo,\npara tu asistente.",
+        "metaTitle": "Servidor MCP — IWE Code",
+        "description": "Conecta asistentes de IA a tus proyectos mediante Model Context Protocol. Explora, lee, busca y edita con las mismas comprobaciones de conflictos que el editor.",
+        "intro": "IWE Code incluye un servidor MCP dentro del binario de la aplicación. Tu asistente lo inicia como un proceso local y habla con él por los flujos estándar. Nada sale de tu equipo, y el asistente solo ve los proyectos que añadiste al espacio de trabajo.",
+        "sections": [
+          {
+            "heading": "Cómo funciona",
+            "bullets": [
+              "El asistente lanza el binario de IWE Code con el indicador --mcp. El proceso sirve Model Context Protocol por sus flujos estándar.",
+              "El servidor lee el mismo archivo de espacio de trabajo que la aplicación. Los proyectos que añadas o selecciones en IWE Code aparecen de inmediato.",
+              "Las herramientas cubren exploración, lectura, búsqueda y edición. Las herramientas de Git informan de ramas, archivos cambiados y commits recientes.",
+              "Editar exige un token de revisión de la última lectura. La escritura falla si el archivo cambió después de leerlo, así que nada se sobrescribe a ciegas."
+            ]
+          },
+          {
+            "heading": "Conecta un asistente",
+            "paragraphs": [
+              "Apunta el cliente al binario de la aplicación y añade el indicador --mcp. La ruta del binario depende de tu método de instalación."
+            ],
+            "codes": [
+              {
+                "label": "Claude Code acepta un comando:",
+                "text": "claude mcp add iwe -- /path/to/iwe --mcp"
+              },
+              {
+                "label": "Claude Desktop, Cursor y otros clientes leen una configuración mcpServers:",
+                "text": "{\n  \"mcpServers\": {\n    \"iwe\": {\n      \"command\": \"/path/to/iwe\",\n      \"args\": [\"--mcp\"]\n    }\n  }\n}"
+              }
+            ]
+          },
+          {
+            "heading": "Herramientas",
+            "paragraphs": [
+              "El servidor expone estas herramientas. Todas leen datos; solo write_file cambia archivos."
+            ],
+            "table": {
+              "kind": "code",
+              "rows": [
+                {
+                  "term": "list_projects",
+                  "text": "Lista espacios y proyectos, con el proyecto seleccionado marcado."
+                },
+                {
+                  "term": "list_files",
+                  "text": "Lista archivos y carpetas de un nivel de un proyecto."
+                },
+                {
+                  "term": "read_file",
+                  "text": "Lee un archivo de texto. La respuesta incluye un token de revisión para editar."
+                },
+                {
+                  "term": "write_file",
+                  "text": "Sustituye el contenido de un archivo de texto existente usando su token de revisión."
+                },
+                {
+                  "term": "search_files",
+                  "text": "Encuentra archivos por búsqueda difusa de nombre y ruta."
+                },
+                {
+                  "term": "git_status",
+                  "text": "Muestra la rama actual y los archivos cambiados."
+                },
+                {
+                  "term": "git_log",
+                  "text": "Muestra commits recientes con autores, fechas y referencias."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "El flujo de edición",
+            "steps": [
+              "Lee el archivo. La respuesta incluye el contenido y un token de revisión.",
+              "Envía el contenido cambiado de vuelta con el mismo token.",
+              "El servidor comprueba el archivo contra el token antes de escribir. Rechaza la escritura si el archivo cambió tras tu lectura.",
+              "Vuelve a leer el archivo y repite cuando se rechace una escritura."
+            ]
+          },
+          {
+            "heading": "Seguridad",
+            "bullets": [
+              "El servidor solo expone los proyectos de tu archivo de espacio de trabajo. Las rutas no pueden salir de la carpeta de un proyecto.",
+              "El servidor nunca cambia los metadatos del espacio de trabajo ni lee credenciales guardadas.",
+              "Los enlaces simbólicos se omiten. Los archivos binarios y demasiado grandes se rechazan.",
+              "Todo se ejecuta localmente. Sin acceso a la red y sin telemetría."
+            ]
+          },
+          {
+            "heading": "Compila desde el código fuente",
+            "paragraphs": ["Usa el binario instalado de la aplicación o compila desde el fuente:"],
+            "codes": [
+              {
+                "text": "cargo build --release\n# The binary lands in target/release/iwe"
+              }
+            ]
+          },
+          {
+            "heading": "Documentación para desarrolladores",
+            "paragraphs": [
+              "La documentación para desarrolladores describe el protocolo, las herramientas y sus límites en detalle."
+            ],
+            "links": [
+              {
+                "text": "Lee la documentación de MCP",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/mcp.md"
+              }
+            ]
+          }
+        ]
+      },
+      "deep-links": {
+        "label": "Enlaces",
+        "title": "Los archivos se abren\ndonde les corresponde.",
+        "metaTitle": "Apertura externa y enlaces — IWE Code",
+        "description": "Abre archivos desde el gestor de archivos, la terminal o enlaces iwe://. Un archivo se une al proyecto que le pertenece o se abre por su cuenta.",
+        "intro": "IWE Code acepta peticiones de apertura desde fuera de la aplicación. La aplicación en ejecución recibe cada petición, así que no aparece una segunda ventana.",
+        "sections": [
+          {
+            "heading": "De dónde vienen las peticiones",
+            "table": {
+              "kind": "text",
+              "rows": [
+                {
+                  "term": "Gestor de archivos",
+                  "text": "Abre un archivo con IWE Code. En macOS, el paquete publicado también recibe eventos de Finder."
+                },
+                {
+                  "term": "Línea de comandos",
+                  "text": "Ejecuta iwe con una ruta de archivo o un enlace como argumento."
+                },
+                {
+                  "term": "Segundo arranque",
+                  "text": "Un arranque posterior reenvía sus peticiones a la aplicación en ejecución y termina."
+                },
+                {
+                  "term": "Arrastrar y soltar",
+                  "text": "Suelta archivos sobre la ventana de la aplicación."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "Cómo se abre un archivo",
+            "bullets": [
+              "Un archivo dentro de la carpeta de un proyecto se abre con ese proyecto seleccionado.",
+              "Con proyectos anidados coincide el más específico.",
+              "Un archivo sin proyecto se abre en su propia pestaña, sin proyecto.",
+              "Un archivo inexistente muestra una notificación."
+            ]
+          },
+          {
+            "heading": "Enlaces",
+            "paragraphs": [
+              "El esquema iwe:// apunta a archivos y proyectos existentes desde navegadores, notas y scripts:",
+              "El valor de path debe ser una ruta absoluta del sistema de archivos. Las acciones desconocidas y las rutas relativas se ignoran."
+            ],
+            "table": {
+              "kind": "code",
+              "rows": [
+                {
+                  "term": "iwe://open?path=/abs/path/file.md",
+                  "text": "Abre el archivo."
+                },
+                {
+                  "term": "iwe://project?path=/abs/path/folder",
+                  "text": "Cambia al proyecto existente."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "Una sola instancia",
+            "bullets": [
+              "El primer arranque enlaza un punto local en la carpeta de ajustes.",
+              "Los arranques siguientes reenvían sus peticiones a ese punto y terminan.",
+              "macOS entrega los eventos de apertura directamente, así que el sistema evita arranques duplicados."
+            ]
+          },
+          {
+            "heading": "Registro en cada plataforma",
+            "bullets": [
+              "Los paquetes de macOS declaran el esquema iwe:// y los tipos de documento de texto en Info.plist.",
+              "El instalador de Windows registra el esquema y la entrada de la aplicación para el usuario actual.",
+              "El archivo de escritorio de Linux declara x-scheme-handler/iwe."
+            ]
+          },
+          {
+            "heading": "Limitaciones",
+            "bullets": [
+              "Los eventos de apertura de macOS requieren el paquete publicado. El binario de desarrollo acepta archivos y enlaces por la línea de comandos.",
+              "Las asociaciones de archivos de Windows siguen siendo manuales. Elige IWE Code una vez en el diálogo Abrir con, y Windows recordará la elección.",
+              "En Linux, registra el archivo de escritorio con xdg-mime default o una herramienta equivalente."
+            ]
+          },
+          {
+            "heading": "Documentación para desarrolladores",
+            "paragraphs": [
+              "La documentación para desarrolladores describe cada origen, regla y limitación en detalle."
+            ],
+            "links": [
+              {
+                "text": "Lee la documentación de apertura externa",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/external-opening.md"
+              }
+            ]
+          }
+        ]
       }
-    ],
-    "packageTitle": "Estructura del paquete",
-    "packageIntro": "Un paquete es un archivo tar comprimido con gzip y la extensión .iwe-module.",
-    "protocolTitle": "Mensajes del protocolo",
-    "protocolIntro": "Cada mensaje es una línea JSON. Los mensajes desconocidos se ignoran, así que los módulos pueden ser sencillos.",
-    "hostTitle": "De IWE Code al módulo",
-    "hostMessages": [
-      {
-        "name": "initialize",
-        "description": "Se envía una vez al iniciar. Informa de la versión del protocolo, de la aplicación, del idioma de la interfaz y de la ruta de instalación."
-      },
-      {
-        "name": "event",
-        "description": "Informa de una interacción con un widget: un clic, un interruptor o un cambio de texto."
-      },
-      {
-        "name": "shutdown",
-        "description": "Pide al módulo que termine."
-      }
-    ],
-    "moduleTitle": "Del módulo a IWE Code",
-    "moduleMessages": [
-      {
-        "name": "panel",
-        "description": "Sustituye el contenido del panel por un nuevo árbol de widgets."
-      },
-      {
-        "name": "notify",
-        "description": "Muestra un mensaje breve con nivel info, warning o error."
-      }
-    ],
-    "widgetsTitle": "Widgets del panel",
-    "widgetsIntro": "Un panel es un árbol de nodos sencillos. Cada nodo tiene un tipo y sus propios campos.",
-    "widgets": [
-      {
-        "name": "column, row",
-        "description": "Colocan los nodos hijos en vertical u horizontal con un espaciado opcional."
-      },
-      {
-        "name": "text",
-        "description": "Muestra texto con estilo body, heading, caption, muted o danger."
-      },
-      {
-        "name": "button",
-        "description": "Un botón con etiqueta que informa de un clic. Estilos: primary, secondary, danger."
-      },
-      {
-        "name": "text-input",
-        "description": "Un campo de una línea que informa de cambios de valor."
-      },
-      {
-        "name": "checkbox, toggle",
-        "description": "Controles booleanos que informan de su nuevo estado."
-      },
-      {
-        "name": "progress",
-        "description": "Una barra de progreso entre 0 y 1."
-      },
-      {
-        "name": "separator, scroll, spacer",
-        "description": "Nodos auxiliares para separar, desplazar y rellenar espacio."
-      }
-    ],
-    "permissionsTitle": "Permisos",
-    "permissionsIntro": "El manifiesto declara el acceso que necesita el módulo. IWE Code muestra la lista antes de la instalación y pide confirmación. Los módulos se ejecutan con los permisos de tu usuario; IWE Code no los aísla. Instala solo módulos de confianza.",
-    "permissions": [
-      {
-        "name": "filesystem-read",
-        "description": "Leer archivos de tu equipo."
-      },
-      {
-        "name": "filesystem-write",
-        "description": "Modificar archivos de tu equipo."
-      },
-      {
-        "name": "network",
-        "description": "Acceder a la red."
-      },
-      {
-        "name": "process",
-        "description": "Iniciar otros programas."
-      }
-    ],
-    "buildTitle": "Construir un paquete",
-    "buildIntro": "Compila el módulo de referencia, prepara la carpeta del paquete y comprímela. El ejemplo es un módulo completo en Rust que puedes copiar.",
-    "installTitle": "Instalar",
-    "installIntro": "Abre Ajustes → Módulos en IWE Code, elige Instalar desde archivo…, revisa el acceso solicitado y confirma. Las actualizaciones se instalan igual con un número de versión mayor.",
-    "exampleTitle": "Módulo de referencia",
-    "exampleIntro": "El repositorio contiene un ejemplo funcional en examples/hello-module.",
-    "viewExample": "Abrir el ejemplo en GitHub"
+    }
   }
 }

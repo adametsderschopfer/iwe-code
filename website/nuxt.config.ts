@@ -1,4 +1,5 @@
 import process from 'node:process'
+import { docsSlugs } from './app/docs'
 import releaseNotes from './app/release-notes/releases.json'
 
 const releaseResponse = await fetch(
@@ -68,12 +69,13 @@ export default defineNuxtConfig({
         '/ru/',
         '/es/',
         ...['', '/ru', '/es'].flatMap((locale) => [
-          `${locale}/releases/`,
-          `${locale}/license/`,
-          `${locale}/modules/`,
+          `${locale}/docs/`,
+          ...docsSlugs.map((slug) => `${locale}/docs/${slug}/`),
+          `${locale}/docs/release-notes/`,
           ...releaseNotes
             .filter((release) => release.items.length > 0)
-            .map((release) => `${locale}/releases/${release.version}/`),
+            .map((release) => `${locale}/docs/release-notes/${release.version}/`),
+          `${locale}/license/`,
         ]),
       ],
       failOnError: true,

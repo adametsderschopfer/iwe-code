@@ -27,7 +27,7 @@ export const releaseNotes = (data as ReleaseNote[])
   })
 export const categories: Category[] = ['added', 'changed', 'fixed', 'maintenance']
 export const releaseNotesPath = (locale: Locale, version?: string) =>
-  `${locale === 'en' ? '' : `/${locale}`}/releases/${version ? `${version}/` : ''}`
+  `${locale === 'en' ? '' : `/${locale}`}/docs/release-notes/${version ? `${version}/` : ''}`
 export const isReleaseVersion = (version: unknown) =>
   version === undefined ||
   version === '' ||

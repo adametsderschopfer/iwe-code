@@ -1,9 +1,10 @@
 import en from './en.json'
 import ru from './ru.json'
 import es from './es.json'
+import type { DocsContent } from '~/docs'
 
 export type Locale = 'en' | 'ru' | 'es'
-export type Messages = typeof en
+export type Messages = Omit<typeof en, 'docs'> & { docs: DocsContent }
 
 export const catalogs: Record<Locale, Messages> = { en, ru, es }
 export const languages = [
@@ -17,4 +18,12 @@ export const releases = `${repository}/releases/latest`
 
 export const licensePath = (locale: Locale) => `${locale === 'en' ? '' : `/${locale}`}/license/`
 
-export const modulesPath = (locale: Locale) => `${locale === 'en' ? '' : `/${locale}`}/modules/`
+export const docsPath = (locale: Locale, slug?: string, suffix = '') =>
+  `${locale === 'en' ? '' : `/${locale}`}/docs/${slug ? `${slug}/` : ''}${suffix}`
+
+export const localizedPath = (path: string, locale: Locale) => {
+  const stripped = path.replace(/^\/(?:ru|es)(?=\/|$)/, '')
+  const normalized =
+    stripped === '' || stripped === '/' ? '/' : stripped.endsWith('/') ? stripped : `${stripped}/`
+  return locale === 'en' ? normalized : `/${locale}${normalized === '/' ? '' : normalized}`
+}

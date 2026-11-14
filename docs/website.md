@@ -106,12 +106,35 @@ reveal clips its image, while the observed container remains unclipped. Browser 
 cover scrolling, navigation links, reduced motion, keyboard focus, and screenshot selection in all
 three languages.
 
+## Documentation section
+
+The website keeps every product guide in one documentation section. The overview lives at `/docs/`,
+`/ru/docs/`, and `/es/docs/`. Each page belongs to a sidebar group: Start, Workspace, Tools,
+Modules, Automation, and Releases. The sidebar lists every page and highlights the current one. A
+collapsible disclosure replaces the sidebar on small screens.
+
+The pages are `getting-started`, `workspaces`, `editing`, `git`, `pipelines`, `terminal`,
+`deployment`, `modules`, `module-development`, `cli`, `mcp`, `deep-links`, and `release-notes`.
+Release notes participate in the same sidebar. Nuxt explicitly prerenders every documentation page
+and language for GitHub Pages.
+
+The page structure and the sidebar live in `app/docs.ts`. All page texts live in the `docs` catalog
+block in `app/i18n/`. `DocsLayout.vue` renders the shell with the sidebar. `DocsPage.vue` renders a
+generic article from catalog sections; `DocsOverviewPage.vue` renders the overview;
+`ReleaseNotesPage.vue` keeps its own rendering inside the same shell.
+
+The language switcher derives the target address from the current path, so it preserves the current
+documentation page. Old addresses that moved into the section (`/cli/`, `/mcp/`, `/modules/`,
+`/external/`, `/releases/`, and old release version pages) are unknown routes. The localized error
+page recognizes them and redirects the browser to the matching documentation page.
+
 ## Release notes
 
-The header and footer link to `/releases/`, `/ru/releases/`, or `/es/releases/`. Each version has
-its own page beneath that route, such as `/ru/releases/0.1.12/`. Language links preserve the
-selected version. Unknown versions return the localized error page. Nuxt explicitly prerenders every
-version and language for GitHub Pages.
+The header, footer, and documentation sidebar link to `/docs/release-notes/`,
+`/ru/docs/release-notes/`, or `/es/docs/release-notes/`. Each version has its own page beneath that
+route, such as `/ru/docs/release-notes/0.1.12/`. Language links preserve the selected version.
+Unknown versions return the localized error page. Nuxt explicitly prerenders every version and
+language for GitHub Pages.
 
 `app/release-notes/releases.json` contains authored changes, translations, and inspected source
 references. The index includes public releases and identified historical development versions. The

@@ -86,14 +86,8 @@ useSeoMeta({
 </script>
 
 <template>
-  <div>
-    <SiteHeader
-      :messages="messages"
-      :locale="locale"
-      section="releases"
-      :release-version="version"
-    />
-    <main id="main" class="shell release-page">
+  <DocsLayout :messages="messages" :locale="locale" slug="release-notes">
+    <article class="release-article">
       <header class="release-heading">
         <NuxtLink v-if="version" class="text-link" :to="releaseNotesPath(locale)">{{
           messages.releaseNotes.allVersions
@@ -158,15 +152,13 @@ useSeoMeta({
           </div>
         </article>
       </div>
-    </main>
-    <SiteFooter :messages="messages" :locale="locale" />
-  </div>
+    </article>
+  </DocsLayout>
 </template>
 
 <style scoped>
-.release-page {
-  max-width: 960px;
-  padding-block: 72px 110px;
+.release-article {
+  max-width: 700px;
 }
 .release-heading {
   max-width: 700px;
@@ -268,9 +260,6 @@ useSeoMeta({
   height: 13px;
 }
 @media (max-width: 600px) {
-  .release-page {
-    padding-block: 44px 64px;
-  }
   .release-list {
     margin-top: 36px;
   }

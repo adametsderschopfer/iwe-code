@@ -1,3 +1,3 @@
 <template>
-  <ModuleDevPage />
+  <DocsOverviewPage />
 </template>
