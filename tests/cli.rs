@@ -209,7 +209,9 @@ fn open_and_unknown_commands_report_usage_errors() {
 
 fn deployment_workspace(root: &Path) -> PathBuf {
     let directory = project_directory(root);
-    let path = directory.to_str().unwrap();
+    // The path lands inside JSON strings, so it needs JSON escaping to stay
+    // valid on platforms with backslash separators.
+    let path = serde_json::to_string(directory.to_str().unwrap()).unwrap();
     std::fs::write(
         root.join("workspace.json"),
         format!(
@@ -218,13 +220,13 @@ fn deployment_workspace(root: &Path) -> PathBuf {
         {{
             "name": "Work",
             "projects": [
-                {{"name": "repo", "directory": "{}", "pinned": false}}
+                {{"name": "repo", "directory": {path}, "pinned": false}}
             ],
             "deployments": [
                 {{
                     "id": "p1",
                     "name": "production",
-                    "project": "{}",
+                    "project": {path},
                     "connection": "c1",
                     "root": "/var/www",
                     "mappings": [{{"local": "web", "remote": "assets"}}],
@@ -251,7 +253,6 @@ fn deployment_workspace(root: &Path) -> PathBuf {
         "keys": []
     }}
 }}"#,
-            path, path,
         ),
     )
     .unwrap();

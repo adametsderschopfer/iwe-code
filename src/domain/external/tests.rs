@@ -1,6 +1,12 @@
 use super::{Link, Request};
 use std::path::{Path, PathBuf};
 
+/// A path prefix that stays absolute on every platform.
+#[cfg(windows)]
+const ROOT: &str = "C:/notes-work";
+#[cfg(not(windows))]
+const ROOT: &str = "/notes-work";
+
 fn open_link(path: &str) -> String {
     format!("iwe://open?path={path}")
 }
@@ -11,26 +17,32 @@ fn project_link(path: &str) -> String {
 
 #[test]
 fn parse_open_link() {
-    let link = Link::parse(&open_link("/notes/ideas.md")).expect("valid link");
-    assert_eq!(link, Link::Open(PathBuf::from("/notes/ideas.md")));
+    let path = format!("{ROOT}/ideas.md");
+    let link = Link::parse(&open_link(&path)).expect("valid link");
+    assert_eq!(link, Link::Open(PathBuf::from(path)));
 }
 
 #[test]
 fn parse_project_link() {
-    let link = Link::parse(&project_link("/work/site")).expect("valid link");
-    assert_eq!(link, Link::Project(PathBuf::from("/work/site")));
+    let path = format!("{ROOT}/work/site");
+    let link = Link::parse(&project_link(&path)).expect("valid link");
+    assert_eq!(link, Link::Project(PathBuf::from(path)));
 }
 
 #[test]
 fn parse_link_percent_decodes_the_path() {
-    let link = Link::parse(&open_link("/notes/my%20file.txt")).expect("valid link");
-    assert_eq!(link, Link::Open(PathBuf::from("/notes/my file.txt")));
+    let link = Link::parse(&open_link(&format!("{ROOT}/my%20file.txt"))).expect("valid link");
+    assert_eq!(
+        link,
+        Link::Open(PathBuf::from(format!("{ROOT}/my file.txt")))
+    );
 }
 
 #[test]
 fn parse_link_accepts_action_case_insensitively() {
-    let link = Link::parse("iwe://OPEN?path=/notes/a.txt").expect("valid link");
-    assert_eq!(link, Link::Open(PathBuf::from("/notes/a.txt")));
+    let path = format!("{ROOT}/a.txt");
+    let link = Link::parse(&format!("iwe://OPEN?path={path}")).expect("valid link");
+    assert_eq!(link, Link::Open(PathBuf::from(path)));
 }
 
 #[test]
@@ -84,9 +96,7 @@ fn focus_request_uses_its_own_tag() {
 
 #[test]
 fn open_text_produces_a_parsed_link() {
-    let text = Link::open_text(Path::new("/notes/ideas.md"));
-    assert_eq!(
-        Link::parse(&text),
-        Some(Link::Open(PathBuf::from("/notes/ideas.md")))
-    );
+    let path = format!("{ROOT}/ideas.md");
+    let text = Link::open_text(Path::new(&path));
+    assert_eq!(Link::parse(&text), Some(Link::Open(PathBuf::from(path))));
 }

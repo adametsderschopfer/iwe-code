@@ -38,22 +38,37 @@ fn ignore_missing_paths_and_flags() {
 
 #[test]
 fn classify_open_link_argument() {
-    let request = request_from_arg(&arg("iwe://open?path=/notes/ideas.md")).expect("file request");
+    /// A path prefix that stays absolute on every platform.
+    #[cfg(windows)]
+    const ROOT: &str = "C:/notes-work";
+    #[cfg(not(windows))]
+    const ROOT: &str = "/notes-work";
+
+    let path = format!("{ROOT}/ideas.md");
+    let request = request_from_arg(&arg(&format!("iwe://open?path={path}"))).expect("file request");
     assert_eq!(
         request,
         Request::File {
-            path: PathBuf::from("/notes/ideas.md")
+            path: PathBuf::from(path)
         }
     );
 }
 
 #[test]
 fn classify_project_link_argument() {
-    let request = request_from_arg(&arg("iwe://project?path=/work/site")).expect("project request");
+    /// A path prefix that stays absolute on every platform.
+    #[cfg(windows)]
+    const ROOT: &str = "C:/notes-work";
+    #[cfg(not(windows))]
+    const ROOT: &str = "/notes-work";
+
+    let path = format!("{ROOT}/work/site");
+    let request =
+        request_from_arg(&arg(&format!("iwe://project?path={path}"))).expect("project request");
     assert_eq!(
         request,
         Request::Project {
-            directory: PathBuf::from("/work/site")
+            directory: PathBuf::from(path)
         }
     );
 }

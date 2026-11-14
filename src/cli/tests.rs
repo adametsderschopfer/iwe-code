@@ -18,12 +18,17 @@ fn gate_yields_directories_files_links_and_internal_flags() {
     fs::write(&file, "text").unwrap();
     assert!(belongs_to_interface(file.as_os_str()));
     assert!(belongs_to_interface(OsStr::new("--iwe-update-cleanup")));
-    assert!(belongs_to_interface(OsStr::new(
-        "iwe://open?path=/tmp/notes.md"
-    )));
-    assert!(belongs_to_interface(OsStr::new(
-        "iwe://project?path=/tmp/project"
-    )));
+    // A path prefix that stays absolute on every platform.
+    #[cfg(windows)]
+    const ROOT: &str = "C:/tmp";
+    #[cfg(not(windows))]
+    const ROOT: &str = "/tmp";
+    assert!(belongs_to_interface(OsStr::new(&format!(
+        "iwe://open?path={ROOT}/notes.md"
+    ))));
+    assert!(belongs_to_interface(OsStr::new(&format!(
+        "iwe://project?path={ROOT}/project"
+    ))));
     assert!(!belongs_to_interface(OsStr::new("workspace")));
     assert!(!belongs_to_interface(OsStr::new("open")));
     assert!(!belongs_to_interface(OsStr::new("--help")));

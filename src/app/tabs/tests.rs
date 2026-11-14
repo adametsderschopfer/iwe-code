@@ -1381,7 +1381,10 @@ fn the_stash_keeps_only_the_four_most_recent_projects() {
 
     app.workspace.select_project(3, 0);
     let _ = app.load_directory();
-    assert_eq!(app.preview().title, "project/tab.rs");
+    assert_eq!(
+        app.preview().title,
+        PathBuf::from("project").join("tab.rs").to_string_lossy()
+    );
     assert_eq!(
         app.preview().document.as_ref().unwrap().text,
         "background source"
