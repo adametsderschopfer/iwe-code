@@ -1,9 +1,10 @@
 # Command line
 
 The application binary provides a small command line for scripts. It reads and changes saved
-workspace metadata and starts the interface. The command line runs headless and opens no window.
-Workspace commands touch local files only. Deployment commands connect to remote servers over SFTP
-or FTP, as their profiles describe.
+workspace metadata and starts the interface. Workspace and deployment commands run without opening a
+window. Workspace commands use local files. Deployment transfers and connection tests use the
+protocol configured in the profile. Use [MCP](mcp.md) for project file editing, Git inspection, and
+remote text comparison.
 
 `iwe` names the application binary in the examples. On macOS the binary lives inside the application
 bundle. On Windows it is `iwe.exe`. The packaging scripts put it next to the other release files.
@@ -13,27 +14,27 @@ bundle. On Windows it is `iwe.exe`. The packaging scripts put it next to the oth
 The command line starts only when the first argument is not a directory, a file, a deep link, or an
 internal update flag. Those arguments keep their interface behavior.
 
-| Command                                                                                                                                                             | Behavior                                                                          |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `iwe open [directory]`                                                                                                                                              | Start a fresh interface process. Pass an existing directory to open that project. |
-| `iwe workspace list [--json]`                                                                                                                                       | Print spaces with their projects.                                                 |
-| `iwe workspace add-project <directory> [--space NAME] [--json]`                                                                                                     | Add a project directory to a space.                                               |
-| `iwe workspace remove-project <project> [--json]`                                                                                                                   | Remove a project by directory or exact name.                                      |
-| `iwe deployment list [--json]`                                                                                                                                      | Print deployment connections, keys, and profiles.                                 |
-| `iwe deployment connection add <name> --host HOST --username NAME [options] [--json]`                                                                               | Add a deployment connection.                                                      |
-| `iwe deployment connection set <name> [options] [--json]`                                                                                                           | Change the given connection values.                                               |
-| `iwe deployment connection remove <name> [--json]`                                                                                                                  | Remove an unused connection and its stored secret.                                |
-| `iwe deployment key add <name> <path> [--json]`                                                                                                                     | Register an SSH key file.                                                         |
-| `iwe deployment key remove <name> [--json]`                                                                                                                         | Remove an unused key and its stored passphrase.                                   |
-| `iwe deployment profile add <name> --project DIR --connection NAME --root PATH [--mapping local=remote]... [--exclude PATH]... [--default] [--space NAME] [--json]` | Add a deployment profile.                                                         |
-| `iwe deployment profile set <name> [options] [--json]`                                                                                                              | Change the given profile values.                                                  |
-| `iwe deployment profile remove <name> [--space NAME] [--json]`                                                                                                      | Remove a deployment profile.                                                      |
-| `iwe deployment test <profile> [--json]`                                                                                                                            | Check the profile connection.                                                     |
-| `iwe deployment upload <profile> <path> [--json]`                                                                                                                   | Upload a local file or folder.                                                    |
-| `iwe deployment download <profile> <remote> [--overwrite] [--json]`                                                                                                 | Download a remote file or folder.                                                 |
-| `iwe deployment list-remote <profile> [directory] [--json]`                                                                                                         | List one remote directory.                                                        |
-| `iwe --help`, `iwe -h`                                                                                                                                              | Print localized help.                                                             |
-| `iwe --version`, `iwe -V`                                                                                                                                           | Print the version, for example `iwe 1.0.8`.                                       |
+| Command                                                                                                                                                                                    | Behavior                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `iwe open [directory]`                                                                                                                                                                     | Start a fresh interface process. Pass an existing directory to open that project. |
+| `iwe workspace list [--json]`                                                                                                                                                              | Print spaces with their projects.                                                 |
+| `iwe workspace add-project <directory> [--space NAME] [--json]`                                                                                                                            | Add a project directory to a space.                                               |
+| `iwe workspace remove-project <project> [--json]`                                                                                                                                          | Remove a project by directory or exact name.                                      |
+| `iwe deployment list [--json]`                                                                                                                                                             | Print deployment connections, keys, and profiles.                                 |
+| `iwe deployment connection add <name> --host HOST --username NAME [options] [--json]`                                                                                                      | Add a deployment connection.                                                      |
+| `iwe deployment connection set <name> [options] [--json]`                                                                                                                                  | Change the given connection values.                                               |
+| `iwe deployment connection remove <name> [--json]`                                                                                                                                         | Remove an unused connection and its stored secret.                                |
+| `iwe deployment key add <name> <path> [--json]`                                                                                                                                            | Register an SSH key file.                                                         |
+| `iwe deployment key remove <name> [--json]`                                                                                                                                                | Remove an unused key and its stored passphrase.                                   |
+| `iwe deployment profile add <name> --project DIR --connection NAME --root PATH --mapping LOCAL=REMOTE [--mapping LOCAL=REMOTE]... [--exclude PATH]... [--default] [--space NAME] [--json]` | Add a deployment profile.                                                         |
+| `iwe deployment profile set <name> [options] [--json]`                                                                                                                                     | Change the given profile values.                                                  |
+| `iwe deployment profile remove <name> [--space NAME] [--json]`                                                                                                                             | Remove a deployment profile.                                                      |
+| `iwe deployment test <profile> [--space NAME] [--trust-host-key FINGERPRINT] [--json]`                                                                                                     | Check the profile connection.                                                     |
+| `iwe deployment upload <profile> <path> [--space NAME] [--trust-host-key FINGERPRINT] [--json]`                                                                                            | Upload a local file or folder.                                                    |
+| `iwe deployment download <profile> <remote> [--overwrite] [--space NAME] [--trust-host-key FINGERPRINT] [--json]`                                                                          | Download a remote file or folder.                                                 |
+| `iwe deployment list-remote <profile> [directory] [--space NAME] [--trust-host-key FINGERPRINT] [--json]`                                                                                  | List one remote directory.                                                        |
+| `iwe --help`, `iwe -h`                                                                                                                                                                     | Print localized help.                                                             |
+| `iwe --version`, `iwe -V`                                                                                                                                                                  | Print the version, for example `iwe 1.4.0`.                                       |
 
 `iwe open` always starts a new interface process. Running instances receive nothing, because the
 command line exits before the request-forwarding path.
@@ -50,6 +51,12 @@ Unknown commands and options produce an error. They no longer fall through to th
 
 ### Deployment commands
 
+Use `--help` after any command to see its arguments, for example `iwe deployment profile set
+--help`.
+
+Connection add and set accept `--host`, `--username`, `--protocol`, `--port`, `--auth`, `--key`, and
+`--password-stdin`. Adding a connection requires `--host` and `--username`.
+
 Connections carry a protocol (`sftp`, `ftp`, `ftps`, `ftps-implicit`), a host, a port, a user name,
 and an authentication method (`password`, `agent`, or `key`). Without `--port`, the protocol default
 applies. Without `--auth`, the connection uses a password. `--auth key` needs `--key` with a
@@ -62,13 +69,17 @@ mapping is required. `--exclude` ignores project-relative paths. `--default` mar
 the space default and clears the flag on the other profiles of that space. Without `--space`, the
 profile goes to the selected space, or to the first space.
 
-Commands that take a profile resolve it by name or identifier. The selected space is searched first,
-then the other spaces. A name that matches several profiles is rejected; add `--space` to choose
-one, or use the identifier from `deployment list --json`. Connections and keys resolve the same way.
+Use `profile set` to update the project, connection, root, mappings, exclusions, or default status.
+`--clear-excluded` removes exclusions. `--default false` clears the default status.
 
-`deployment download` keeps existing local files unless `--overwrite` is given. First connections to
-an unknown server fail with the server key fingerprint. Verify the fingerprint, then repeat the
-command with `--trust-host-key FINGERPRINT` to save it.
+Commands that take a profile resolve it by name or identifier. A match in the selected space takes
+priority. If several other spaces contain a match, use `--space` or the profile identifier from
+`deployment list --json`. Connections and keys also accept a name or identifier.
+
+`deployment download` keeps existing local files unless `--overwrite` is given. An SFTP connection
+to an unknown host reports its key fingerprint. Verify the fingerprint before retrying with
+`--trust-host-key FINGERPRINT`. The CLI saves the supplied fingerprint. If the operation still
+reports an unknown key, run it again so the next invocation uses the saved fingerprint.
 
 ## Output formats
 

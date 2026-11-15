@@ -83,9 +83,8 @@ on small screens.
 All website bitmap images use lossless WebP, including the product icon. Generated-page tests reject
 other bitmap formats in the published files.
 
-`DownloadSection.vue` links to verified packages from release `1.0.2` through platform-specific
-tags. Windows links select the x64 and x86 installers. Update the version only after verifying the
-published packages. The release-notes link opens that download version's page on the website.
+The download section uses the latest stable release and its verified asset links. See
+[Current download version](#current-download-version) for build requirements.
 
 The download cards use Apple, Windows, and Tux SVG paths from
 [Bootstrap Icons v1.13.1](https://github.com/twbs/icons/tree/v1.13.1). The website embeds these
@@ -113,10 +112,14 @@ The website keeps every product guide in one documentation section. The overview
 Modules, Automation, and Releases. The sidebar lists every page and highlights the current one. A
 collapsible disclosure replaces the sidebar on small screens.
 
-The pages are `getting-started`, `workspaces`, `editing`, `git`, `pipelines`, `terminal`,
-`deployment`, `modules`, `module-development`, `cli`, `mcp`, `deep-links`, and `release-notes`.
-Release notes participate in the same sidebar. Nuxt explicitly prerenders every documentation page
-and language for GitHub Pages.
+The Start group covers installation, settings, provider accounts, and updates. Workspace guides
+cover projects and editing. Tools covers Git, pipelines, the terminal, and deployment. The Modules
+group covers installed modules and package development. Automation covers CLI, MCP, and deep links.
+Release notes stay in the same sidebar.
+
+Use the [documentation index](README.md) for repository references. Add a public page to
+`app/docs.ts`, the three catalogs, and the sitemap. Nuxt prerenders the listed routes for all three
+languages.
 
 The page structure and the sidebar live in `app/docs.ts`. All page texts live in the `docs` catalog
 block in `app/i18n/`. `DocsLayout.vue` renders the shell with the sidebar. `DocsPage.vue` renders a

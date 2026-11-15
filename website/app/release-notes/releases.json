@@ -1908,6 +1908,22 @@
           "es": "GitHub crea la etiqueta de versión al publicar el lanzamiento con todos los paquetes."
         },
         "sources": [".github/workflows/bump-version.yml", ".github/scripts/publish-release.sh"]
+      },
+      {
+        "id": "expand-application-documentation",
+        "category": "maintenance",
+        "text": {
+          "en": "The documentation covers settings, provider accounts, updates, job actions, remote editing, module signing, CLI, and MCP.",
+          "ru": "Документация описывает настройки, аккаунты, обновления, действия с заданиями, редактирование на сервере, подпись модулей, CLI и MCP.",
+          "es": "La documentación cubre ajustes, cuentas, actualizaciones, acciones de trabajos, edición remota, firma de módulos, CLI y MCP."
+        },
+        "sources": [
+          "docs/README.md",
+          "docs/cli.md",
+          "docs/mcp.md",
+          "website/app/docs.ts",
+          "website/app/i18n/en.json"
+        ]
       }
     ]
   }

@@ -5,8 +5,8 @@
 A native workspace for projects, source code, Git history, and pipelines. Built with Rust and Iced.
 
 Visit the [IWE Code website](https://adametsderschopfer.github.io/iwe-code/) for an overview and
-downloads. The Nuxt website lives in `website/`. See
-[website development and deployment](docs/website.md).
+downloads. Use the [documentation index](docs/README.md) to find application, automation, and
+release references.
 
 Create named spaces and add local project folders. Browse files with syntax highlighting and inspect
 branches, commits, and historical file versions. Connect GitHub Actions or GitLab pipelines through
@@ -35,15 +35,15 @@ Files opened outside the application join the project that owns them. Files with
 on their own. The `iwe://` deep link scheme targets files and existing projects. See
 [external opening](docs/external-opening.md) for sources and registration.
 
-The binary also serves a small command line for scripts: `iwe open`, `iwe workspace list --json`,
-`iwe workspace add-project`, and `iwe workspace remove-project`. See [the command line](docs/cli.md)
-for commands, JSON output, and exit codes.
+Use the command line to open the application or manage workspace projects. The CLI also manages
+deployment connections, SSH keys, and profiles. It can test connections, list remote directories,
+and transfer files. See [the command line](docs/cli.md) for commands, JSON output, and exit codes.
 
-The same binary runs a Model Context Protocol (MCP) server with `iwe --mcp`. AI assistants connect
-over standard input and output, browse the workspace projects, read and edit text files, and read
-Git status and history. Writes reuse the editor's conflict checks. See [the MCP server](docs/mcp.md)
-for tools and limits, and the [MCP guide](https://adametsderschopfer.github.io/iwe-code/docs/mcp/)
-for client configuration.
+Start the Model Context Protocol (MCP) server with `iwe --mcp`. Assistants can browse projects,
+search file names, read Git history, and edit existing text files with revision checks. They can
+also resolve deployment paths, read remote text files, and compare local and remote versions. See
+[the MCP reference](docs/mcp.md) for tools and limits and
+[the website guide](https://adametsderschopfer.github.io/iwe-code/docs/mcp/) for client setup.
 
 One version tag publishes a GitHub Release for macOS, Windows, and Linux. Packages cover macOS Apple
 Silicon and Intel, Windows x86 and x64, and Linux x86 and x64. Windows packages include a per-user

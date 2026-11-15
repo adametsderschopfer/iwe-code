@@ -378,6 +378,17 @@ for (const { language, route } of locales) {
         new URL(path, siteURL).href,
       )
     }
+    const sitemap = readFileSync(join(outputDirectory, 'sitemap.xml'), 'utf8')
+    for (const [slug, guide] of Object.entries(catalog.docs.pages)) {
+      const path = `${route}docs/${slug}/`
+      const html = readPage(path)
+      const visible = decode(html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''))
+      assert.ok(visible.includes(guide.title), `Missing guide title: ${path}`)
+      for (const { heading } of guide.sections) {
+        assert.ok(visible.includes(heading), `Missing guide section: ${path} ${heading}`)
+      }
+      assert.ok(sitemap.includes(`<loc>${new URL(path, siteURL).href}</loc>`))
+    }
     const overviewAnchors = elements(readPage(`${route}docs/`), 'a')
     for (const path of paths) {
       assert.ok(

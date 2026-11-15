@@ -115,7 +115,7 @@ const nav = computed(() =>
 }
 @media (max-width: 900px) {
   .docs-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     padding-block: 32px 64px;
   }
   .docs-aside {

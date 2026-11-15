@@ -15,8 +15,8 @@ flag works before every other startup step, including the command line and updat
 ## Transport
 
 The server speaks JSON-RPC 2.0 over standard input and output, one message per line. This matches
-the MCP stdio transport. Each line holds one UTF-8 JSON document. Lines may not exceed 1 MiB. The
-server stops when the input stream closes. Standard output carries protocol messages only.
+the MCP stdio transport. Each line holds one UTF-8 JSON document. Incoming lines may not exceed 1
+MiB. The server stops when the input stream closes. Standard output carries protocol messages only.
 
 The server supports the MCP protocol versions `2024-11-05`, `2025-03-26`, and `2025-06-18`. It
 echoes a supported client version during `initialize` and answers with `2025-06-18` otherwise. It
@@ -25,7 +25,7 @@ JSON-RPC method-not-found error.
 
 ## Tools
 
-The server exposes eleven read-oriented tools. One tool writes files.
+The server exposes eleven tools. Only `write_file` changes an existing local project file.
 
 | Tool                      | Input                                     | Behavior                                                                                                   |
 | ------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -48,12 +48,16 @@ The deployment tools split into two groups. `list_deployments` and `resolve_depl
 workspace metadata: they never expose passwords, passphrases, or key files, and they connect to no
 server. `deployment_read_remote` and `deployment_compare` connect to the server of one profile with
 its stored credentials and read text files. They never modify the remote server and never return
-credentials. Transfers and remote writes belong to the command line. An untrusted server key fails
-with its fingerprint and points at `iwe deployment test --trust-host-key`; the tools never trust a
-key on their own.
+credentials. Transfers and remote writes belong to the command line. An untrusted SFTP host key
+causes an error with the fingerprint. Verify the fingerprint before using `iwe deployment test
+<profile> --trust-host-key FINGERPRINT`. Use a unique profile name or its identifier when calling
+the MCP deployment tools.
 
-All results arrive as text content with a JSON payload. Tool failures carry `isError: true` and a
-short message. The messages stay generic and never contain file paths.
+Tool results arrive as text content with a JSON payload. `resolve_deployment_path` returns
+`profile`, `local`, and `remote`. `deployment_read_remote` returns `profile`, `path`, and `content`.
+`deployment_compare` returns `profile`, `local`, `remote`, `identical`, `localText`, and
+`remoteText`. Each text in the comparison has a 512 KiB limit. Tool failures carry `isError: true`
+and a short message. The messages stay generic and never contain file paths.
 
 ## Editing files
 
@@ -67,7 +71,8 @@ check in reverse: its autosave refuses to replace disk content that changed unde
 sides therefore keep their own data.
 
 `write_file` changes existing text files only. It cannot create files, delete files, or write binary
-content. The content must stay below 2 MiB.
+content. The editor limits the content to 2 MiB. The complete JSON-RPC request must also fit the 1
+MiB incoming line limit.
 
 ## Project resolution and limits
 
@@ -80,10 +85,12 @@ symlinks. The search walk reuses the background tree limits: 4,096 directories, 
 depth of 24. The walk skips the same directories as the background indexer, such as `node_modules`
 and `target`.
 
-The server only reads. It never writes `workspace.json` and never changes project files or remote
-servers. `deployment_read_remote` and `deployment_compare` read the stored credentials of one
-profile to open their connections; no tool returns a credential. Git reads run the `git` command
-with read-only arguments, without optional locks.
+Only `write_file` writes data. It can replace an existing local project text file. Workspace
+metadata and remote files stay unchanged. Remote reads use the stored credentials of the selected
+profile. The tool results omit credentials. Git tools run read-only commands without optional locks.
+
+Use the [CLI](cli.md) to manage workspace projects or deployment settings, test connections, and
+transfer files.
 
 ## Connecting a client
 
@@ -131,4 +138,4 @@ user's data directory.
 
 Run `make check` to run formatting, lint, type checks, tests, and security checks. The website
 explains client setup for users on the
-[MCP page](https://adametsderschopfer.github.io/iwe-code/mcp/).
+[MCP page](https://adametsderschopfer.github.io/iwe-code/docs/mcp/).

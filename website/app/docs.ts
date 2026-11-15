@@ -1,5 +1,8 @@
 export const docsSlugs = [
   'getting-started',
+  'settings',
+  'accounts',
+  'updates',
   'workspaces',
   'editing',
   'git',
@@ -76,7 +79,7 @@ export interface DocsContent {
 }
 
 export const docsGroups: { key: keyof DocsGroups; items: DocsNavItem[] }[] = [
-  { key: 'start', items: ['overview', 'getting-started'] },
+  { key: 'start', items: ['overview', 'getting-started', 'settings', 'accounts', 'updates'] },
   { key: 'workspace', items: ['workspaces', 'editing'] },
   { key: 'tools', items: ['git', 'pipelines', 'terminal', 'deployment'] },
   { key: 'modules', items: ['modules', 'module-development'] },

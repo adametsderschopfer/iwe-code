@@ -54,12 +54,12 @@ the servers their profiles describe and never print stored secrets.
 The command line and the interface save without locking. Keep the documented warning about
 concurrent changes.
 
-The MCP server stays read-oriented. It never writes workspace metadata, project files, or remote
-servers, and it never returns stored credentials. The deployment read tools may connect to the
-servers their profiles describe and read files with the stored credentials. Writes and transfers
-belong to the command line and the interface. Git reads run the `git` command with read-only
-arguments. Validate every file path against the owning project directory or the profile mappings.
-Keep error messages generic and free of file paths.
+Only `write_file` writes data through MCP. Require a revision token for updates to existing local
+project text files. Keep workspace metadata and remote files read-only. Deployment read tools may
+connect to the configured server with stored credentials. Exclude credentials from tool results. The
+command line and interface manage deployment settings and transfers. Git reads run the `git` command
+with read-only arguments. Validate every file path against the owning project directory or the
+profile mappings. Keep error messages generic and free of file paths.
 
 Deep links and forwarded requests carry absolute file-system paths only. Ignore unknown actions and
 relative paths.

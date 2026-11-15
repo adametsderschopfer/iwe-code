@@ -17,9 +17,11 @@ over standard input and output, one message per line, and implements the MCP std
 the tools capability only. The implementation follows the line protocol pattern of the external
 module system and uses the existing dependencies only.
 
-Expose seven tools: `list_projects`, `list_files`, `read_file`, `write_file`, `search_files`,
-`git_status`, and `git_log`. All tools except `write_file` only read data. The server loads the
-workspace metadata for every request, so it always reflects the running application's saved state.
+The initial implementation exposes seven tools: `list_projects`, `list_files`, `read_file`,
+`write_file`, `search_files`, `git_status`, and `git_log`. All tools except `write_file` only read
+data. The server loads the workspace metadata for every request, so it reflects the application's
+saved state. The server later added four read-only deployment tools. See
+[the MCP reference](../mcp.md).
 
 Route file writes through `infrastructure::editor::save`. `read_file` returns a SHA-256 revision
 token with the content. `write_file` requires that token, rechecks the disk content, and hands the
@@ -48,8 +50,8 @@ widget trees and has no JSON-RPC surface for AI clients.
 ## Consequences
 
 The binary gains a second startup mode with no new dependencies and no interface changes. The server
-exposes only projects listed in `workspace.json` and never writes workspace metadata. It never reads
-stored credentials and runs Git with read-only arguments. File writes stay bounded by the editor
-limits and keep the conflict checks on both sides. The MCP tool names, arguments, and revision token
-become public interface. The website documents client setup, and [the MCP guide](../mcp.md)
-documents the protocol surface, limits, and tests.
+exposes only projects listed in `workspace.json` and never writes workspace metadata. Remote reads
+use stored deployment credentials. Tool results omit credentials. The server runs Git with read-only
+arguments. File writes stay bounded by the editor limits and keep the conflict checks on both sides.
+The MCP tool names, arguments, and revision token become public interface. The website documents
+client setup, and [the MCP guide](../mcp.md) documents the protocol surface, limits, and tests.

@@ -195,7 +195,7 @@
     "metaTitle": "Documentation — IWE Code",
     "overview": {
       "label": "Overview",
-      "title": "Every feature.\nIn one reference.",
+      "title": "Application documentation",
       "description": "Guides for workspaces, editing, Git, pipelines, the terminal, deployment, modules, and automation.",
       "intro": "Pick a page in the sidebar. Each page covers one topic and links to the related pages."
     },
@@ -210,7 +210,7 @@
     "pages": {
       "getting-started": {
         "label": "Getting started",
-        "title": "Start in a few minutes.",
+        "title": "Getting started",
         "metaTitle": "Getting started — IWE Code",
         "description": "Download IWE Code for macOS, Windows, or Linux, create your first space, and add your project folders.",
         "intro": "IWE Code is a native application for macOS, Windows, and Linux. Install it, create a space, and add your project folders.",
@@ -221,14 +221,6 @@
               "Download the package for your system from this website or from GitHub releases.",
               "Packages cover macOS on Apple Silicon and Intel, Windows on x64 and x86, and Linux on x64 and x86.",
               "Windows ships a per-user installer and a portable ZIP archive."
-            ]
-          },
-          {
-            "heading": "Choose your language",
-            "paragraphs": [
-              "The application uses the system language.",
-              "Set the IWE_LANG environment variable to English, Russian, or Spanish to override it.",
-              "Unsupported languages fall back to English."
             ]
           },
           {
@@ -249,19 +241,23 @@
             ]
           },
           {
-            "heading": "Stay up to date",
-            "bullets": [
-              "The application checks GitHub Releases at startup and about once per hour.",
-              "A download row appears near the settings button when a new version is available.",
-              "Choose Download update, then Install and restart.",
-              "Open Settings → About to check for updates manually."
+            "heading": "Related guides",
+            "links": [
+              {
+                "page": "settings",
+                "text": "Settings"
+              },
+              {
+                "page": "updates",
+                "text": "Application updates"
+              }
             ]
           }
         ]
       },
       "workspaces": {
         "label": "Workspaces",
-        "title": "Spaces, projects, and files.",
+        "title": "Workspaces",
         "metaTitle": "Workspaces — IWE Code",
         "description": "Organize projects into spaces, reorder them, clone repositories, and copy file paths.",
         "intro": "A workspace holds named spaces. Each space lists projects, and each project points to a folder on your computer.",
@@ -308,12 +304,21 @@
               "Projects with more repositories list the rest in a dropdown.",
               "Choose a badge to open Git history at that repository."
             ]
+          },
+          {
+            "heading": "Full reference",
+            "links": [
+              {
+                "text": "Full reference",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/workspace.md"
+              }
+            ]
           }
         ]
       },
       "editing": {
         "label": "Editing",
-        "title": "A fast editor for your source.",
+        "title": "Editing",
         "metaTitle": "Editing — IWE Code",
         "description": "Syntax highlighting, autosave, file tabs, large files, and search in one editor.",
         "intro": "The editor opens source files in tabs. It highlights syntax, numbers lines, and saves your changes.",
@@ -363,12 +368,30 @@
               "Settings lists source, tab, and deployment shortcuts.",
               "Change a combination, and the application rejects conflicts."
             ]
+          },
+          {
+            "heading": "Related guides",
+            "links": [
+              {
+                "page": "settings",
+                "text": "Settings"
+              }
+            ]
+          },
+          {
+            "heading": "Full reference",
+            "links": [
+              {
+                "text": "Full reference",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/workspace.md#text-editing"
+              }
+            ]
           }
         ]
       },
       "git": {
         "label": "Git",
-        "title": "History, branches, and changes.",
+        "title": "Git",
         "metaTitle": "Git — IWE Code",
         "description": "Browse branches and commits, compare file versions, and manage branches across repositories.",
         "intro": "The Git module shows project history beside your source files.",
@@ -407,29 +430,39 @@
             ]
           },
           {
-            "heading": "Sign in to providers",
-            "bullets": [
-              "GitHub and GitLab sign-in opens your browser.",
-              "Self-hosted GitLab accepts a personal access token.",
-              "Credentials stay on your computer."
+            "heading": "Related guides",
+            "links": [
+              {
+                "page": "accounts",
+                "text": "Provider accounts"
+              }
+            ]
+          },
+          {
+            "heading": "Full reference",
+            "links": [
+              {
+                "text": "Full reference",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/git-actions.md"
+              }
             ]
           }
         ]
       },
       "pipelines": {
         "label": "Pipelines",
-        "title": "Watch your pipelines.",
+        "title": "Pipelines",
         "metaTitle": "Pipelines — IWE Code",
         "description": "Connect GitHub Actions or GitLab and follow runs, stages, and jobs beside your project.",
         "intro": "The Pipelines module shows CI runs beside the project they belong to.",
         "sections": [
           {
-            "heading": "Connect a provider",
-            "bullets": [
-              "IWE Code supports GitHub Actions and GitLab.",
-              "Sign in through your browser.",
-              "Self-hosted GitLab uses a personal access token.",
-              "Private pipelines need a connected provider account."
+            "heading": "Related guides",
+            "links": [
+              {
+                "page": "accounts",
+                "text": "Provider accounts"
+              }
             ]
           },
           {
@@ -441,17 +474,33 @@
             ]
           },
           {
+            "heading": "Job actions",
+            "paragraphs": [
+              "GitLab can run manual jobs, retry jobs, and stop jobs. GitHub can rerun a job with its dependent jobs.",
+              "Stop pipeline cancels the entire run on either provider. Use the provider website to supply inputs or variables."
+            ]
+          },
+          {
             "heading": "Enable or disable",
             "bullets": [
               "Pipelines start enabled and can be disabled in Settings → Modules.",
               "The module works even when the Git module is disabled."
+            ]
+          },
+          {
+            "heading": "Full reference",
+            "links": [
+              {
+                "text": "Full reference",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/workspace.md#pipelines"
+              }
             ]
           }
         ]
       },
       "terminal": {
         "label": "Terminal",
-        "title": "Run commands in place.",
+        "title": "Terminal",
         "metaTitle": "Terminal — IWE Code",
         "description": "Open terminal sessions for the selected project without leaving the workspace.",
         "intro": "The Terminal module opens a panel beside your code.",
@@ -479,12 +528,21 @@
               "Commands can change files and use the network.",
               "Finished sessions keep their final output."
             ]
+          },
+          {
+            "heading": "Full reference",
+            "links": [
+              {
+                "text": "Full reference",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/modules.md#terminal"
+              }
+            ]
           }
         ]
       },
       "deployment": {
         "label": "Deployment",
-        "title": "Move files to your servers.",
+        "title": "Deployment",
         "metaTitle": "Deployment — IWE Code",
         "description": "Connect through SFTP, FTP, or FTPS, compare server files, and upload or download changes.",
         "intro": "The Deployment module transfers project files between your computer and a server. Transfers stay manual.",
@@ -531,12 +589,41 @@
               "Upload uses Command+Shift+A. Comparison uses Command+Shift+C. Windows and Linux use Ctrl.",
               "Transfers show progress in the status area."
             ]
+          },
+          {
+            "heading": "Edit a server file",
+            "paragraphs": [
+              "Open the file from the Deployment panel. The tab saves to the server that opened it.",
+              "IWE Code checks remote changes before saving. If it finds a conflict, it keeps the draft and pauses autosave."
+            ]
+          },
+          {
+            "heading": "Related guides",
+            "links": [
+              {
+                "page": "cli",
+                "text": "Command line"
+              },
+              {
+                "page": "mcp",
+                "text": "MCP server"
+              }
+            ]
+          },
+          {
+            "heading": "Full reference",
+            "links": [
+              {
+                "text": "Full reference",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/deployment.md"
+              }
+            ]
           }
         ]
       },
       "modules": {
         "label": "Modules",
-        "title": "Turn tools on and off.",
+        "title": "Modules",
         "metaTitle": "Modules — IWE Code",
         "description": "Git, Pipelines, Terminal, and Deployment start enabled. Disable any of them in settings.",
         "intro": "IWE Code ships its tools as modules. Disabling a module never deletes data.",
@@ -580,12 +667,21 @@
                 "page": "module-development"
               }
             ]
+          },
+          {
+            "heading": "Full reference",
+            "links": [
+              {
+                "text": "Full reference",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/modules.md"
+              }
+            ]
           }
         ]
       },
       "module-development": {
         "label": "Module development",
-        "title": "Build your own module.",
+        "title": "Module development",
         "metaTitle": "Module development — IWE Code",
         "description": "Extend IWE Code with external modules. Package a program, describe its panel in JSON, and install it from a file.",
         "intro": "An external module is a separate program that IWE Code runs and talks to over a simple JSON protocol. Write it in any language, ship binaries for your platforms, and install the package without recompiling the application.",
@@ -652,7 +748,7 @@
             "paragraphs": ["A package is a gzipped tar archive with the .iwe-module extension."],
             "codes": [
               {
-                "text": "hello-module/\n├── manifest.json\n└── binaries/\n    ├── macos-aarch64/hello-module\n    └── linux-x86_64/hello-module"
+                "text": "hello-module/\n├── manifest.json\n├── manifest.sig\n└── binaries/\n    ├── macos-aarch64/hello-module\n    └── linux-x86_64/hello-module"
               }
             ]
           },
@@ -781,6 +877,18 @@
             ]
           },
           {
+            "heading": "Sign the package",
+            "paragraphs": [
+              "IWE Code checks signatures and file digests. Installation rejects unsigned or modified packages.",
+              "The signing script requires the maintainer’s Ed25519 key. See the package reference for details."
+            ],
+            "codes": [
+              {
+                "text": "python3 .github/scripts/sign-module.py hello-module.iwe-module"
+              }
+            ]
+          },
+          {
             "heading": "Install",
             "paragraphs": [
               "Open Settings → Modules in IWE Code, choose Install from file…, review the requested access, and confirm. Updates install the same way with a higher version number."
@@ -797,15 +905,24 @@
                 "href": "https://github.com/adametsderschopfer/iwe-code/tree/main/examples/hello-module"
               }
             ]
+          },
+          {
+            "heading": "Full reference",
+            "links": [
+              {
+                "text": "Full reference",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/modules.md#external-modules"
+              }
+            ]
           }
         ]
       },
       "cli": {
         "label": "Command line",
-        "title": "Your workspace,\nfrom any script.",
+        "title": "Command line",
         "metaTitle": "Command line — IWE Code",
-        "description": "A small command line ships with the application binary. List spaces, add or remove projects, and print stable JSON.",
-        "intro": "Every command runs headless: no window and no network access. The commands read and write the same workspace file as the application, so scripts see the same spaces and projects. Help text follows your interface language.",
+        "description": "Manage workspace projects and deployments from the IWE Code command line.",
+        "intro": "Use the application binary to manage projects, configure deployments, and transfer files. Workspace commands run without a window. Transfers connect to the server configured in the deployment profile.",
         "sections": [
           {
             "heading": "Commands",
@@ -839,6 +956,76 @@
             }
           },
           {
+            "heading": "Deployment commands",
+            "table": {
+              "kind": "code",
+              "rows": [
+                {
+                  "term": "iwe deployment list",
+                  "text": "List deployment connections, SSH keys, and profiles."
+                },
+                {
+                  "term": "iwe deployment connection add <name> --host HOST --username NAME [options]",
+                  "text": "Add a connection."
+                },
+                {
+                  "term": "iwe deployment connection set <name> [options]",
+                  "text": "Update a connection."
+                },
+                {
+                  "term": "iwe deployment connection remove <name>",
+                  "text": "Remove an unused connection and its stored secret."
+                },
+                {
+                  "term": "iwe deployment key add <name> <path>",
+                  "text": "Register an SSH key file."
+                },
+                {
+                  "term": "iwe deployment key remove <name>",
+                  "text": "Remove an unused SSH key and its stored passphrase."
+                },
+                {
+                  "term": "iwe deployment profile add <name> --project DIR --connection NAME --root PATH --mapping LOCAL=REMOTE [options]",
+                  "text": "Create a deployment profile with at least one folder mapping."
+                },
+                {
+                  "term": "iwe deployment profile set <name> [options]",
+                  "text": "Update a profile."
+                },
+                {
+                  "term": "iwe deployment profile remove <name> [--space NAME]",
+                  "text": "Remove a profile."
+                },
+                {
+                  "term": "iwe deployment test <profile>",
+                  "text": "Check the connection for a profile."
+                },
+                {
+                  "term": "iwe deployment upload <profile> <path>",
+                  "text": "Upload a local file or folder."
+                },
+                {
+                  "term": "iwe deployment download <profile> <remote> [--overwrite]",
+                  "text": "Download a remote file or folder. Use --overwrite to replace local files."
+                },
+                {
+                  "term": "iwe deployment list-remote <profile> [directory]",
+                  "text": "List a remote directory."
+                }
+              ]
+            }
+          },
+          {
+            "heading": "Deployment options",
+            "bullets": [
+              "Deployment commands accept --json. Add --help to any command to see its options.",
+              "Use --space NAME with profile commands, test, upload, download, or list-remote to select a space.",
+              "Connection add and set also accept --protocol, --port, --auth, --key, and --password-stdin. Enter passwords through standard input.",
+              "Repeat --mapping LOCAL=REMOTE and --exclude PATH as needed. Use --default false to clear the default status. With profile set, --clear-excluded removes exclusions.",
+              "On first SFTP connection, verify the reported server fingerprint. Then retry the command with --trust-host-key FINGERPRINT. If the command still reports an unknown key, run it again to use the saved fingerprint."
+            ]
+          },
+          {
             "heading": "Machine-readable output",
             "paragraphs": [
               "The --json flag prints stable JSON with two-space indentation. Keys use snake_case, matching the saved workspace file."
@@ -861,7 +1048,7 @@
                 },
                 {
                   "term": "1",
-                  "text": "The command failed: a directory was missing, the workspace file was unreadable, or no project matched."
+                  "text": "The command failed. The workspace may be unreadable, a project or profile may be missing, or a transfer may have failed."
                 },
                 {
                   "term": "2",
@@ -877,15 +1064,28 @@
               "IWE_LANG or your system language selects the output language, including help text.",
               "Unknown commands now stop with an error instead of opening the window."
             ]
+          },
+          {
+            "heading": "Full command reference",
+            "links": [
+              {
+                "text": "See options, JSON fields, and behavior in the CLI reference.",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/cli.md"
+              },
+              {
+                "text": "MCP tools for project files, Git, and remote comparison",
+                "page": "mcp"
+              }
+            ]
           }
         ]
       },
       "mcp": {
         "label": "MCP server",
-        "title": "Your workspace,\nfor your assistant.",
+        "title": "MCP server",
         "metaTitle": "MCP server — IWE Code",
         "description": "Connect AI assistants to your projects through the Model Context Protocol. Browse, read, search, and edit with the same conflict checks as the editor.",
-        "intro": "IWE Code ships an MCP server inside the application binary. Your assistant starts it as a local process and talks to it over standard streams. Nothing leaves your computer, and the assistant only sees the projects you added to the workspace.",
+        "intro": "An assistant starts the IWE Code MCP server with --mcp and communicates through standard streams. Deployment read tools can connect to configured servers.",
         "sections": [
           {
             "heading": "How it works",
@@ -915,7 +1115,7 @@
           {
             "heading": "Tools",
             "paragraphs": [
-              "The server exposes these tools. Every tool reads data; only write_file changes files."
+              "MCP provides eleven tools. Only write_file changes an existing local text file. The tools/list request returns the input schemas."
             ],
             "table": {
               "kind": "code",
@@ -947,6 +1147,22 @@
                 {
                   "term": "git_log",
                   "text": "Show recent commits with authors, dates, and refs."
+                },
+                {
+                  "term": "list_deployments",
+                  "text": "List deployment connections, registered SSH keys, and profiles. Results omit secrets."
+                },
+                {
+                  "term": "resolve_deployment_path",
+                  "text": "Pass profile and exactly one of local or remote. Returns the mapped paths without connecting."
+                },
+                {
+                  "term": "deployment_read_remote",
+                  "text": "Pass profile and an absolute remote path. Reads one UTF-8 file up to 512 KiB."
+                },
+                {
+                  "term": "deployment_compare",
+                  "text": "Pass profile and a project-relative path. Returns localText, remoteText, and identical. Each file can be up to 512 KiB."
                 }
               ]
             }
@@ -963,10 +1179,10 @@
           {
             "heading": "Security",
             "bullets": [
-              "The server only exposes projects from your workspace file. Paths cannot escape a project directory.",
-              "The server never changes workspace metadata and never reads saved credentials.",
-              "Symlinks are skipped. Binary and oversized files are rejected.",
-              "Everything runs locally. There is no network access and no telemetry."
+              "Local file tools use projects from your workspace. Project paths must stay inside the project.",
+              "MCP uses saved credentials for remote reads. Tool results omit credentials.",
+              "Workspace metadata and remote files stay unchanged. Use the CLI to manage deployments and transfer files.",
+              "The server rejects incoming JSON-RPC lines over 1 MiB. The remote file tools limit each text to 512 KiB."
             ]
           },
           {
@@ -987,6 +1203,10 @@
               {
                 "text": "Read the MCP documentation",
                 "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/mcp.md"
+              },
+              {
+                "text": "CLI commands for deployments and transfers",
+                "page": "cli"
               }
             ]
           }
@@ -994,7 +1214,7 @@
       },
       "deep-links": {
         "label": "Deep links",
-        "title": "Files open\nwhere they belong.",
+        "title": "Deep links",
         "metaTitle": "External opening and deep links — IWE Code",
         "description": "Open files from the file manager, the terminal, or iwe:// links. A file joins the project that owns it, or opens on its own.",
         "intro": "IWE Code accepts open requests from outside the application. The running application receives every request, so no second window appears.",
@@ -1085,6 +1305,136 @@
               {
                 "text": "Read the external opening documentation",
                 "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/external-opening.md"
+              }
+            ]
+          }
+        ]
+      },
+      "settings": {
+        "label": "Settings",
+        "title": "Settings",
+        "metaTitle": "Settings — IWE Code",
+        "description": "Change language, appearance, code display, panels, and shortcuts.",
+        "intro": "Open Settings from the sidebar.",
+        "sections": [
+          {
+            "heading": "General",
+            "paragraphs": [
+              "Choose the interface language and light or dark appearance. IWE_LANG overrides the language when you select System."
+            ]
+          },
+          {
+            "heading": "Code and panels",
+            "paragraphs": [
+              "Set the font size and line numbers in Code. Show or hide Git and Pipelines in Panels."
+            ]
+          },
+          {
+            "heading": "Keyboard shortcuts",
+            "paragraphs": [
+              "Choose a command under Keyboard shortcuts and record a new combination. Press Shift twice to open Search Everywhere."
+            ]
+          },
+          {
+            "heading": "Related guides",
+            "links": [
+              {
+                "page": "editing",
+                "text": "Editing"
+              },
+              {
+                "page": "modules",
+                "text": "Modules"
+              },
+              {
+                "page": "updates",
+                "text": "Application updates"
+              }
+            ]
+          }
+        ]
+      },
+      "accounts": {
+        "label": "Provider accounts",
+        "title": "Provider accounts",
+        "metaTitle": "Provider accounts — IWE Code",
+        "description": "Connect GitHub and GitLab accounts to use private pipelines and job actions.",
+        "intro": "IWE Code uses the repository remote to choose the provider and host.",
+        "sections": [
+          {
+            "heading": "Browser sign-in",
+            "paragraphs": [
+              "Open the Pipelines panel and start sign-in. GitHub displays a device code. Enter it in the browser to authorize IWE Code.",
+              "GitLab.com opens a browser authorization page. Return to IWE Code after authorizing it."
+            ]
+          },
+          {
+            "heading": "Self-hosted servers",
+            "paragraphs": [
+              "Choose the provider if IWE Code does not recognize the host. For job actions, use a personal GitLab token with api.",
+              "GitHub Enterprise can use a classic token with repo. Your account also needs permission in the project."
+            ]
+          },
+          {
+            "heading": "Credentials",
+            "paragraphs": [
+              "IWE Code stores tokens in private local files. Signing out deletes the token for that host. The server must use HTTPS with a valid certificate."
+            ]
+          },
+          {
+            "heading": "Related guides",
+            "links": [
+              {
+                "page": "pipelines",
+                "text": "Pipelines"
+              }
+            ]
+          },
+          {
+            "heading": "Full reference",
+            "links": [
+              {
+                "text": "Full reference",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/authentication.md"
+              }
+            ]
+          }
+        ]
+      },
+      "updates": {
+        "label": "Application updates",
+        "title": "Application updates",
+        "metaTitle": "Application updates — IWE Code",
+        "description": "Find, download, and install a new version.",
+        "intro": "IWE Code checks at startup and about once per hour. Open Settings → About to check manually.",
+        "sections": [
+          {
+            "heading": "Install an update",
+            "paragraphs": [
+              "Choose Download update near the settings button. Choose Install and restart when the download finishes."
+            ]
+          },
+          {
+            "heading": "Installation requirements",
+            "paragraphs": [
+              "IWE Code verifies the package and saves the workspace before installation. Your account needs write access to the installation directory."
+            ]
+          },
+          {
+            "heading": "Related guides",
+            "links": [
+              {
+                "page": "release-notes",
+                "text": "Release notes"
+              }
+            ]
+          },
+          {
+            "heading": "Full reference",
+            "links": [
+              {
+                "text": "Full reference",
+                "href": "https://github.com/adametsderschopfer/iwe-code/blob/main/docs/updates.md"
               }
             ]
           }
