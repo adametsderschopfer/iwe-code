@@ -52,6 +52,8 @@ CONTROL
 # Build the x86_64 AppImage with the pinned linuxdeploy tool.
 #
 # Arguments: the staging directory for the AppDir and the output directory.
+# linuxdeploy has no output-path option and writes the AppImage into the
+# current directory, so the invocation runs inside the output directory.
 package_linux_appimage() {
   local stage="$1" output="$2"
   local linuxdeploy
@@ -60,12 +62,14 @@ package_linux_appimage() {
   install -Dm755 "$stage/iwe" "$appdir/usr/bin/iwe"
   install -Dm644 assets/iwe.desktop "$appdir/usr/share/applications/iwe.desktop"
   install -Dm644 assets/icon.png "$appdir/usr/share/icons/hicolor/256x256/apps/iwe.png"
-  APPIMAGE_EXTRACT_AND_RUN=1 "$linuxdeploy" \
-    --appdir "$appdir" \
-    --desktop-file "$appdir/usr/share/applications/iwe.desktop" \
-    --icon-file "$appdir/usr/share/icons/hicolor/256x256/apps/iwe.png" \
-    --output appimage \
-    --destdir "$output"
+  (
+    cd "$output"
+    APPIMAGE_EXTRACT_AND_RUN=1 "$linuxdeploy" \
+      --appdir "$appdir" \
+      --desktop-file "$appdir/usr/share/applications/iwe.desktop" \
+      --icon-file "$appdir/usr/share/icons/hicolor/256x256/apps/iwe.png" \
+      --output appimage
+  )
   local image
   image=$(find "$output" -maxdepth 1 -name '*.AppImage' -print -quit)
   mv "$image" "$output/iwe-code-${RELEASE_VERSION}-${ASSET_PLATFORM}.AppImage"

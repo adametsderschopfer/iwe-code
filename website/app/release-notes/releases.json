@@ -1903,6 +1903,17 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "appimage-package-output",
+        "category": "maintenance",
+        "text": {
+          "en": "The Linux AppImage build writes its package into the release output directory.",
+          "ru": "Сборка Linux AppImage записывает пакет в выходной каталог релиза.",
+          "es": "La compilación de AppImage para Linux escribe su paquete en el directorio de salida del release."
+        },
+        "sources": [".github/scripts/package-release.sh"]
+      }
+    ]
   }
 ]
