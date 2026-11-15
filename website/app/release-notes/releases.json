@@ -1767,7 +1767,7 @@
     ]
   },
   {
-    "version": "unreleased",
+    "version": "1.3.0",
     "status": "prepared",
     "publishedAt": null,
     "tags": [],
@@ -1896,5 +1896,13 @@
         "sources": ["docs/adr/0004-accessibility.md", "docs/architecture.md"]
       }
     ]
+  },
+  {
+    "version": "unreleased",
+    "status": "prepared",
+    "publishedAt": null,
+    "tags": [],
+    "source": null,
+    "items": []
   }
 ]
