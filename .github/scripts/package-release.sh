@@ -22,7 +22,7 @@ package_linux_deb() {
   local tree="$stage/deb"
   install -Dm755 "$stage/iwe" "$tree/usr/bin/iwe"
   install -Dm644 assets/iwe.desktop "$tree/usr/share/applications/iwe.desktop"
-  install -Dm644 assets/icon.png "$tree/usr/share/icons/hicolor/256x256/apps/iwe.png"
+  install -Dm644 assets/icon-256.png "$tree/usr/share/icons/hicolor/256x256/apps/iwe.png"
   install -Dm644 README.md "$tree/usr/share/doc/iwe-code/README.md"
   install -Dm644 assets/iwe.copyright "$tree/usr/share/doc/iwe-code/copyright"
   install -Dm755 /dev/null "$tree/DEBIAN/postinst"
@@ -49,25 +49,32 @@ CONTROL
   dpkg-deb --build --root-owner-group "$tree" "$output"
 }
 
-# Build the x86_64 AppImage with the pinned linuxdeploy tool.
+# Build the x86_64 AppImage with the pinned linuxdeploy tool and type2
+# runtime.
 #
 # Arguments: the staging directory for the AppDir and the output directory.
 # linuxdeploy has no output-path option and writes the AppImage into the
-# current directory, so the invocation runs inside the output directory.
+# current directory, so the invocation runs inside the output directory. The
+# runtime comes from the pinned download; the plugin builds offline instead
+# of fetching an unpinned build.
 package_linux_appimage() {
   local stage="$1" output="$2"
-  local linuxdeploy
-  linuxdeploy=$(bash "$(dirname "$0")/setup-appimage.sh")
+  local tools linuxdeploy runtime
+  tools=$(bash "$(dirname "$0")/setup-appimage.sh")
+  linuxdeploy=$(printf '%s\n' "$tools" | sed -n 1p)
+  runtime=$(printf '%s\n' "$tools" | sed -n 2p)
   local appdir="$stage/AppDir"
   install -Dm755 "$stage/iwe" "$appdir/usr/bin/iwe"
   install -Dm644 assets/iwe.desktop "$appdir/usr/share/applications/iwe.desktop"
-  install -Dm644 assets/icon.png "$appdir/usr/share/icons/hicolor/256x256/apps/iwe.png"
+  install -Dm644 assets/icon-256.png "$appdir/usr/share/icons/hicolor/256x256/apps/iwe.png"
   (
     cd "$output"
-    APPIMAGE_EXTRACT_AND_RUN=1 "$linuxdeploy" \
+    APPIMAGE_EXTRACT_AND_RUN=1 LDAI_RUNTIME_FILE="$runtime" \
+      "$linuxdeploy" \
       --appdir "$appdir" \
       --desktop-file "$appdir/usr/share/applications/iwe.desktop" \
       --icon-file "$appdir/usr/share/icons/hicolor/256x256/apps/iwe.png" \
+      --icon-filename iwe.png \
       --output appimage
   )
   local image

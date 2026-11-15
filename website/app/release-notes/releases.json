@@ -1912,7 +1912,11 @@
           "ru": "Сборка Linux AppImage записывает пакет в выходной каталог релиза.",
           "es": "La compilación de AppImage para Linux escribe su paquete en el directorio de salida del release."
         },
-        "sources": [".github/scripts/package-release.sh"]
+        "sources": [
+          ".github/scripts/package-release.sh",
+          ".github/scripts/setup-appimage.sh",
+          "assets/icon-256.png"
+        ]
       }
     ]
   }
