@@ -137,11 +137,11 @@ Unknown versions return the localized error page. Nuxt explicitly prerenders eve
 language for GitHub Pages.
 
 `app/release-notes/releases.json` contains authored changes, translations, and inspected source
-references. The index includes public releases and identified historical development versions. The
-`unreleased` page marks current drafts as unpublished. Source references remain authoring metadata,
-outside the displayed change text. Numbered prepared notes appear only when GitHub lists a matching
-stable release. The build uses its publication date and release link. A tag alone does not create a
-public notes page. Historical platform releases share one version page.
+references. The index lists published versions. Historical development records stay in the ledger.
+The `unreleased` page marks current drafts as unpublished. Source references remain authoring
+metadata, outside the displayed change text. Numbered prepared notes appear only when GitHub lists a
+matching stable release. The build uses its publication date and release link. A tag alone does not
+create a public notes page. Historical platform releases share one version page.
 
 Follow [release-note rules](rules/release-notes.md) on every commit and version request. Commit
 preparation collects items under `unreleased`. Version preparation moves reviewed items into the

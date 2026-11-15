@@ -1554,10 +1554,10 @@
     ]
   },
   {
-    "version": "1.1.0",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
+    "version": "1.4.0",
+    "status": "released",
+    "publishedAt": "2026-11-15T17:04:43Z",
+    "tags": ["v1.4.0"],
     "source": null,
     "items": [
       {
@@ -1642,39 +1642,29 @@
           "ru": "На сайте опубликована инструкция по разработке модулей: формат пакета, протокол, виджеты и права.",
           "es": "El sitio web publica una guía de desarrollo de módulos con el formato del paquete, el protocolo, los widgets y los permisos."
         },
-        "sources": ["website/app/components/ModuleDevPage.vue"]
+        "sources": ["website/app/docs.ts", "docs/modules.md"]
       },
       {
         "id": "search-everywhere-popup",
         "category": "added",
         "text": {
-          "en": "Press Shift twice, Command+F, or Shift+Command+O to search project files and switch projects in one popup. Arrow keys navigate and the list keeps the selected result centered.",
-          "ru": "Нажмите Shift дважды, Command+F или Shift+Command+O, чтобы искать файлы проекта и переключать проекты в одном окне. Стрелки навигации, список держит выбранный результат по центру.",
-          "es": "Pulsa dos veces Shift, Command+F o Shift+Command+O para buscar archivos del proyecto y cambiar de proyecto en una sola ventana. Las flechas navegan y la lista mantiene el resultado seleccionado centrado."
+          "en": "Press Shift twice to find files or switch projects. Use the arrow keys to move through results.",
+          "ru": "Дважды нажмите Shift, чтобы найти файл или переключить проект. Используйте стрелки для выбора результата.",
+          "es": "Pulsa Mayús dos veces para buscar archivos o cambiar de proyecto. Usa las flechas para moverte entre los resultados."
         },
         "sources": [
-          "src/domain/search/mod.rs",
-          "src/app/search_everywhere.rs",
-          "src/ui/screens/search_everywhere/mod.rs",
-          "src/app/shortcuts/mod.rs"
+          "docs/workspace.md",
+          "src/app/shortcuts/mod.rs",
+          "src/ui/screens/search_everywhere/mod.rs"
         ]
-      }
-    ]
-  },
-  {
-    "version": "1.2.0",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
-    "items": [
+      },
       {
         "id": "command-line-workspace-commands",
         "category": "added",
         "text": {
-          "en": "The application binary gains a command line: iwe open starts the interface, iwe workspace list prints spaces and projects, and add-project or remove-project change the workspace. The --json flag prints machine-readable output, and help text follows the interface language.",
-          "ru": "У бинарника приложения появилась командная строка: iwe open запускает интерфейс, iwe workspace list показывает пространства и проекты, а add-project и remove-project изменяют рабочее пространство. Флаг --json печатает вывод для программ, справка следует за языком интерфейса.",
-          "es": "El binario de la aplicación incorpora una línea de comandos: iwe open inicia la interfaz, iwe workspace list muestra espacios y proyectos, y add-project o remove-project cambian el espacio de trabajo. La opción --json imprime salida para programas y la ayuda sigue el idioma de la interfaz."
+          "en": "Use the command line to open IWE Code, list projects, and add or remove them. Workspace commands support JSON output.",
+          "ru": "Из командной строки можно открыть IWE Code, вывести список проектов, добавить или удалить проект. Команды рабочего пространства поддерживают вывод JSON.",
+          "es": "Usa la línea de comandos para abrir IWE Code, enumerar proyectos, añadirlos o quitarlos. Los comandos del espacio de trabajo admiten salida JSON."
         },
         "sources": ["src/cli/mod.rs", "src/cli/args.rs", "src/cli/output.rs", "docs/cli.md"]
       },
@@ -1686,7 +1676,7 @@
           "ru": "На сайте опубликована инструкция по командной строке: команды, вывод JSON и коды выхода.",
           "es": "El sitio web publica una guía de la línea de comandos con los comandos, la salida JSON y los códigos de salida."
         },
-        "sources": ["website/app/components/CliPage.vue"]
+        "sources": ["website/app/docs.ts", "docs/cli.md"]
       },
       {
         "id": "unknown-arguments-stop-with-an-error",
@@ -1702,9 +1692,9 @@
         "id": "mcp-server",
         "category": "added",
         "text": {
-          "en": "The application binary serves a Model Context Protocol server with iwe --mcp. AI assistants browse workspace projects, read and edit text files with revision checks, search file names, and read Git status and history.",
-          "ru": "Бинарник приложения обслуживает сервер Model Context Protocol через iwe --mcp. AI-ассистенты просматривают проекты рабочего пространства, читают и изменяют текстовые файлы с проверкой ревизий, ищут файлы и читают статус и историю Git.",
-          "es": "El binario de la aplicación sirve un servidor de Model Context Protocol con iwe --mcp. Los asistentes de IA exploran los proyectos del espacio de trabajo, leen y editan archivos de texto con comprobación de revisiones, buscan archivos y leen el estado y el historial de Git."
+          "en": "Start the MCP server with iwe --mcp. AI assistants can list projects, search file names, and read Git status and history. They can also read and edit text files with revision checks.",
+          "ru": "Запустите сервер MCP командой iwe --mcp. ИИ-ассистенты могут просматривать проекты, искать файлы по имени, читать статус и историю Git. Они также могут читать и редактировать текстовые файлы с проверкой версии.",
+          "es": "Inicia el servidor MCP con iwe --mcp. Los asistentes de IA pueden enumerar proyectos, buscar nombres de archivos y consultar el estado y el historial de Git. También pueden leer y editar archivos de texto con comprobación de revisiones."
         },
         "sources": [
           "src/main.rs",
@@ -1722,15 +1712,15 @@
           "ru": "На сайте опубликована инструкция по MCP: настройка клиентов, список инструментов, порядок редактирования и замечания по безопасности.",
           "es": "El sitio web publica una guía de MCP con la configuración de clientes, la lista de herramientas, el flujo de edición y notas de seguridad."
         },
-        "sources": ["website/app/components/McpPage.vue", "website/app/i18n/en.json"]
+        "sources": ["website/app/docs.ts", "docs/mcp.md"]
       },
       {
         "id": "external-file-opening",
         "category": "added",
         "text": {
-          "en": "Files from the file manager, the command line, and iwe:// links open in the running application instead of a second window.",
-          "ru": "Файлы из файлового менеджера, командной строки и ссылки iwe:// открываются в работающем приложении вместо второго окна.",
-          "es": "Los archivos del gestor de archivos, la línea de comandos y los enlaces iwe:// se abren en la aplicación en ejecución en lugar de una segunda ventana."
+          "en": "Open files in the running app from the command line, from Finder on macOS, or through iwe:// links.",
+          "ru": "Открывайте файлы в запущенном приложении из командной строки, из Finder на macOS или по ссылкам iwe://.",
+          "es": "Abre archivos en la aplicación en ejecución desde la línea de comandos, desde Finder en macOS o mediante enlaces iwe://."
         },
         "sources": ["src/app/external/mod.rs", "docs/external-opening.md"]
       },
@@ -1745,16 +1735,6 @@
         "sources": ["website/app/components/DocsLayout.vue", "docs/website.md"]
       },
       {
-        "id": "windows-menu-bar-build",
-        "category": "fixed",
-        "text": {
-          "en": "The header menu bar and the Windows deep-link listener compile on Windows, and Windows packages build again.",
-          "ru": "Панель меню и обработчик deep links компилируются на Windows, и сборки Windows снова работают.",
-          "es": "La barra de menús y el escucha de deep links de Windows compilan en Windows y los paquetes de Windows se compilan de nuevo."
-        },
-        "sources": ["src/ui/screens/menu_bar.rs", "src/infrastructure/external/windows.rs"]
-      },
-      {
         "id": "external-interface-rules",
         "category": "maintenance",
         "text": {
@@ -1763,23 +1743,14 @@
           "es": "Las reglas de desarrollo ahora cubren el trabajo con la línea de comandos, el servidor MCP y los deep links."
         },
         "sources": ["AGENTS.md", "docs/rules/external-interfaces.md"]
-      }
-    ]
-  },
-  {
-    "version": "1.3.0",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
-    "items": [
+      },
       {
         "id": "deployment-command-line",
         "category": "added",
         "text": {
-          "en": "The command line manages deployments. It adds, changes, and removes connections, SSH keys, and deployment profiles, and runs test, upload, download, and remote listing commands with JSON output.",
-          "ru": "Командная строка управляет деплоем: добавляет, изменяет и удаляет подключения, SSH-ключи и профили деплоя, а также выполняет команды test, upload, download и просмотра удалённых папок с выводом JSON.",
-          "es": "La línea de comandos gestiona los despliegues: añade, modifica y elimina conexiones, claves SSH y perfiles de despliegue, y ejecuta comandos de test, upload, download y listado remoto con salida JSON."
+          "en": "Manage deployment connections, SSH keys, and profiles from the command line. Test connections, upload or download files, and list remote directories. These commands support JSON output.",
+          "ru": "Управляйте подключениями, ключами SSH и профилями развёртывания из командной строки. Проверяйте подключения, передавайте файлы и просматривайте удалённые каталоги. Эти команды поддерживают вывод JSON.",
+          "es": "Gestiona conexiones de despliegue, claves SSH y perfiles desde la línea de comandos. Comprueba conexiones, transfiere archivos y enumera directorios remotos. Estos comandos admiten salida JSON."
         },
         "sources": ["src/cli/deployment.rs", "docs/cli.md"]
       },
@@ -1797,9 +1768,9 @@
         "id": "release-waits-for-code-checks",
         "category": "maintenance",
         "text": {
-          "en": "Version preparation now waits for the Code Checks run of the prepared commit and stops when those checks fail.",
-          "ru": "Подготовка версии теперь ждёт завершения проверки Code Checks для подготовленного коммита и останавливается при её провале.",
-          "es": "La preparación de la versión ahora espera la ejecución de Code Checks del commit preparado y se detiene si falla."
+          "en": "Release preparation waits for Code Checks on the commit that started the workflow.",
+          "ru": "Подготовка релиза ждёт проверок коммита, с которого запустили процесс выпуска.",
+          "es": "La preparación del lanzamiento espera las comprobaciones del commit que inició el flujo."
         },
         "sources": [".github/workflows/bump-version.yml", "docs/ci.md"]
       },
@@ -1817,9 +1788,9 @@
         "id": "external-endpoint-hardening",
         "category": "changed",
         "text": {
-          "en": "The local forwarding endpoint is restricted to the current user, caps payload size on every platform, and reserves its Windows pipe name for the first instance.",
-          "ru": "Локальный endpoint пересылки ограничен текущим пользователем, ограничивает размер сообщения на всех платформах и резервирует имя pipe Windows за первым экземпляром.",
-          "es": "El endpoint local de reenvío queda restringido al usuario actual, limita el tamaño del mensaje en todas las plataformas y reserva el nombre del pipe de Windows para la primera instancia."
+          "en": "IWE Code limits the size of requests that it forwards between app instances. Windows also blocks remote forwarding requests.",
+          "ru": "IWE Code ограничивает размер запросов между экземплярами приложения. Windows также блокирует запросы с других компьютеров.",
+          "es": "IWE Code limita el tamaño de las solicitudes entre instancias. En Windows también bloquea las solicitudes remotas."
         },
         "sources": [
           "src/infrastructure/external/unix.rs",
@@ -1841,9 +1812,9 @@
         "id": "workspace-format-version",
         "category": "added",
         "text": {
-          "en": "Saved settings carry an explicit format version. Files written by a newer application version open unchanged and saving pauses for them.",
-          "ru": "Сохранённые настройки несут явную версию формата. Файлы более новой версии приложения открываются без изменений, и сохранение для них приостанавливается.",
-          "es": "Los ajustes guardados llevan una versión de formato explícita. Los archivos escritos por una versión más reciente se abren sin cambios y el guardado se pausa para ellos."
+          "en": "IWE Code records the settings format version. When it detects a newer format, it pauses saving and preserves the settings file.",
+          "ru": "IWE Code запоминает версию формата настроек. Если формат новее, приложение приостанавливает сохранение и сохраняет исходный файл настроек.",
+          "es": "IWE Code registra la versión del formato de configuración. Si detecta un formato más reciente, suspende el guardado y conserva el archivo."
         },
         "sources": ["src/infrastructure/workspace.rs", "docs/workspace.md"]
       },
@@ -1860,16 +1831,6 @@
           ".github/scripts/sign-module.py",
           "docs/modules.md"
         ]
-      },
-      {
-        "id": "macos-signing-notarization",
-        "category": "added",
-        "text": {
-          "en": "Release builds can sign the macOS bundle with a Developer ID certificate, notarize the disk image, and staple the ticket when configured.",
-          "ru": "Release-сборки могут подписывать бандл macOS сертификатом Developer ID, нотаризировать образ диска и прикреплять билет при настройке.",
-          "es": "Las compilaciones de release pueden firmar el bundle de macOS con un certificado Developer ID, notarizar la imagen de disco y adjuntar el ticket cuando esté configurado."
-        },
-        "sources": [".github/scripts/package-release.sh", "docs/macos-signing.md"]
       },
       {
         "id": "linux-deb-appimage",
@@ -1894,16 +1855,7 @@
           "es": "Una decisión de arquitectura registra la limitación actual de los lectores de pantalla, su causa y los criterios para revisarla."
         },
         "sources": ["docs/adr/0004-accessibility.md", "docs/architecture.md"]
-      }
-    ]
-  },
-  {
-    "version": "1.4.0",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
-    "items": [
+      },
       {
         "id": "appimage-package-output",
         "category": "maintenance",

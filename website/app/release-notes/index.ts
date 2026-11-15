@@ -22,7 +22,7 @@ export const authoredNotes = data as ReleaseNote[]
 
 export function publicReleaseNotes(publications: Record<string, string>) {
   return authoredNotes
-    .filter((release) => release.items.length > 0)
+    .filter((release) => release.items.length > 0 && release.status !== 'development')
     .flatMap((release): ReleaseNote[] => {
       if (release.status !== 'prepared' || release.version === 'unreleased') return [release]
       const tag = `v${release.version}`

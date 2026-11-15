@@ -85,7 +85,7 @@ def render(record):
             lines.append("")
     base = "https://adametsderschopfer.github.io/iwe-code/"
     links = [
-        f"[{label}]({base}{prefix}releases/{record['version']}/)"
+        f"[{label}]({base}{prefix}docs/release-notes/{record['version']}/)"
         for prefix, label in [("", "English"), ("ru/", "Русский"), ("es/", "Español")]
     ]
     lines.extend([" · ".join(links), ""])

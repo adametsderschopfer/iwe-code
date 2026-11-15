@@ -182,8 +182,16 @@ const releaseNotes = JSON.parse(
   readFileSync(join(websiteDirectory, 'app', 'release-notes', 'releases.json'), 'utf8'),
 ).filter((release) => release.items.length > 0)
 
-// These tags came from failed or cancelled release runs.
-const unpublishedVersions = ['1.1.0', '1.2.0', '1.3.0']
+// Unpublished tags and historical development versions have no public pages.
+const unpublishedVersions = [
+  '1.0.5',
+  '1.1.0',
+  '1.2.0',
+  '1.3.0',
+  ...releaseNotes
+    .filter((record) => record.status === 'development')
+    .map((record) => record.version),
+]
 
 for (const { language, route } of locales) {
   const releaseIndex = `${route}docs/release-notes/`
@@ -202,7 +210,7 @@ for (const { language, route } of locales) {
       assert.ok(!paths.includes(`${baseURL}${releaseIndex}${version}/`))
       assert.ok(!existsSync(join(outputDirectory, releaseIndex, version, 'index.html')))
     }
-    for (const release of releaseNotes.filter((record) => record.status !== 'prepared')) {
+    for (const release of releaseNotes.filter((record) => record.status === 'released')) {
       const path = `${baseURL}${releaseIndex}${release.version}/`
       assert.ok(paths.includes(path), `Missing release link: ${path}`)
       staticTarget(new URL(path, localOrigin))
