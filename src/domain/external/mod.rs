@@ -48,10 +48,14 @@ impl Link {
     /// Build a deep link that opens the given file.
     #[cfg(test)]
     pub(crate) fn open_text(path: &std::path::Path) -> String {
-        let mut value = path.to_string_lossy().into_owned();
-        if !value.starts_with('/') {
-            value = format!("/{value}");
-        }
+        let value = path.to_string_lossy().into_owned();
+        // Absolute paths stand alone; relative ones need the Unix prefix,
+        // which also keeps the query path parseable on every platform.
+        let value = if path.is_absolute() {
+            value
+        } else {
+            format!("/{value}")
+        };
         format!("{}://open?path={}", Self::SCHEME, value)
     }
 }
