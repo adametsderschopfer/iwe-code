@@ -926,7 +926,7 @@
               "Команды вызываются через бинарник приложения. Директории, файлы и диплинки, как и раньше, открывают рабочее пространство."
             ],
             "table": {
-              "kind": "code",
+              "kind": "command",
               "rows": [
                 {
                   "term": "iwe open [directory]",
@@ -954,7 +954,7 @@
           {
             "heading": "Команды развёртывания",
             "table": {
-              "kind": "code",
+              "kind": "command",
               "rows": [
                 {
                   "term": "iwe deployment list",

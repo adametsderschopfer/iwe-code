@@ -55,10 +55,14 @@ useSeoMeta({
         <ol v-if="section.steps?.length" class="docs-list">
           <li v-for="(step, sIndex) in section.steps" :key="sIndex">{{ step }}</li>
         </ol>
-        <dl v-if="section.table" class="docs-table">
+        <dl
+          v-if="section.table"
+          class="docs-table"
+          :class="{ 'docs-table--stacked': section.table.kind === 'command' }"
+        >
           <template v-for="(row, rIndex) in section.table.rows" :key="rIndex">
             <dt>
-              <code v-if="section.table.kind === 'code'">{{ row.term }}</code>
+              <code v-if="section.table.kind !== 'text'">{{ row.term }}</code>
               <template v-else>{{ row.term }}</template>
             </dt>
             <dd>{{ row.text }}</dd>
@@ -184,5 +188,25 @@ useSeoMeta({
   .docs-table dd {
     margin-bottom: 10px;
   }
+}
+.docs-table--stacked {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+.docs-table--stacked dt {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.docs-table--stacked dt code {
+  font-size: 13px;
+}
+.docs-table--stacked dd {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+.docs-table--stacked dd:not(:last-child) {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
 }
 </style>

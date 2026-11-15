@@ -1924,6 +1924,16 @@
           "website/app/docs.ts",
           "website/app/i18n/en.json"
         ]
+      },
+      {
+        "id": "stack-cli-command-explanations",
+        "category": "fixed",
+        "text": {
+          "en": "The CLI guide places each explanation below its command.",
+          "ru": "В справочнике CLI пояснение теперь находится под командой.",
+          "es": "La guía de CLI muestra cada explicación debajo de su comando."
+        },
+        "sources": ["website/app/components/DocsPage.vue", "website/app/i18n/en.json"]
       }
     ]
   }

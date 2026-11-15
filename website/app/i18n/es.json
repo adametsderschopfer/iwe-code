@@ -932,7 +932,7 @@
               "Estos comandos se ejecutan desde el binario de la aplicación. Las carpetas, los archivos y los enlaces siguen abriendo el espacio de trabajo como antes."
             ],
             "table": {
-              "kind": "code",
+              "kind": "command",
               "rows": [
                 {
                   "term": "iwe open [directory]",
@@ -960,7 +960,7 @@
           {
             "heading": "Comandos de despliegue",
             "table": {
-              "kind": "code",
+              "kind": "command",
               "rows": [
                 {
                   "term": "iwe deployment list",

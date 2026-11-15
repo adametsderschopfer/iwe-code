@@ -930,7 +930,7 @@
               "These commands run from the application binary. Directories, files, and deep links keep opening the workspace as before."
             ],
             "table": {
-              "kind": "code",
+              "kind": "command",
               "rows": [
                 {
                   "term": "iwe open [directory]",
@@ -958,7 +958,7 @@
           {
             "heading": "Deployment commands",
             "table": {
-              "kind": "code",
+              "kind": "command",
               "rows": [
                 {
                   "term": "iwe deployment list",

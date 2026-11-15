@@ -123,8 +123,9 @@ languages.
 
 The page structure and the sidebar live in `app/docs.ts`. All page texts live in the `docs` catalog
 block in `app/i18n/`. `DocsLayout.vue` renders the shell with the sidebar. `DocsPage.vue` renders a
-generic article from catalog sections; `DocsOverviewPage.vue` renders the overview;
-`ReleaseNotesPage.vue` keeps its own rendering inside the same shell.
+generic article from catalog sections. Use the stacked layout for command lists. It places each
+explanation below its command. `DocsOverviewPage.vue` renders the overview. `ReleaseNotesPage.vue`
+uses the same shell.
 
 The language switcher derives the target address from the current path, so it preserves the current
 documentation page. Old addresses that moved into the section (`/cli/`, `/mcp/`, `/modules/`,
