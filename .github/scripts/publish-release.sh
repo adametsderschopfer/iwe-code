@@ -27,5 +27,18 @@ done
 python3 .github/scripts/release-notes.py --version "$version" --output dist/release-notes.md
 test -s dist/updates.json
 test -s dist/updates.sig
+release_sha=$(git rev-parse HEAD)
+tag_ref="refs/tags/$RELEASE_TAG"
+remote_refs=$(git ls-remote --tags origin "$tag_ref" "$tag_ref^{}")
+tag_sha=$(awk -v ref="$tag_ref" '
+  $2 == ref {direct = $1}
+  $2 == ref "^{}" {peeled = $1}
+  END {print peeled ? peeled : direct}
+' <<< "$remote_refs")
+if [[ -n "$tag_sha" && "$tag_sha" != "$release_sha" ]]; then
+  echo "Existing tag $RELEASE_TAG points to a different commit." >&2
+  exit 1
+fi
+# GitHub CLI stages the assets in a draft before publishing and creating the tag.
 gh release create "$RELEASE_TAG" "${assets[@]}" dist/SHA256SUMS dist/updates.json dist/updates.sig \
-  --verify-tag --notes-file dist/release-notes.md --title "IWE Code $version"
+  --target "$release_sha" --notes-file dist/release-notes.md --title "IWE Code $version"

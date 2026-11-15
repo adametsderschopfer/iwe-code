@@ -5,8 +5,8 @@ GitHub Actions uses three workflows with English names.
 - **Code Checks** runs application and website checks on main pushes. Application checks include
   formatting, lint, type checks, dependency security, script checks, and tests. Website checks
   include formatting, lint, type checks, dependency security, generation, and browser tests.
-- **Release New Version** manually prepares a version, creates its tag, builds packages, and
-  publishes the release. Its final jobs build and publish the website from the same prepared commit.
+- **Release New Version** manually prepares a version, builds packages, and publishes the release
+  with its tag. Its final jobs build and publish the website from the same prepared commit.
 
 - **Build and Publish Website** manually generates the website from main, uploads an artifact, and
   publishes GitHub Pages.
@@ -78,8 +78,8 @@ systems can require confirmation when opening downloaded packages.
 2. Open **Release New Version** in GitHub Actions and select main.
 3. Choose **Fixes — patch**, **New features — minor**, or **Major update — major**.
 4. Run the workflow. It updates Cargo.toml, Cargo.lock, and the release-note ledger.
-5. The workflow pushes the version commit and creates its tag.
-6. Build jobs start immediately after tag creation in the same workflow.
+5. The workflow pushes the version commit and builds all packages from that commit.
+6. GitHub creates the tag when it publishes the release with all packages.
 7. Verify the GitHub release and the published website.
 
 For version 1.0.7, patch produces 1.0.8, minor produces 1.1.0, and major produces 2.0.0. Empty
@@ -88,17 +88,16 @@ serialize their work. A concurrent main push causes a normal push conflict. Bran
 permit the workflow bot to push version commits. The workflow never force-pushes. Configure
 repository permissions before using this workflow.
 
-Code Checks runs only for main pushes. The version workflow uses needs dependencies for tagging,
-builds, publication, and website deployment. No dispatch requests or additional personal access
-tokens are required. Only version preparation, tagging, and release publication receive contents
-write permission. Website deployment receives pages and id-token write permissions. The workflow
-checks out the prepared commit explicitly because the initiating event references main. The built-in
-token pushes the version commit without triggering another Code Checks run.
+Code Checks runs only for main pushes. The version workflow uses needs dependencies for builds,
+publication, and website deployment. No dispatch requests or additional personal access tokens are
+required. Only version preparation and release publication receive contents write permission.
+Website deployment receives pages and id-token write permissions. The workflow checks out the
+prepared commit explicitly because the initiating event references main. The built-in token pushes
+the version commit without triggering another Code Checks run.
 
 The first version workflow job waits for the Code Checks run of the dispatched commit. Preparation
 stops when those checks fail, get cancelled, or stay absent for 45 minutes. New version preparation
-also stops if main advances before checkout. Release packaging runs after tag creation. A packaging
-failure can leave a tag without a published GitHub release.
+also stops if main advances before checkout. A build or packaging failure stops before publication.
 
 Retry failed release jobs after transient errors. A full rerun reuses its original version commit.
 The run identifier in the commit message links reruns to that commit. If code needs correction, push
@@ -114,13 +113,13 @@ jobs validate tag syntax, release notes, and package version. They build the pre
 Installer installation checks remain part of Windows packaging. All six builds and both Windows
 installer jobs must succeed before publication.
 
-The publication job signs one update manifest and publishes one GitHub Release with all eleven
-installation packages and six update archives. It verifies the required files and adds SHA256SUMS.
-Configure `IWE_UPDATE_SIGNING_KEY` before publishing. See
-[application updates](updates.md#release-signing) for key handling. The version workflow and
-publication job can write to the repository. Build jobs have read-only access. Existing releases are
-not overwritten. If uploading fails, inspect the remaining draft before retrying publication. Main
-pushes cancel superseded branch checks. Manual version runs serialize their work.
+The publication job signs one update manifest. It verifies eleven installation packages and six
+update archives, then adds SHA256SUMS. GitHub CLI uploads the files to a draft. GitHub creates the
+tag on the prepared commit when it publishes that release. Configure `IWE_UPDATE_SIGNING_KEY` before
+publishing. See [application updates](updates.md#release-signing) for key handling. The version
+workflow and publication job can write to the repository. Build jobs have read-only access. Existing
+releases are not overwritten. If uploading fails, inspect the remaining draft before retrying
+publication. Main pushes cancel superseded branch checks. Manual version runs serialize their work.
 
 Set repository variables IWE_GITHUB_CLIENT_ID and IWE_GITLAB_CLIENT_ID to embed public OAuth Client
 IDs in release builds. These values are public identifiers, not secrets. Missing values leave

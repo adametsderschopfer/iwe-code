@@ -1898,6 +1898,16 @@
           "es": "La preparación del lanzamiento se detiene si la rama main avanza después de la solicitud."
         },
         "sources": [".github/workflows/bump-version.yml"]
+      },
+      {
+        "id": "create-tag-when-publishing-release",
+        "category": "maintenance",
+        "text": {
+          "en": "GitHub creates the version tag when it publishes the release with all packages.",
+          "ru": "GitHub создаёт тег версии при публикации релиза со всеми пакетами.",
+          "es": "GitHub crea la etiqueta de versión al publicar el lanzamiento con todos los paquetes."
+        },
+        "sources": [".github/workflows/bump-version.yml", ".github/scripts/publish-release.sh"]
       }
     ]
   }

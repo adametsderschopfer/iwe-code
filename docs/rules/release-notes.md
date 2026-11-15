@@ -54,7 +54,7 @@ An unreleased item has this shape:
 5. Review all three translations and the website's version page.
 6. Update download links only after verifying the corresponding published packages.
 7. Run `python3 .github/scripts/release-notes.py --check --version VERSION`.
-8. Complete the authorized checks, commit, tag, and publication steps.
+8. Complete the authorized checks, version commit, package builds, and publication with its tag.
 9. Verify the actual GitHub release before setting `released`, `publishedAt`, and its public tag.
 10. Update the website metadata through the authorized commit workflow after publication.
 
@@ -70,10 +70,10 @@ Run `python3 .github/scripts/release-notes.py --check` after changing notes. Thi
 checks versions, item identifiers, categories, translations, and source references. It does not
 prove that descriptions match implementation or that runtime checks passed.
 
-CI validates the ledger during planning. Version tags also require a matching prepared or released
-record with items. A missing release note stops release jobs before builds begin. The publication
-script supplies the authored English body with `gh release create --notes-file`. Each body links to
-the version's English, Russian, and Spanish website pages.
+CI validates the ledger during planning. The intended version requires a matching prepared or
+released record with items. A missing release note stops release jobs before builds begin. The
+publication script supplies the authored English body with `gh release create --notes-file`. Each
+body links to the version's English, Russian, and Spanish website pages.
 
 Publish the release only after packages for all six targets are available. Follow
 [the CI guide](../ci.md#publish-a-version).

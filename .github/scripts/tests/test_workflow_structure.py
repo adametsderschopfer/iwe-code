@@ -22,14 +22,21 @@ class WorkflowStructureTests(unittest.TestCase):
             r"^  ([a-z_]+):\n(.*?)(?=^  [a-z_]+:\n|\Z)",
             source.split("jobs:\n", 1)[1], re.MULTILINE | re.DOTALL,
         ))
-        for name in ("release", "plan", "build", "windows_package", "publish", "website_build"):
+        for name in ("plan", "build", "windows_package", "publish", "website_build"):
             with self.subTest(job=name):
                 self.assertIn("ref: ${{ needs.prepare.outputs.sha }}", jobs[name])
-        self.assertIn("needs: prepare", jobs["release"])
         self.assertIn("needs: [prepare, publish]", jobs["website_build"])
         self.assertIn("needs: website_build", jobs["website_deploy"])
         self.assertNotIn("gh workflow run", source)
         self.assertNotIn("github.ref_type == 'tag'", source)
+
+        self.assertNotIn("release", jobs)
+        self.assertNotIn("git tag ", source)
+        self.assertIn("needs: prepare", jobs["plan"])
+        self.assertIn("needs: [prepare, plan]", jobs["build"])
+        self.assertIn("needs: [prepare, build]", jobs["windows_package"])
+        self.assertIn("needs: [prepare, build, windows_package]", jobs["publish"])
+        self.assertIn("bash .github/scripts/publish-release.sh", jobs["publish"])
 
     def test_checks_only_run_on_main_pushes(self):
         source = (WORKFLOWS / "ci.yml").read_text()
