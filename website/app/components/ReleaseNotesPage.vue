@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { catalogs, languages, repository, type Locale } from '~/i18n'
-import { categories, releaseNotes, releaseNotesPath } from '~/release-notes'
+import { categories, publicReleaseNotes, releaseNotesPath } from '~/release-notes'
 
 const route = useRoute()
+const config = useRuntimeConfig()
+const releaseNotes = publicReleaseNotes(config.public.releasePublications)
 const locale = computed<Locale>(() =>
   route.params.lang === 'ru' ? 'ru' : route.params.lang === 'es' ? 'es' : 'en',
 )
@@ -24,7 +26,7 @@ const notes = computed(() =>
       .filter((section) => section.items.length > 0),
   })),
 )
-const base = useRuntimeConfig().app.baseURL
+const base = config.app.baseURL
 const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
 const canonical = computed(
   () => new URL(releaseNotesPath(locale.value, version.value).slice(1), siteURL).href,

@@ -4,6 +4,7 @@ import { isReleaseVersion } from '~/release-notes'
 
 const props = defineProps<{ error: { url?: string; statusCode?: number } }>()
 
+const { releasePublications } = useRuntimeConfig().public
 const currentPath = ref<string>()
 onMounted(() => {
   currentPath.value = window.location.pathname
@@ -23,7 +24,7 @@ const legacyTarget = computed(() => {
     releases: 'release-notes',
   }
   const rest = match[3]
-  if (rest && (match[2] !== 'releases' || !isReleaseVersion(rest))) return null
+  if (rest && (match[2] !== 'releases' || !isReleaseVersion(rest, releasePublications))) return null
   return docsPath(locale, slugs[match[2]], rest ? `${rest}/` : '')
 })
 

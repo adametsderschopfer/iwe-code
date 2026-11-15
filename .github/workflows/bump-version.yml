@@ -91,6 +91,10 @@ jobs:
             git checkout "$existing"
             version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
           else
+            if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
+              echo "Main advanced after dispatch. Start a new release from the current main commit." >&2
+              exit 1
+            fi
             python3 .github/scripts/release-notes.py --check
             version=$(python3 .github/scripts/bump-version.py "${BUMP##* }")
           fi

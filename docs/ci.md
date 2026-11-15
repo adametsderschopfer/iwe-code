@@ -8,8 +8,8 @@ GitHub Actions uses three workflows with English names.
 - **Release New Version** manually prepares a version, creates its tag, builds packages, and
   publishes the release. Its final jobs build and publish the website from the same prepared commit.
 
-- **Build Website** manually generates the website from main and uploads a downloadable artifact. It
-  does not publish GitHub Pages or create an application version.
+- **Build and Publish Website** manually generates the website from main, uploads an artifact, and
+  publishes GitHub Pages.
 
 Checks cover macOS, Windows, and Linux. Unit tests and release builds cover six architecture
 targets. Integration discovery runs once per operating system. Formatting and dependency security
@@ -80,7 +80,7 @@ systems can require confirmation when opening downloaded packages.
 4. Run the workflow. It updates Cargo.toml, Cargo.lock, and the release-note ledger.
 5. The workflow pushes the version commit and creates its tag.
 6. Build jobs start immediately after tag creation in the same workflow.
-7. Verify publication before recording published website metadata.
+7. Verify the GitHub release and the published website.
 
 For version 1.0.7, patch produces 1.0.8, minor produces 1.1.0, and major produces 2.0.0. Empty
 unreleased notes stop preparation. Existing version records also stop preparation. Version workflows
@@ -96,9 +96,9 @@ checks out the prepared commit explicitly because the initiating event reference
 token pushes the version commit without triggering another Code Checks run.
 
 The first version workflow job waits for the Code Checks run of the dispatched commit. Preparation
-stops when those checks fail, get cancelled, or stay absent for 45 minutes. This keeps a failing
-platform compile from burning a release tag, because the code of the prepared commit matches the
-checked commit.
+stops when those checks fail, get cancelled, or stay absent for 45 minutes. New version preparation
+also stops if main advances before checkout. Release packaging runs after tag creation. A packaging
+failure can leave a tag without a published GitHub release.
 
 Retry failed release jobs after transient errors. A full rerun reuses its original version commit.
 The run identifier in the commit message links reruns to that commit. If code needs correction, push

@@ -40,10 +40,10 @@ advisory data. Investigate vulnerability failures. Do not ignore advisories mere
 
 CI runs formatting, lint, type checks, dependency security, and release-script checks before tests.
 Run automated checks only on main pushes. Keep the macOS, Windows, and Linux matrix. Keep unit and
-integration jobs separate. Report absent integration targets explicitly. Manual version preparation
-creates its commit and tag, then starts builds and publication. The release workflow does not call
-or wait for Code Checks. Keep all six release targets. Require every package before publication. Use
-needs dependencies. Do not bypass failures with always() or continue-on-error. See
+integration jobs separate. Report absent integration targets explicitly. The release workflow waits
+for Code Checks on the dispatched commit. It then prepares the version and creates its tag before
+building and publishing packages. Keep all six release targets. Require every package before
+publication. Use needs dependencies. Do not bypass failures with always() or continue-on-error. See
 [the CI guide](../ci.md) for workflow triggers and recovery.
 
 Run static checks after all edits. Fix failures before committing or pushing. Use `make fmt` to

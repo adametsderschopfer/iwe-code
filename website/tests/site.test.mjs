@@ -182,41 +182,62 @@ const releaseNotes = JSON.parse(
   readFileSync(join(websiteDirectory, 'app', 'release-notes', 'releases.json'), 'utf8'),
 ).filter((release) => release.items.length > 0)
 
+// These tags came from failed or cancelled release runs.
+const unpublishedVersions = ['1.1.0', '1.2.0', '1.3.0']
+
 for (const { language, route } of locales) {
-  test(`${language} release history links every authored version`, () => {
-    const html = readPage(`${route}docs/release-notes/`)
+  const releaseIndex = `${route}docs/release-notes/`
+  test(`${language} release history links only public notes`, () => {
+    const html = readPage(releaseIndex)
     const catalog = readCatalog(language)
     assert.equal(elements(html, 'html')[0]?.lang, language)
     assert.equal(elements(html, 'h1').length, 1)
     assert.ok(decode(html).includes(catalog.releaseNotes.title))
     const links = elements(html, 'a')
-    for (const release of releaseNotes) {
-      const path = `${baseURL}${route}docs/release-notes/${release.version}/`
-      assert.ok(
-        links.some((link) => link.href === path),
-        `Missing release link: ${path}`,
-      )
+    const paths = links.map((link) => link.href)
+    for (const version of ['1.0.8', '1.4.0']) {
+      assert.ok(paths.includes(`${baseURL}${releaseIndex}${version}/`))
+    }
+    for (const version of unpublishedVersions) {
+      assert.ok(!paths.includes(`${baseURL}${releaseIndex}${version}/`))
+      assert.ok(!existsSync(join(outputDirectory, releaseIndex, version, 'index.html')))
+    }
+    for (const release of releaseNotes.filter((record) => record.status !== 'prepared')) {
+      const path = `${baseURL}${releaseIndex}${release.version}/`
+      assert.ok(paths.includes(path), `Missing release link: ${path}`)
       staticTarget(new URL(path, localOrigin))
     }
   })
 
   test(`${language} version pages preserve translations, publication status, and navigation`, () => {
     const catalog = readCatalog(language)
-    for (const release of releaseNotes) {
-      const path = `${route}docs/release-notes/${release.version}/`
+    const versions = elements(readPage(releaseIndex), 'article')
+      .map((entry) => entry['data-version'])
+      .filter(Boolean)
+    for (const version of versions) {
+      const release = releaseNotes.find((record) => record.version === version)
+      assert.ok(release, `Missing authored notes: ${version}`)
+      const path = `${releaseIndex}${version}/`
       const html = readPage(path)
+      const publishedFromPrepared = release.status === 'prepared' && version !== 'unreleased'
+      const status = publishedFromPrepared ? 'released' : release.status
       const content = decode(html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''))
       assert.equal(elements(html, 'html')[0]?.lang, language)
       assert.equal(elements(html, 'h1').length, 1)
-      assert.ok(content.includes(catalog.releaseNotes.status[release.status]))
+      assert.ok(content.includes(catalog.releaseNotes.status[status]))
       for (const item of release.items) {
         assert.ok(content.includes(item.text[language]), `Missing ${language} note: ${item.id}`)
       }
       const dates = elements(html, 'time')
-      assert.deepEqual(
-        dates.map((date) => date.datetime),
-        release.publishedAt ? [release.publishedAt] : [],
-      )
+      if (publishedFromPrepared) {
+        assert.equal(dates.length, 1)
+        assert.ok(Number.isFinite(Date.parse(dates[0].datetime)))
+      } else {
+        assert.deepEqual(
+          dates.map((date) => date.datetime),
+          release.publishedAt ? [release.publishedAt] : [],
+        )
+      }
       const metadata = elements(html, 'link')
       assert.equal(
         metadata.find((link) => link.rel === 'canonical')?.href,
@@ -238,7 +259,7 @@ for (const { language, route } of locales) {
       const tags = links.filter((link) => link.href?.includes('/releases/tag/'))
       assert.deepEqual(
         tags.map((link) => decodeURIComponent(link.href.split('/releases/tag/')[1])),
-        release.tags,
+        publishedFromPrepared ? [`v${version}`] : release.tags,
       )
       for (const link of links) {
         const url = new URL(link.href, new URL(`${baseURL}${path}`, localOrigin))

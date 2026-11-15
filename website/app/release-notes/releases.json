@@ -1926,6 +1926,27 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "verify-website-release-publication",
+        "category": "fixed",
+        "text": {
+          "en": "The website hides prepared versions until GitHub publishes their releases.",
+          "ru": "Сайт скрывает подготовленные версии до публикации релизов на GitHub.",
+          "es": "El sitio oculta las versiones preparadas hasta que GitHub publica sus lanzamientos."
+        },
+        "sources": ["website/nuxt.config.ts", "website/app/release-notes/index.ts"]
+      },
+      {
+        "id": "prepare-only-checked-release-commits",
+        "category": "maintenance",
+        "text": {
+          "en": "Release preparation stops if the main branch advances after the release request.",
+          "ru": "Подготовка релиза останавливается, если ветка main обновилась после запроса на выпуск.",
+          "es": "La preparación del lanzamiento se detiene si la rama main avanza después de la solicitud."
+        },
+        "sources": [".github/workflows/bump-version.yml"]
+      }
+    ]
   }
 ]
