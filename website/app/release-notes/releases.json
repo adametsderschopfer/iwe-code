@@ -1964,6 +1964,16 @@
           "es": "Las solicitudes de archivos y enlaces llegan a la ventana tras iniciar los gráficos."
         },
         "sources": ["src/main.rs"]
+      },
+      {
+        "id": "arrange-platform-download-cards",
+        "category": "changed",
+        "text": {
+          "en": "The download page gives Linux a full row and keeps both Mac packages available.",
+          "ru": "Страница загрузки выделяет Linux целую строку и сохраняет оба пакета для Mac.",
+          "es": "La página de descargas dedica una fila a Linux y mantiene ambos paquetes para Mac."
+        },
+        "sources": ["website/app/components/DownloadSection.vue"]
       }
     ]
   }

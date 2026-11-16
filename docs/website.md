@@ -91,12 +91,15 @@ The download cards use Apple, Windows, and Tux SVG paths from
 paths locally and uses the card text color. The MIT license remains in
 `website/licenses/bootstrap-icons.txt`.
 
+The macOS and Windows cards share the top row and have equal heights. Linux spans the full row below
+them. On narrow screens, each card fits its content and the cards stack vertically.
+
 The download section detects desktop systems in the browser after the page loads. It moves the
-matching system first and highlights its card. Explicit browser architecture hints select a matching
-package. The website does not infer a Mac processor from the browser's Intel identification. Without
-reliable architecture hints, macOS prioritizes Apple Silicon and keeps Intel available. Mobile
-devices keep all desktop downloads available without a detected-system badge. ARM devices without a
-matching package receive a compatibility note. Detection never starts a download.
+Windows card first on Windows and highlights the detected system. Explicit browser architecture
+hints select a matching package. The website does not infer a Mac processor from the browser's Intel
+identification. Without reliable architecture hints, macOS prioritizes Apple Silicon and keeps Intel
+available. Mobile devices keep all desktop downloads available without a detected-system badge. ARM
+devices without a matching package receive a compatibility note. Detection never starts a download.
 
 Selected sections appear once when they enter the viewport. The reveal uses CSS transitions and
 `IntersectionObserver`. The website honors reduced-motion preferences and reveals keyboard-focused

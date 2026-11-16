@@ -50,10 +50,7 @@ const platforms = [
 
 const detected = shallowRef<DetectedPlatform>({ system: undefined, architecture: undefined })
 const orderedPlatforms = computed(() =>
-  [...platforms].sort(
-    (left, right) =>
-      Number(right.id === detected.value.system) - Number(left.id === detected.value.system),
-  ),
+  detected.value.system === 'windows' ? [platforms[1], platforms[0], platforms[2]] : platforms,
 )
 // The download page lists only the packages the latest release carries.
 function availableFiles(platform: (typeof platforms)[number]) {
@@ -144,13 +141,7 @@ onMounted(async () => {
           /></a>
         </div>
         <p
-          v-if="platform.id === 'macos' && (!detected.architecture || !detected.system)"
-          class="platform-hint"
-        >
-          {{ messages.download.siliconHint }}
-        </p>
-        <p
-          v-else-if="
+          v-if="
             platform.id === detected.system &&
             detected.architecture === 'arm64' &&
             platform.id !== 'macos'
@@ -199,7 +190,7 @@ onMounted(async () => {
 }
 .platform-list {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   max-width: 1000px;
   margin: 60px auto 28px;
@@ -209,6 +200,9 @@ onMounted(async () => {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
+}
+.platform[data-platform='linux'] {
+  grid-column: 1 / -1;
 }
 .platform-detected {
   background: #242a1e;

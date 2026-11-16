@@ -1,5 +1,54 @@
 import { expect, test } from '@playwright/test'
 
+test('download cards align on desktop and fit their content on mobile', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgentData', {
+      value: { platform: 'Linux', mobile: false },
+    })
+  })
+  await page.goto('./')
+
+  const cards = page.locator('#download .platform')
+  await expect(cards).toHaveCount(3)
+  await expect(cards.last()).toHaveClass(/platform-detected/)
+
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    const layout = await cards.evaluateAll((elements) =>
+      elements.map((card) => {
+        const style = getComputedStyle(card)
+        const bounds = card.getBoundingClientRect()
+        const content =
+          card.querySelector('.platform-hint') ?? card.querySelector('.platform-downloads')!
+        return {
+          system: card.getAttribute('data-platform'),
+          top: bounds.top,
+          bottom: bounds.bottom,
+          left: bounds.left,
+          right: bounds.right,
+          bottomGap: bounds.bottom - content.getBoundingClientRect().bottom,
+          bottomInset: parseFloat(style.paddingBottom) + parseFloat(style.borderBottomWidth),
+        }
+      }),
+    )
+
+    const [first, second, linux] = layout
+    expect(linux!.system).toBe('linux')
+    expect(linux!.top).toBeGreaterThan(Math.max(first!.bottom, second!.bottom))
+    expect(linux!.left).toBeCloseTo(first!.left)
+    expect(linux!.right).toBeCloseTo(second!.right)
+    if (width === 1280) {
+      expect(first!.top).toBeCloseTo(second!.top)
+      expect(first!.bottom).toBeCloseTo(second!.bottom)
+      expect(linux!.bottomGap).toBeCloseTo(linux!.bottomInset)
+    } else {
+      expect(first!.bottom).toBeLessThan(second!.top)
+      for (const card of layout) expect(card.bottomGap).toBeCloseTo(card.bottomInset)
+    }
+  }
+})
+
 for (const language of ['', 'ru/', 'es/']) {
   for (const width of [390, 1280]) {
     test(`screenshot gallery stays complete and usable: ${language || 'en'} at ${width}px`, async ({
