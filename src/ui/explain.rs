@@ -25,10 +25,10 @@ pub(crate) fn submenu<'a, M: Clone + 'a>(
     }) {
         content = content.push(image(handle.clone()).width(16).height(16));
     }
-    content = content.push(text(i18n.text(Key::Explain)).size(13));
+    content = content.push(text(i18n.text(Key::Explain)).size(context_menu::TEXT_SIZE));
     button(content)
         .width(Length::Fill)
-        .padding([5, 8])
+        .padding(context_menu::ROW_PADDING)
         .style(theme::action(false))
         .on_press(choose(target, Agent::Codex))
         .into()

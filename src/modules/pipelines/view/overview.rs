@@ -291,7 +291,7 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
                 container(
                     button(text(app.i18n.text(Key::ViewPipelineJobs)).size(12))
                         .on_press(Message::Jobs(JobsEvent::Select(popup.pipeline)))
-                        .padding([6, 10])
+                        .padding(context_menu::ROW_PADDING)
                         .style(theme::action(false)),
                 )
                 .id("pipeline-popup-details"),

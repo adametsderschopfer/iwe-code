@@ -1880,6 +1880,16 @@
     "source": null,
     "items": [
       {
+        "id": "consistent-context-menu-styling",
+        "category": "changed",
+        "text": {
+          "en": "Context menus share compact rows, panel padding, and separators.",
+          "ru": "Контекстные меню используют компактные строки, общие отступы и разделители.",
+          "es": "Los menús contextuales comparten filas compactas, márgenes y separadores."
+        },
+        "sources": ["src/ui/context_menu/mod.rs"]
+      },
+      {
         "id": "verify-opaque-window-settings",
         "category": "maintenance",
         "text": {

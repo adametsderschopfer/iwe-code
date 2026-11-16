@@ -103,8 +103,9 @@ Click a space heading or its arrow to collapse or expand its projects. Spaces co
 independently. Collapsing a space keeps its selected project open. The edit button remains
 available.
 
-The project menu can open its folder, copy its path, or move the project to another space. Moving a
-project preserves its files and pinned status.
+Context menus use compact rows and the same panel styling across the workspace. The project menu can
+open its folder, copy its path, or move the project to another space. Moving a project preserves its
+files and pinned status.
 
 Open the space menu to add a local folder, clone a repository, or collapse its project list. The
 menu also provides **Edit space** and **Delete space**. The edit form also places **Delete space**

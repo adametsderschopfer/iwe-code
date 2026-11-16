@@ -35,7 +35,7 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
                         container(
                             button(ellipsis::text(app.i18n.text(action.label()), 14.))
                                 .width(Length::Fill)
-                                .padding([10, 12])
+                                .padding(context_menu::ROW_PADDING)
                                 .style(theme::action(false))
                                 .on_press_maybe(app.bulk_allowed(action).then_some(Message::Git(
                                     GitMessage::Bulk(Event::Choose(action)),

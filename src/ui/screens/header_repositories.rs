@@ -133,7 +133,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                             .align_y(Alignment::Center),
                         )
                         .on_press(Message::RevealRepositoryBranches(repo.root.clone()))
-                        .padding([6, 10])
+                        .padding(context_menu::ROW_PADDING)
                         .width(Length::Fill)
                         .height(theme::HEADER_REPOSITORY_ROW_HEIGHT)
                         .style(theme::action(repos.active_root == repo.root)),

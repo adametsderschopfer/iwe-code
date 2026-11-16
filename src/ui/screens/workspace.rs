@@ -915,23 +915,17 @@ fn sidebar_menu_item(
     message: Option<Message>,
     destructive: bool,
 ) -> iced::widget::Button<'static, Message> {
-    let mut label = text(label).size(13).wrapping(text::Wrapping::None);
+    let mut label = text(label)
+        .size(context_menu::TEXT_SIZE)
+        .wrapping(text::Wrapping::None);
     if destructive {
         label = label.style(theme::GIT_REMOVED.text());
     }
     button(label)
-        .padding([5, 8])
+        .padding(context_menu::ROW_PADDING)
         .width(Length::Fill)
         .style(theme::action(false))
         .on_press_maybe(message)
-}
-
-fn sidebar_menu_separator() -> Element<'static, Message> {
-    container(space())
-        .height(1)
-        .width(Length::Fill)
-        .style(theme::separator)
-        .into()
 }
 
 fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
@@ -1017,7 +1011,7 @@ fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Mes
                     crate::domain::explain::Target::Project(project.name.clone(), path.clone()),
                     crate::ui::explain::choose,
                 ))
-                .push(sidebar_menu_separator())
+                .push(context_menu::separator())
                 .push(
                     container(sidebar_menu_item(
                         app.i18n.text(Key::RemoveProjectFromSpace),
@@ -1088,7 +1082,7 @@ fn space_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Messa
                     crate::domain::explain::Target::Space(index),
                     crate::ui::explain::choose,
                 ))
-                .push(sidebar_menu_separator())
+                .push(context_menu::separator())
                 .push(
                     container(sidebar_menu_item(
                         app.i18n.text(Key::DeleteSpace),

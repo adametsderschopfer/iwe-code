@@ -56,9 +56,9 @@ fn key(action: Action) -> Key {
 }
 
 fn menu_item<'a>(label: String, message: Message) -> Element<'a, Message> {
-    button(ellipsis::text(label, 14.))
+    button(ellipsis::text(label, context_menu::TEXT_SIZE))
         .width(Length::Fill)
-        .padding([8, 12])
+        .padding(context_menu::ROW_PADDING)
         .style(theme::action(false))
         .on_press(message)
         .into()
@@ -100,14 +100,6 @@ pub(super) fn branch_items<'a>(
             )
         })
         .collect()
-}
-
-fn menu_separator<'a>() -> Element<'a, Message> {
-    container(iced::widget::space())
-        .height(1)
-        .width(Length::Fill)
-        .style(theme::separator)
-        .into()
 }
 
 pub(super) fn menu<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<'a, Message> {
@@ -193,7 +185,7 @@ pub(super) fn menu<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<'a,
                     continue;
                 }
                 if index > 0 {
-                    content = content.push(menu_separator());
+                    content = content.push(context_menu::separator());
                 }
                 for action in group {
                     content = content.push(
@@ -213,7 +205,7 @@ pub(super) fn menu<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<'a,
                 })
                 .peekable();
             if branches.peek().is_some() {
-                content = content.push(menu_separator());
+                content = content.push(context_menu::separator());
             }
             for branch in branches {
                 let key = BranchKey {
@@ -226,7 +218,7 @@ pub(super) fn menu<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<'a,
                 ));
             }
             content = content
-                .push(menu_separator())
+                .push(context_menu::separator())
                 .push(crate::ui::explain::submenu(
                     app.i18n,
                     crate::domain::explain::Target::Commit(target.clone()),

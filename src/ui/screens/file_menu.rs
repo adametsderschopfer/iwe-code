@@ -10,6 +10,7 @@ use crate::{
     },
     i18n::Key,
     ui::{
+        context_menu,
         icons::{Icon, icon},
         theme,
     },
@@ -40,10 +41,10 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
             + if protected { 0 } else { 6 }
             + if deployment { 2 } else { 0 }
             + usize::from(!is_root);
-        let height = (items as f32 * 34. + 16.).min(available.height);
+        let height = (items as f32 * 27. + 12.).min(available.height);
         let action = |key, event| {
-            button(text(app.i18n.text(key)).size(13))
-                .padding([7, 12])
+            button(text(app.i18n.text(key)).size(context_menu::TEXT_SIZE))
+                .padding(context_menu::ROW_PADDING)
                 .width(Length::Fill)
                 .style(theme::action(false))
                 .on_press_maybe(event)
@@ -53,7 +54,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
             mouse_area(
                 button(
                     row![
-                        text(app.i18n.text(key)).size(13),
+                        text(app.i18n.text(key)).size(context_menu::TEXT_SIZE),
                         space().width(Length::Fill),
                         icon(Icon::Right, theme::MUTED),
                     ]
@@ -61,7 +62,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                     .align_y(Alignment::Center),
                 )
                 .on_press(event)
-                .padding([7, 12])
+                .padding(context_menu::ROW_PADDING)
                 .width(Length::Fill)
                 .style(theme::action(false)),
             )
@@ -74,7 +75,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         let main_path = mouse_area(
             button(
                 row![
-                    text(app.i18n.text(Key::CopyPathMenu)).size(14),
+                    text(app.i18n.text(Key::CopyPathMenu)).size(context_menu::TEXT_SIZE),
                     space().width(Length::Fill),
                     icon(Icon::Right, theme::MUTED),
                 ]
@@ -82,14 +83,14 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 .align_y(Alignment::Center),
             )
             .on_press(Message::Files(Event::CopyPath(PathFormat::Absolute)))
-            .padding([7, 12])
+            .padding(context_menu::ROW_PADDING)
             .width(Length::Fill)
             .style(theme::action(false)),
         )
         .on_enter(Message::Files(Event::CopyOptions));
         let deployment_action = |key, compare| {
-            button(text(app.i18n.text(key)).size(13))
-                .padding([7, 12])
+            button(text(app.i18n.text(key)).size(context_menu::TEXT_SIZE))
+                .padding(context_menu::ROW_PADDING)
                 .width(Length::Fill)
                 .style(theme::action(false))
                 .on_press(crate::app::modules::deployment_message(
@@ -101,17 +102,11 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 ))
         };
         let create = Message::Files(Event::CreateOptions);
-        let separator = || {
-            container(space())
-                .height(1)
-                .width(Length::Fill)
-                .style(theme::separator)
-        };
         let mut menu_items = column![arrow(Key::FileNew, create.clone()).on_enter(create)];
         if !protected {
             menu_items = menu_items
                 .push(action(Key::FileDuplicate, command(Command::Duplicate)))
-                .push(separator())
+                .push(context_menu::separator())
                 .push(action(Key::FileCopy, command(Command::Copy)))
                 .push(action(Key::FileCut, command(Command::Cut)));
         }
@@ -121,13 +116,13 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         ));
         if !protected {
             main = main
-                .push(separator())
+                .push(context_menu::separator())
                 .push(action(Key::FileRename, command(Command::Rename)))
                 .push(action(Key::FileMove, command(Command::Move)))
                 .push(action(Key::FileTrash, command(Command::Trash)));
         }
         main = main
-            .push(separator())
+            .push(context_menu::separator())
             .push(main_path)
             .push(action(Key::FileReveal, command(Command::Reveal)));
         if !is_root {
@@ -139,7 +134,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         }
         if deployment {
             main = main
-                .push(separator())
+                .push(context_menu::separator())
                 .push(deployment_action(Key::DeploymentCompare, true))
                 .push(deployment_action(Key::DeploymentUpload, false));
         }
@@ -156,9 +151,9 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
             let offset = if menu.create_open {
                 0.
             } else if protected {
-                61.
+                53.
             } else {
-                243.
+                211.
             };
             let position = Point::new(
                 x,
@@ -167,11 +162,11 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
             let option = |key, format| {
                 button(
                     text(app.i18n.text(key))
-                        .size(13)
+                        .size(context_menu::TEXT_SIZE)
                         .wrapping(text::Wrapping::None),
                 )
                 .on_press(Message::Files(Event::CopyPath(format)))
-                .padding([7, 12])
+                .padding(context_menu::ROW_PADDING)
                 .width(Length::Fill)
                 .style(theme::action(false))
             };
@@ -206,20 +201,15 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
 }
 
 fn panel<'a>(content: Element<'a, Message>, point: Point, width: f32) -> Element<'a, Message> {
-    container(opaque(
-        container(content)
-            .padding(8)
-            .width(width)
-            .style(theme::tooltip),
-    ))
-    .padding(iced::Padding {
-        left: point.x,
-        top: point.y,
-        ..iced::Padding::ZERO
-    })
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .into()
+    container(context_menu::surface(content, width))
+        .padding(iced::Padding {
+            left: point.x,
+            top: point.y,
+            ..iced::Padding::ZERO
+        })
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
 }
 
 pub(super) fn dialog<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {

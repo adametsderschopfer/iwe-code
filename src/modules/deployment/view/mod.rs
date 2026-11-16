@@ -338,8 +338,8 @@ pub(crate) fn overlay<'a, Message: Clone + 'a>(
                 .active_profile(profiles, project)
                 .is_some_and(|profile| profile.to_local(&entry.path).is_ok());
             let command = |key, event, enabled: bool| {
-                button(text(i18n.text(key)).size(13))
-                    .padding([8, 10])
+                button(text(i18n.text(key)).size(context_menu::TEXT_SIZE))
+                    .padding(context_menu::ROW_PADDING)
                     .width(Length::Fill)
                     .style(theme::action(false))
                     .on_press_maybe(enabled.then_some(event))
@@ -420,7 +420,7 @@ pub(crate) fn target_popup<'a, Message: Clone + 'a>(
                     )
                     .width(Length::Fill)
                     .height(36)
-                    .padding([8, 10])
+                    .padding(context_menu::ROW_PADDING)
                     .style(move |theme, status| {
                         if index == state.target_selection {
                             style::primary(theme, status)

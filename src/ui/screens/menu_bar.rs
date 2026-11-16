@@ -8,7 +8,7 @@ use crate::{
 };
 use iced::{
     Element, Length, Size,
-    widget::{Column, Row, button, column, container, space, text},
+    widget::{Column, Row, button, column, container, text},
 };
 
 pub(super) fn header_prefix(app: &App) -> Element<'_, Message> {
@@ -159,20 +159,20 @@ fn item<'a>(
     message: Option<Message>,
 ) -> Element<'a, Message> {
     container(
-        button(text(label).size(14).wrapping(text::Wrapping::None))
-            .on_press_maybe(message)
-            .padding([10, 12])
-            .width(Length::Fill)
-            .style(theme::action(false)),
+        button(
+            text(label)
+                .size(context_menu::TEXT_SIZE)
+                .wrapping(text::Wrapping::None),
+        )
+        .on_press_maybe(message)
+        .padding(context_menu::ROW_PADDING)
+        .width(Length::Fill)
+        .style(theme::action(false)),
     )
     .id(widget_id)
     .into()
 }
 
 fn separator() -> Element<'static, Message> {
-    container(space())
-        .height(1)
-        .width(Length::Fill)
-        .style(theme::separator)
-        .into()
+    context_menu::separator()
 }

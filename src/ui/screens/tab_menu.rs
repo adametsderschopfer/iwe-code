@@ -63,7 +63,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                             .spacing(8)
                             .align_y(Alignment::Center),
                         )
-                        .padding([8, 10])
+                        .padding(context_menu::ROW_PADDING)
                         .width(Length::Fill)
                         .height(theme::TAB_MENU_ROW_HEIGHT)
                         .style(theme::action(preview.id == app.preview().id))

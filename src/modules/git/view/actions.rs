@@ -38,22 +38,25 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
                 ] {
                     content = content.push(
                         container(
-                            button(ellipsis::text(label(app, action, &branch.name), 14.))
-                                .padding([10, 12])
-                                .width(Length::Fill)
-                                .style(theme::action(false))
-                                .on_press_maybe(
-                                    (git_actions::allowed(action, branch)
-                                        && !app.state.git_actions.pending
-                                        && app
-                                            .state
-                                            .git_actions
-                                            .history
-                                            .menu_context
-                                            .as_ref()
-                                            .is_some_and(|context| context.unfinished.is_none()))
-                                    .then(|| Message::Git(GitMessage::Choose(action, key.clone()))),
-                                ),
+                            button(ellipsis::text(
+                                label(app, action, &branch.name),
+                                context_menu::TEXT_SIZE,
+                            ))
+                            .padding(context_menu::ROW_PADDING)
+                            .width(Length::Fill)
+                            .style(theme::action(false))
+                            .on_press_maybe(
+                                (git_actions::allowed(action, branch)
+                                    && !app.state.git_actions.pending
+                                    && app
+                                        .state
+                                        .git_actions
+                                        .history
+                                        .menu_context
+                                        .as_ref()
+                                        .is_some_and(|context| context.unfinished.is_none()))
+                                .then(|| Message::Git(GitMessage::Choose(action, key.clone()))),
+                            ),
                         )
                         .id(format!("git-action-{action:?}")),
                     );

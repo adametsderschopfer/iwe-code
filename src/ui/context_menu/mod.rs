@@ -7,7 +7,7 @@ use iced::{
         widget::{Operation, Tree},
     },
     keyboard,
-    widget::{container, mouse_area, opaque, responsive, stack},
+    widget::{container, mouse_area, opaque, responsive, space, stack},
 };
 
 pub(crate) fn trigger<'a, Message: 'a>(
@@ -239,6 +239,30 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
     }
 }
 
+pub(crate) const ROW_PADDING: [u16; 2] = [5, 8];
+pub(crate) const TEXT_SIZE: f32 = 13.;
+pub(crate) const SURFACE_PADDING: u16 = 6;
+
+pub(crate) fn surface<'a, Message: 'a>(
+    content: Element<'a, Message>,
+    width: f32,
+) -> Element<'a, Message> {
+    opaque(
+        container(content)
+            .padding(SURFACE_PADDING)
+            .width(width)
+            .style(super::theme::tooltip),
+    )
+}
+
+pub(crate) fn separator<'a, Message: 'a>() -> Element<'a, Message> {
+    container(space())
+        .height(1)
+        .width(Length::Fill)
+        .style(super::theme::separator)
+        .into()
+}
+
 pub(crate) fn overlay<'a, Message: Clone + 'a>(
     base: Element<'a, Message>,
     position: Point,
@@ -247,22 +271,17 @@ pub(crate) fn overlay<'a, Message: Clone + 'a>(
     dismiss: Message,
 ) -> Element<'a, Message> {
     let popup = responsive(move |available| {
-        container(opaque(
-            container(content())
-                .padding(8)
-                .width(size.width)
-                .style(super::theme::tooltip),
-        ))
-        .padding(iced::Padding {
-            left: position.x.clamp(0., (available.width - size.width).max(0.)),
-            top: position
-                .y
-                .clamp(0., (available.height - size.height).max(0.)),
-            ..iced::Padding::ZERO
-        })
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .into()
+        container(surface(content(), size.width))
+            .padding(iced::Padding {
+                left: position.x.clamp(0., (available.width - size.width).max(0.)),
+                top: position
+                    .y
+                    .clamp(0., (available.height - size.height).max(0.)),
+                ..iced::Padding::ZERO
+            })
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     });
     let content = stack![
         base,
