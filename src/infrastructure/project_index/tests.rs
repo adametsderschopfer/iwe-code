@@ -302,3 +302,29 @@ async fn memory_seed_is_persisted_even_when_disk_entries_are_unchanged() {
         .unwrap()
         .unwrap();
 }
+
+#[test]
+fn an_open_index_session_does_not_block_runtime_shutdown() {
+    let temp = tempfile::tempdir().unwrap();
+    let (handle, mut events, mut worker) = session(temp.path().into(), Tree::new());
+    worker.storage = None;
+    let (finished, completion) = mpsc::channel();
+    let runtime_thread = std::thread::spawn(move || {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        runtime.block_on(async {
+            tokio::spawn(run(worker));
+            assert!(
+                tokio::time::timeout(Duration::from_secs(2), events.recv())
+                    .await
+                    .unwrap()
+                    .is_some()
+            );
+        });
+        drop(runtime);
+        finished.send(()).unwrap();
+    });
+    let result = completion.recv_timeout(Duration::from_secs(3));
+    drop(handle);
+    runtime_thread.join().unwrap();
+    result.expect("runtime shutdown must not wait for the open index session");
+}

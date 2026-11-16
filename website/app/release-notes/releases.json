@@ -1880,6 +1880,16 @@
     "source": null,
     "items": [
       {
+        "id": "cancel-index-on-quit",
+        "category": "fixed",
+        "text": {
+          "en": "IWE stops the background file index before quitting.",
+          "ru": "IWE останавливает фоновую индексацию файлов перед выходом.",
+          "es": "IWE detiene la indexación de archivos en segundo plano antes de salir."
+        },
+        "sources": ["src/app/mod.rs"]
+      },
+      {
         "id": "consistent-context-menu-styling",
         "category": "changed",
         "text": {

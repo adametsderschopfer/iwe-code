@@ -217,7 +217,8 @@ The index worker maintains its entry count incrementally and prunes only the ref
 Cache serialization borrows directory entries and streams bounded JSON into an atomic temporary
 file. It avoids a duplicate tree and a complete serialized buffer. Full event queues remain
 cancellable. Closing the receiver cancels further traversal. The session worker uses its own thread
-so it cannot hold the asynchronous runtime's blocking pool open during shutdown.
+so it cannot hold the asynchronous runtime's blocking pool open during shutdown. The app cancels the
+index worker after saves finish and before it exits.
 
 Source previews build rows for the current viewport and a surrounding buffer of stable blocks. Keyed
 rows preserve shaped text when the visible range moves. Unchanged blocks reuse their layout.

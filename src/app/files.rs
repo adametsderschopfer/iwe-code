@@ -26,6 +26,12 @@ pub(crate) struct State {
     pub operations: operations::State,
 }
 
+impl State {
+    pub(super) fn stop_index(&mut self) {
+        self.worker = None;
+    }
+}
+
 pub(crate) struct Menu {
     pub path: PathBuf,
     pub point: iced::Point,

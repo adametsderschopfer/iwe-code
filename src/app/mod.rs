@@ -1454,6 +1454,7 @@ impl App {
 
     /// Release external endpoints and background work, then exit.
     fn finalize_exit(&mut self) -> Task<Message> {
+        self.files.stop_index();
         if let Some(cancel) = self.auth_cancel.take() {
             cancel.cancel();
         }
