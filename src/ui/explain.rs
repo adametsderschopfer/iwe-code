@@ -8,7 +8,7 @@ use crate::{
 };
 use iced::{
     Element, Length, Size,
-    widget::{button, column, row, text},
+    widget::{button, column, image, row, text},
 };
 
 pub(crate) fn submenu<'a, M: Clone + 'a>(
@@ -16,10 +16,20 @@ pub(crate) fn submenu<'a, M: Clone + 'a>(
     target: Target,
     choose: impl Fn(Target, Agent) -> M + 'a,
 ) -> Element<'a, M> {
-    button(text(i18n.text(Key::Explain)).size(14))
+    static LOGO: std::sync::OnceLock<Option<image::Handle>> = std::sync::OnceLock::new();
+    let mut content = row![].spacing(7).align_y(iced::Alignment::Center);
+    if let Some(handle) = LOGO.get_or_init(|| {
+        let (pixels, width, height) =
+            super::branding::decode_rgba(include_bytes!("../../assets/codex-menu.png"))?;
+        Some(image::Handle::from_rgba(width, height, pixels))
+    }) {
+        content = content.push(image(handle.clone()).width(16).height(16));
+    }
+    content = content.push(text(i18n.text(Key::Explain)).size(13));
+    button(content)
         .width(Length::Fill)
-        .padding([10, 12])
-        .style(theme::secondary)
+        .padding([5, 8])
+        .style(theme::action(false))
         .on_press(choose(target, Agent::Codex))
         .into()
 }

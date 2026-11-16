@@ -1880,6 +1880,16 @@
     "source": null,
     "items": [
       {
+        "id": "codex-context-menu-logo",
+        "category": "changed",
+        "text": {
+          "en": "The Codex action uses a standard menu row with the Codex logo.",
+          "ru": "Действие Codex отображается обычным пунктом меню с логотипом Codex.",
+          "es": "La acción de Codex aparece como una opción de menú con el logotipo de Codex."
+        },
+        "sources": ["src/ui/explain.rs"]
+      },
+      {
         "id": "explain-with-codex",
         "category": "added",
         "text": {
