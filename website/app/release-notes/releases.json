@@ -1880,6 +1880,16 @@
     "source": null,
     "items": [
       {
+        "id": "verify-exported-patch-content",
+        "category": "maintenance",
+        "text": {
+          "en": "Patch tests verify the exported commit subject and changes using Git.",
+          "ru": "Тесты экспорта проверяют тему коммита и изменения с помощью Git.",
+          "es": "Las pruebas de exportación verifican el asunto y los cambios con Git."
+        },
+        "sources": ["src/modules/git/transport/history/tests.rs"]
+      },
+      {
         "id": "stabilize-exported-patch-subject",
         "category": "fixed",
         "text": {

@@ -258,7 +258,21 @@ async fn patch_exports_a_commit_without_overwriting_an_existing_file() {
         .await
         .unwrap();
     let patch = std::fs::read_to_string(&path).unwrap();
-    assert!(patch.contains("Subject: [PATCH] Export example"));
+    let mail = std::process::Command::new("git")
+        .args(["mailinfo", "--encoding=UTF-8"])
+        .arg(output.path().join("message.txt"))
+        .arg(output.path().join("parsed.patch"))
+        .stdin(std::fs::File::open(&path).unwrap())
+        .output()
+        .unwrap();
+    assert!(mail.status.success(), "{:?}", mail.stderr);
+    let metadata = String::from_utf8(mail.stdout).unwrap();
+    assert!(
+        metadata
+            .lines()
+            .any(|line| line == "Subject: Export example"),
+        "unexpected patch metadata: {metadata:?}"
+    );
     assert!(patch.contains("+patch contents"));
     assert!(
         execute(&target, Action::Patch, &context, &input)
