@@ -617,9 +617,14 @@ fn commit_table<'a>(
         return space().into();
     };
     let query = app.state.query.to_lowercase();
-    let matching = repo
-        .commits
+    let matching = app
+        .state
+        .git_actions
+        .history
+        .revealed
         .iter()
+        .filter(|entry| repo.commit(&entry.key()).is_none())
+        .chain(repo.commits.iter())
         .filter(|entry| {
             let commit = &entry.commit;
             query.is_empty()
@@ -868,13 +873,23 @@ fn commit_table<'a>(
         .spacing(8)
         .align_y(Alignment::Center)
         .height(30);
-        rows = rows.push(
-            button(item)
-                .on_press(Message::SelectCommit(key))
-                .width(Length::Fill)
-                .padding([0, 6])
-                .style(theme::action(selected)),
-        );
+        let target = key.clone();
+        rows = rows.push(context_menu::trigger(
+            container(
+                button(item)
+                    .on_press(Message::SelectCommit(key))
+                    .width(Length::Fill)
+                    .padding([0, 6])
+                    .style(theme::action(selected)),
+            )
+            .id(format!("git-commit-{}", target.id)),
+            move |point| {
+                history::event(crate::modules::git::actions::history::Event::Menu(
+                    target.clone(),
+                    point,
+                ))
+            },
+        ));
     }
     rows = rows.push(space().height((matching.len() - end) as f32 * 30.));
     let heading = row![
@@ -1037,10 +1052,17 @@ fn changed_files_content<'a>(app: View<'a>, width: f32, height: f32) -> Element<
     .spacing(6);
     if height >= 175.
         && let Some(commit) = app.repository.as_ref().and_then(|repo| {
-            app.state
-                .selected_commit
-                .as_ref()
-                .and_then(|key| repo.commit(key))
+            app.state.selected_commit.as_ref().and_then(|key| {
+                repo.commit(key).or_else(|| {
+                    app.state
+                        .git_actions
+                        .history
+                        .revealed
+                        .as_ref()
+                        .filter(|entry| entry.key() == *key)
+                        .map(|entry| &entry.commit)
+                })
+            })
         })
     {
         content = content
@@ -1104,8 +1126,15 @@ pub(crate) enum Event {
     ToggleBranchFolder(String),
     SelectBranch(crate::domain::repository::project::BranchKey),
     SelectCommit(crate::domain::repository::project::CommitKey),
+    Explain(
+        crate::domain::explain::Target,
+        crate::domain::explain::Agent,
+    ),
     CopyCommitId(String),
-    HistoryScrolled { offset: f32, remaining: f32 },
+    HistoryScrolled {
+        offset: f32,
+        remaining: f32,
+    },
     LoadMoreHistory,
     OpenCommitFile(usize),
     ToggleCommitFolder(String),
@@ -1114,4 +1143,5 @@ pub(crate) enum Event {
 
 mod actions;
 mod bulk;
+mod history;
 pub(crate) use actions::overlay;

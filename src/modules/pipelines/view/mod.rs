@@ -244,15 +244,23 @@ fn pipeline_row<'a>(app: View<'a>, run: &'a Pipeline) -> Element<'a, Message> {
     .align_y(Alignment::Center);
     column![
         row![
-            container(
-                button(summary)
-                    .width(Length::Fill)
-                    .padding([8, 12])
-                    .style(theme::action(false))
-                    .on_press(Message::OpenUrl(run.url.clone()))
-            )
-            .id(format!("pipeline-{}", run.id))
-            .width(Length::FillPortion(5)),
+            crate::ui::context_menu::trigger(
+                container(
+                    button(summary)
+                        .width(Length::Fill)
+                        .padding([8, 12])
+                        .style(theme::action(false))
+                        .on_press(Message::OpenUrl(run.url.clone()))
+                )
+                .id(format!("pipeline-{}", run.id))
+                .width(Length::FillPortion(5)),
+                move |point| {
+                    Message::ExplainMenu(
+                        crate::domain::explain::Target::Pipeline(run.clone()),
+                        point,
+                    )
+                }
+            ),
             container(overview::chain(app, run)).width(Length::FillPortion(4)),
             icon_button(
                 app.i18n,
@@ -311,4 +319,5 @@ pub(crate) enum Event {
     Hide,
     ChooseProvider(Provider),
     OpenUrl(String),
+    ExplainMenu(crate::domain::explain::Target, iced::Point),
 }

@@ -1,5 +1,7 @@
 //! Execute explicit Git operations using validated references and bounded processes.
 
+pub(crate) mod history;
+
 use crate::domain::git::{Error, Operation};
 use crate::infrastructure::process;
 use std::path::{Path, PathBuf};
@@ -17,7 +19,13 @@ const GIT_ENV: &[(&str, &str)] = &[
 #[cfg(not(target_os = "macos"))]
 const GIT_ENV: &[(&str, &str)] = &[];
 
+static WRITE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 async fn run(root: &Path, args: &[&str]) -> Result<String, Error> {
+    String::from_utf8(run_bytes(root, args).await?).map_err(|_| Error::Failed)
+}
+
+async fn run_bytes(root: &Path, args: &[&str]) -> Result<Vec<u8>, Error> {
     let mut options = vec![
         "--no-pager",
         "-c",
@@ -28,21 +36,24 @@ async fn run(root: &Path, args: &[&str]) -> Result<String, Error> {
         "merge.autoStash=false",
         "-c",
         "rebase.autoStash=false",
+        "-c",
+        "rebase.updateRefs=false",
     ];
     // Helpers can open Keychain dialogs even when terminal prompts are disabled.
     #[cfg(target_os = "macos")]
     options.extend(["-c", "credential.helper="]);
     options.extend_from_slice(args);
-    let bytes = process::run_with_env(
+    let mut env = GIT_ENV.to_vec();
+    env.extend([("GIT_EDITOR", "true"), ("GIT_SEQUENCE_EDITOR", "true")]);
+    process::run_with_env(
         "git",
         &options,
         Some(root),
         std::time::Duration::from_secs(180),
-        GIT_ENV,
+        &env,
     )
     .await
-    .map_err(|_| Error::Failed)?;
-    String::from_utf8(bytes).map_err(|_| Error::Failed)
+    .map_err(|_| Error::Failed)
 }
 
 async fn reference(root: &Path, value: &str) -> Result<(), Error> {
@@ -106,6 +117,26 @@ async fn remote_branch(root: &Path, value: &str) -> Result<(String, String), Err
 }
 
 pub(crate) async fn execute(root: PathBuf, operation: Operation) -> Result<(), Error> {
+    execute_checked(root, operation, None).await
+}
+
+pub(crate) async fn execute_checked(
+    root: PathBuf,
+    operation: Operation,
+    expected: Option<(
+        crate::modules::git::actions::history::Target,
+        crate::modules::git::actions::history::Context,
+    )>,
+) -> Result<(), Error> {
+    let _guard = WRITE_LOCK.lock().await;
+    if let Some((target, context)) = expected
+        && history::inspect(&target).await.map_err(|_| Error::Stale)? != context
+    {
+        return Err(Error::Stale);
+    }
+    if !matches!(operation, Operation::Fetch) && history::unfinished(&root).await?.is_some() {
+        return Err(Error::Unfinished);
+    }
     match operation {
         Operation::Fetch => {
             run(&root, &["fetch", "--all"]).await?;

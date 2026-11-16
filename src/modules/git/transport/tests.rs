@@ -1,6 +1,6 @@
 use super::*;
 
-fn command(root: &Path, args: &[&str]) -> String {
+pub(super) fn command(root: &Path, args: &[&str]) -> String {
     let result = std::process::Command::new("git")
         .args(args)
         .current_dir(root)
@@ -14,7 +14,7 @@ fn command(root: &Path, args: &[&str]) -> String {
     String::from_utf8(result.stdout).unwrap().trim().to_owned()
 }
 
-fn repository() -> tempfile::TempDir {
+pub(super) fn repository() -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
     command(dir.path(), &["init", "-b", "main"]);
     command(dir.path(), &["config", "user.name", "Test"]);
@@ -26,7 +26,7 @@ fn repository() -> tempfile::TempDir {
     dir
 }
 
-fn remote(root: &Path) -> tempfile::TempDir {
+pub(super) fn remote(root: &Path) -> tempfile::TempDir {
     let remote = tempfile::tempdir().unwrap();
     command(remote.path(), &["init", "--bare", "-b", "main"]);
     command(

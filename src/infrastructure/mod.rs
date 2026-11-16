@@ -1,6 +1,8 @@
 //! Isolate operating-system access from the interface.
 pub(crate) mod editor;
+pub(crate) mod file_operations;
 
+pub(crate) mod assistant;
 pub(crate) mod auth;
 mod credentials;
 pub(crate) mod deployment;

@@ -27,10 +27,28 @@ repository, the badge preserves the selected history filter. If Git history is a
 branches block shows a blue outline for 700 milliseconds. Clicking again restarts that interval.
 Escape or clicking outside closes the repository list.
 
-Right-click a file or directory in the project tree to open its context menu. Click **Copy** to copy
-its absolute path. Hover **Copy** to choose an absolute path or a path relative to its repository
-root. Nested repositories use their own root. Paths outside detected repositories use the project
-root instead. Copying does not open files or change directory expansion.
+Right-click a file or folder in the project tree to open its context menu. Right-click empty space
+to work in the project root. Use **New** to create a file or folder. A new file opens in the editor.
+A new folder becomes selected.
+
+Use **Copy**, **Cut**, and **Paste** to work with one file or folder inside the current project.
+**Duplicate** suggests an available name beside the original. **Rename** changes the name in place.
+**Move** opens a folder picker and lets you confirm the destination name. If the name is already in
+use, enter a different name or cancel. To transfer an item between volumes within the project, use
+**Copy** and **Paste**.
+
+**Move to Trash** asks for confirmation. Use the system Trash to restore an item. On macOS, drag the
+item out of Trash if Finder offers no **Put Back** action. If the system Trash is unavailable, the
+operation fails. IWE Code protects project roots, Git metadata, and folders containing repositories.
+File operations reject symbolic links and their targets reached through a link.
+
+IWE Code saves affected edits before copying, moving, renaming, or sending an item to Trash. If a
+save fails, the operation stops and the editor keeps your changes. A move updates open local tabs.
+Sending a file to Trash closes its local tabs. Git displays changes in the working copy.
+
+**Show in file manager** opens the location on your computer. **Copy path** copies the absolute
+path. Hover over **Copy path** to choose a relative path. Nested repositories use their own roots.
+Paths outside detected repositories use the project root.
 
 Right-click a project and choose the red **Remove project from space** action to detach it
 immediately. The action appears below **Pin project** or **Unpin project** and also works in the
@@ -85,12 +103,15 @@ Click a space heading or its arrow to collapse or expand its projects. Spaces co
 independently. Collapsing a space keeps its selected project open. The edit button remains
 available.
 
-Right-click a space heading to open **Edit space** and **Delete space**. The edit form also places
-**Delete space** at the left of its bottom action row. Deleting a space removes its saved project
-entries, including pinned entries, while preserving all project files on disk. Other spaces retain
-their project entries. Deleting the active space selects another available project or opens the
-empty workspace. Deleting another space preserves the active project and the remaining spaces'
-collapsed states.
+The project menu can open its folder, copy its path, or move the project to another space. Moving a
+project preserves its files and pinned status.
+
+Open the space menu to add a local folder, clone a repository, or collapse its project list. The
+menu also provides **Edit space** and **Delete space**. The edit form also places **Delete space**
+at the left of its bottom action row. Deleting a space removes its saved project entries, including
+pinned entries, while preserving all project files on disk. Other spaces retain their project
+entries. Deleting the active space selects another available project or opens the empty workspace.
+Deleting another space preserves the active project and the remaining spaces' collapsed states.
 
 Empty space lists align their message with the **Spaces** heading.
 
@@ -703,3 +724,16 @@ bar aligns background operations to the right.
 
 The editor keeps its vertical scrollbar handle visible in large files. Drag the handle or click its
 track to scroll without moving the text cursor.
+
+## Explain with Codex
+
+Right-click a file, commit, branch, project, space, pipeline, or job. Select **Explain with Codex**.
+On macOS, IWE opens a new Codex chat with the project directory and the request in the input field.
+On Windows and Linux, IWE opens Codex and copies the request for you to paste. Submit the request
+when ready.
+
+If IWE cannot open Codex, select its installed application, visit its download page, or retry. IWE
+remembers the application after a successful launch.
+
+The request identifies the object and its directory. Pipeline requests include job statuses that IWE
+has already loaded. Job requests include the pipeline ID, job status, and job URL.

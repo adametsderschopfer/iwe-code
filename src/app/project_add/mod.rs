@@ -95,7 +95,7 @@ impl App {
             self.repository_menu = None;
             self.tabs.menu = None;
             self.files.menu = None;
-            self.modules.git.git_actions.menu = None;
+            self.modules.git.git_actions.close_menu();
             self.modules.git.git_actions.bulk.menu = None;
             self.space_request += 1;
             return Task::none();

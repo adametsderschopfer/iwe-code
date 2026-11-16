@@ -499,6 +499,21 @@ fn branch_context_actions_and_translated_dialogs_fit_and_block_background_clicks
             let _ = app.update(message);
         }
         assert!(app.modules.git.git_actions.menu.is_some());
+        let _ = app.update_git(Message::History(Box::new(
+            crate::modules::git::actions::history::Event::MenuInspected(
+                app.modules.git.git_actions.request,
+                Ok(crate::modules::git::actions::history::Context {
+                    id: "a".repeat(40),
+                    head: "a".repeat(40),
+                    branch: "refs/heads/main".into(),
+                    parents: vec![],
+                    refs: vec!["refs/heads/main".into()],
+                    unfinished: None,
+                    unpublished: false,
+                    message: None,
+                }),
+            ),
+        )));
         let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
         ui.click(Id::new("git-action-Delete")).unwrap();
         assert!(
@@ -625,4 +640,102 @@ fn closed_bulk_dialog_still_finishes_without_restoring_its_window() {
     assert!(!app.modules.git.git_actions.pending);
     assert!(!app.modules.git.git_actions.has_dialog());
     assert_eq!(app.notifications.items.len(), 1);
+}
+
+#[test]
+fn commit_menu_preserves_selection_and_opens_reset_dialog_in_all_languages() {
+    use crate::{
+        domain::repository::{Commit, project::ScopedCommit},
+        modules::git::actions::history::{self, Context, Reset, Target},
+        ui::theme,
+    };
+    use iced::{Event, mouse, widget::Id};
+
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let mut app = app();
+        app.i18n = Rc::new(I18n::new(language));
+        app.workspace
+            .create_space("Test".into(), vec![PathBuf::from("/test")]);
+        app.workspace.preferences.show_git = true;
+        let id = "a".repeat(40);
+        let parent = "b".repeat(40);
+        let commit = ScopedCommit {
+            root: PathBuf::from("/test"),
+            commit: Commit {
+                id: id.clone(),
+                parents: vec![parent.clone()],
+                subject: "Test commit".into(),
+                author: "Test".into(),
+                date: "2026-11-16".into(),
+                timestamp: 0,
+                refs: "HEAD -> main".into(),
+                graph: Default::default(),
+            },
+        };
+        let target = commit.key();
+        app.repository.as_mut().unwrap().commits.push(commit);
+        app.sync_panels();
+        let settings = || iced::Settings {
+            default_font: theme::font(),
+            ..Default::default()
+        };
+        let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+        let bounds = ui
+            .find(Id::from(format!("git-commit-{id}")))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        ui.point_at(iced::Point::new(
+            bounds.x + bounds.width - 2.,
+            bounds.center().y,
+        ));
+        ui.simulate([Event::Mouse(mouse::Event::ButtonPressed(
+            mouse::Button::Right,
+        ))]);
+        for message in ui.into_messages().map(crate::app::modules::host_message) {
+            let _ = app.update(message);
+        }
+        assert!(app.modules.git.selected_commit.is_none());
+        assert_eq!(
+            app.modules.git.git_actions.history.menu.as_ref().unwrap().0,
+            target
+        );
+        let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+        assert!(ui.find(Id::new("git-history-action-Copy")).is_err());
+        drop(ui);
+        let context = Context {
+            id: id.clone(),
+            head: id,
+            branch: "refs/heads/main".into(),
+            parents: vec![parent],
+            refs: vec!["refs/heads/main".into()],
+            unfinished: None,
+            unpublished: false,
+            message: None,
+        };
+        let _ = app.update_git(Message::History(Box::new(history::Event::MenuInspected(
+            app.modules.git.git_actions.request,
+            Ok(context.clone()),
+        ))));
+        let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+        assert!(ui.find(Id::new("git-history-action-Copy")).is_ok());
+        assert!(ui.find(Id::new("git-history-action-WorkingDiff")).is_err());
+        let reset = Id::new("git-history-action-Reset");
+        assert!(ui.find(reset.clone()).unwrap().visible_bounds().is_some());
+        ui.click(reset).unwrap();
+        for message in ui.into_messages().map(crate::app::modules::host_message) {
+            let _ = app.update(message);
+        }
+        assert!(app.modules.git.git_actions.pending);
+        let _ = app.update_git(Message::History(Box::new(history::Event::Inspected(
+            app.modules.git.git_actions.request,
+            Target::Commit(target),
+            history::Action::Reset,
+            Ok(context),
+        ))));
+        let dialog = app.modules.git.git_actions.history.dialog.as_ref().unwrap();
+        assert_eq!(dialog.action, history::Action::Reset);
+        assert_eq!(dialog.input.reset, Reset::Mixed);
+        assert!(app.modules.git.selected_commit.is_none());
+    }
 }

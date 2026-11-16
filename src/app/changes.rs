@@ -90,6 +90,12 @@ impl App {
         }
     }
 
+    pub(super) fn refresh_changes_after_file_operation(&mut self) -> Task<Message> {
+        self.changes.pending = false;
+        self.changes.preview_pending = None;
+        self.refresh_changes()
+    }
+
     pub(super) fn refresh_changes(&mut self) -> Task<Message> {
         if !self.module_enabled(crate::modules::ModuleId::Git) {
             return Task::none();

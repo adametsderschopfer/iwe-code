@@ -46,6 +46,11 @@ enum Source {
         commit: Box<Commit>,
         file: ChangedFile,
     },
+    Revision {
+        root: PathBuf,
+        path: String,
+        id: String,
+    },
 }
 
 impl Source {
@@ -53,7 +58,8 @@ impl Source {
         match self {
             Self::Remote { path, .. } => syntax_for(path),
             Self::Working { path, .. } => syntax_for(path),
-            Self::Commit { file, .. } => syntax_for(std::path::Path::new(&file.path)),
+            Self::Commit { file, .. } => syntax_for(Path::new(&file.path)),
+            Self::Revision { path, .. } => syntax_for(Path::new(path)),
         }
     }
 
@@ -78,6 +84,7 @@ impl Source {
             Self::Commit { root, commit, file } => {
                 repository::commit_text(root, *commit, file).await
             }
+            Self::Revision { root, path, id } => repository::blob(root, id, path).await,
         };
         let text = match text {
             Ok(text) => text,
@@ -113,6 +120,9 @@ impl Source {
                     commit.id
                 };
                 repository::blob_page(root, revision, file.path, cursor).await?
+            }
+            Self::Revision { root, path, id } => {
+                repository::blob_page(root, id, path, cursor).await?
             }
         };
         tokio::task::spawn_blocking(move || Document::plain(text).with_page(Some(page)))
@@ -171,6 +181,7 @@ impl Source {
             Self::Commit { root, commit, file } => {
                 repository::commit_comparison(root, *commit, file, text).await
             }
+            Self::Revision { .. } => return Err(Failure::Read),
         };
         tokio::task::spawn_blocking(move || {
             let document = Arc::unwrap_or_clone(document);
@@ -226,7 +237,18 @@ pub(crate) struct Preview {
     suspended: Option<Suspended>,
 }
 
+fn working_under(tab: &Preview, source: &std::path::Path) -> bool {
+    matches!(&tab.source, Some(Source::Working { path, .. }) if path.starts_with(source))
+}
+
 impl Preview {
+    pub(crate) fn label_revision(&self) -> Option<&str> {
+        match &self.source {
+            Some(Source::Revision { id, .. }) => Some(id),
+            _ => self.revision.as_deref().filter(|_| !self.remote),
+        }
+    }
+
     pub(super) fn is_open(&self) -> bool {
         self.source.is_some() || self.pending_comparison.is_some()
     }
@@ -568,7 +590,16 @@ impl App {
         let Some(key) = self.modules.git.selected_commit.as_ref() else {
             return Task::none();
         };
-        let Some(commit) = repo.commit(key) else {
+        let Some(commit) = repo.commit(key).or_else(|| {
+            self.modules
+                .git
+                .git_actions
+                .history
+                .revealed
+                .as_ref()
+                .filter(|entry| entry.key() == *key)
+                .map(|entry| &entry.commit)
+        }) else {
             return Task::none();
         };
         self.open_source(Source::Commit {
@@ -576,6 +607,15 @@ impl App {
             commit: Box::new(commit.clone()),
             file: file.clone(),
         })
+    }
+
+    pub(super) fn open_git_revision(
+        &mut self,
+        root: PathBuf,
+        path: String,
+        id: String,
+    ) -> Task<Message> {
+        self.open_source(Source::Revision { root, path, id })
     }
 
     fn open_source(&mut self, source: Source) -> Task<Message> {
@@ -603,6 +643,11 @@ impl App {
                 root.join(&file.path),
                 file.path.clone(),
                 Some(commit.id.clone()),
+            ),
+            Source::Revision { root, path, id } => (
+                root.join(path),
+                path.clone(),
+                Some(format!("revision::{id}")),
             ),
         };
         let existing = self.tabs.files.iter().position(|preview| {
@@ -777,7 +822,10 @@ impl App {
             }
             Preparation::Syntax => {
                 if document.page.is_some()
-                    || matches!(source, Source::Working { compare: false, .. })
+                    || matches!(
+                        source,
+                        Source::Working { compare: false, .. } | Source::Revision { .. }
+                    )
                     || (!git_enabled && matches!(source, Source::Working { .. }))
                 {
                     return self.finish_preview(id, Ok(Arc::unwrap_or_clone(document)));
@@ -1010,6 +1058,97 @@ impl App {
         ])
     }
 
+    pub(super) fn reconcile_file_tabs(
+        &mut self,
+        source: &std::path::Path,
+        destination: Option<&std::path::Path>,
+    ) -> Task<Message> {
+        let mut active = self.preview().id;
+        let old_index = self.tabs.active;
+        let mut reload = Vec::new();
+        self.tabs.closed.retain(|tab| !working_under(tab, source));
+        for (_, stash) in &mut self.tabs.stash {
+            let previous = stash.files.get(stash.active).map(|tab| tab.id);
+            stash.files.retain(|tab| !working_under(tab, source));
+            stash.closed.retain(|tab| !working_under(tab, source));
+            stash.active = stash
+                .files
+                .iter()
+                .position(|tab| Some(tab.id) == previous)
+                .unwrap_or_else(|| stash.active.min(stash.files.len().saturating_sub(1)));
+        }
+        if let Some(destination) = destination {
+            for tab in &mut self.tabs.files {
+                let Some(Source::Working {
+                    path,
+                    root,
+                    compare,
+                }) = &mut tab.source
+                else {
+                    continue;
+                };
+                let Ok(relative) = path.strip_prefix(source) else {
+                    continue;
+                };
+                let old_syntax = syntax_for(path);
+                *path = if relative.as_os_str().is_empty() {
+                    destination.to_path_buf()
+                } else {
+                    destination.join(relative)
+                };
+                tab.path = Some(path.clone());
+                tab.title = path
+                    .strip_prefix(root)
+                    .unwrap_or(path)
+                    .to_string_lossy()
+                    .into_owned();
+                self.file_request += 1;
+                if active == tab.id {
+                    active = self.file_request;
+                }
+                tab.id = self.file_request;
+                if let Some(buffer) = &mut tab.editor {
+                    buffer.target = super::editor::Target::Local(path.clone());
+                } else if tab.loading
+                    || tab.error.is_some()
+                    || *compare
+                    || old_syntax != syntax_for(path)
+                {
+                    tab.loading = true;
+                    tab.error = None;
+                    tab.preparation = Preparation::Text;
+                    if let Some(source) = tab.source.clone() {
+                        reload.push((tab.id, source));
+                    }
+                }
+            }
+        } else {
+            self.tabs.files.retain(|tab| !working_under(tab, source));
+        }
+        if self.tabs.files.is_empty() {
+            self.tabs.files.push(Preview::default());
+        }
+        self.tabs.active = self
+            .tabs
+            .files
+            .iter()
+            .position(|tab| tab.id == active)
+            .unwrap_or_else(|| old_index.min(self.tabs.files.len() - 1));
+        if self
+            .changes
+            .preview_pending
+            .is_some_and(|id| !self.tabs.files.iter().any(|tab| tab.id == id))
+        {
+            self.changes.preview_pending = None;
+        }
+        self.modules.deployment.target = None;
+        Task::batch(
+            reload
+                .into_iter()
+                .map(|(id, source)| self.read_preview(id, source)),
+        )
+    }
+
     pub(super) fn close_tab(&mut self, id: u64) -> Task<Message> {
         self.modules.deployment.target = None;
         self.tabs.menu = None;
@@ -1229,8 +1368,7 @@ impl App {
             .iter()
             .filter(|preview| !preview.title.is_empty())
             .map(|preview| {
-                let label =
-                    crate::ui::tab_label::label(&preview.title, preview.revision.as_deref());
+                let label = crate::ui::tab_label::label(&preview.title, preview.label_revision());
                 crate::ui::tab_label::width(&label)
             })
             .sum();

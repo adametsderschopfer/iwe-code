@@ -216,16 +216,20 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
                     Message::OpenUrl(job.url.clone()),
                     false,
                 ));
-                body = body.push(
+                body = body.push(super::overview::explain_job(
                     container(item)
                         .padding([0, 24])
                         .id(format!("job-{}", job.id)),
-                );
+                    run.id,
+                    job,
+                ));
             }
         }
     } else if app.state.jobs.error.is_none() {
         return column![
-            container(heading).padding([8, 16]),
+            crate::ui::context_menu::trigger(container(heading).padding([8, 16]), move |point| {
+                Message::ExplainMenu(crate::domain::explain::Target::Pipeline(run.clone()), point)
+            },),
             divider(),
             center_message(app.i18n, Key::Loading)
         ]
@@ -233,7 +237,9 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
         .into();
     }
     column![
-        container(heading).padding([8, 16]),
+        crate::ui::context_menu::trigger(container(heading).padding([8, 16]), move |point| {
+            Message::ExplainMenu(crate::domain::explain::Target::Pipeline(run.clone()), point)
+        },),
         divider(),
         scrollable(container(body).padding([8, 16]))
             .id("pipeline-jobs")

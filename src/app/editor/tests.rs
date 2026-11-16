@@ -539,3 +539,66 @@ fn uploading_folder_flushes_only_local_buffers_in_that_folder() {
     assert!(app.editor_pending_tab(local_id));
     assert!(!app.editor_pending_tab(remote_id));
 }
+
+#[tokio::test]
+async fn file_move_waits_for_saved_edits_and_stops_on_external_conflicts() {
+    use crate::{
+        app::files::operations,
+        infrastructure::file_operations::{Operation, Request},
+    };
+    use iced::futures::StreamExt;
+    use iced_test::runtime::{Action, task};
+
+    for conflicts in [false, true] {
+        let project = tempfile::tempdir().unwrap();
+        let mut app = App::new(Rc::new(I18n::new(Language::English)));
+        app.workspace
+            .create_space("Test".into(), vec![project.path().into()]);
+        app.loaded = true;
+        let original = project.path().join("old.txt");
+        let renamed = project.path().join("new.txt");
+        std::fs::write(&original, "original").unwrap();
+        let _ = app.open_file(original.clone());
+        let id = app.preview().id;
+        let _ = app.finish_preview(id, Ok(Document::plain("original".into())));
+        edit(&mut app, "draft");
+        if conflicts {
+            std::fs::write(&original, "external").unwrap();
+        }
+        let request = Request {
+            operation: Operation::Move,
+            source: Some(original.clone()),
+            destination: Some(renamed.clone()),
+        };
+        let save = app.update(operations::message(operations::Event::Run(request)));
+        assert!(app.editor_buffer().unwrap().saving);
+        assert!(!renamed.exists());
+        let mut actions = task::into_stream(save).unwrap();
+        let mut operation = Task::none();
+        while let Some(action) = actions.next().await {
+            if let Action::Output(message) = action {
+                operation = app.update(message);
+            }
+        }
+        if conflicts {
+            assert_eq!(std::fs::read_to_string(original).unwrap(), "external");
+            assert!(!renamed.exists());
+            assert!(!app.files.operations.busy);
+            let buffer = app.editor_buffer().unwrap();
+            assert!(buffer.document.dirty());
+            assert_eq!(buffer.document.text, "draft");
+        } else {
+            let mut actions = task::into_stream(operation).unwrap();
+            while let Some(action) = actions.next().await {
+                if let Action::Output(message) = action {
+                    let _ = app.update(message);
+                }
+            }
+            assert!(!original.exists());
+            assert_eq!(std::fs::read_to_string(&renamed).unwrap(), "draft");
+            assert!(
+                matches!(&app.editor_buffer().unwrap().target, Target::Local(path) if *path == renamed)
+            );
+        }
+    }
+}

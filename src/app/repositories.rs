@@ -133,9 +133,30 @@ impl App {
         let Some(repo) = &self.repository else {
             return Task::none();
         };
-        let Some(commit) = repo.commit(&id).cloned() else {
+        let Some(commit) = repo
+            .commit(&id)
+            .or_else(|| {
+                self.modules
+                    .git
+                    .git_actions
+                    .history
+                    .revealed
+                    .as_ref()
+                    .filter(|entry| entry.key() == id)
+                    .map(|entry| &entry.commit)
+            })
+            .cloned()
+        else {
             return Task::none();
         };
+        self.select_resolved_commit(id, commit)
+    }
+
+    pub(super) fn select_resolved_commit(
+        &mut self,
+        id: CommitKey,
+        commit: crate::domain::repository::Commit,
+    ) -> Task<Message> {
         let root = id.root.clone();
         self.modules.git.selected_commit = Some(id);
         self.show_commit_files();

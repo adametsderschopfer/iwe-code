@@ -28,6 +28,26 @@ pub(crate) enum Message {
 }
 
 impl App {
+    pub(super) fn transfer_project(&mut self, destination: usize) -> Task<AppMessage> {
+        if self.picking
+            || self.space_draft.is_some()
+            || self.auth_dialog.is_some()
+            || self.modules.git.git_actions.has_dialog()
+            || self.modules.git.git_actions.pending
+        {
+            return Task::none();
+        }
+        let Some((source, path, _)) = self.project_menu.take() else {
+            return Task::none();
+        };
+        if self.workspace.transfer_project(source, &path, destination) {
+            self.collapsed_spaces.remove(&destination);
+            self.save()
+        } else {
+            Task::none()
+        }
+    }
+
     pub(super) fn remove_project_from_space(&mut self) -> Task<AppMessage> {
         if self.picking
             || self.space_draft.is_some()

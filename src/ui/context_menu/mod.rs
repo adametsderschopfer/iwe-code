@@ -19,6 +19,20 @@ pub(crate) fn trigger<'a, Message: 'a>(
         on_open: Some(Box::new(on_open)),
         on_key: None,
         anchored: false,
+        fallback: false,
+    })
+}
+
+pub(crate) fn fallback<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+    on_open: impl Fn(Point) -> Message + 'a,
+) -> Element<'a, Message> {
+    Element::new(Trigger {
+        content: content.into(),
+        on_open: Some(Box::new(on_open)),
+        on_key: None,
+        anchored: false,
+        fallback: true,
     })
 }
 
@@ -31,6 +45,7 @@ pub(crate) fn anchored<'a, Message: 'a>(
         on_open: Some(Box::new(on_open)),
         on_key: None,
         anchored: true,
+        fallback: false,
     })
 }
 
@@ -46,6 +61,7 @@ pub(crate) fn on_key<'a, Message: 'a>(
         on_open: None,
         on_key: Some(Box::new(handler)),
         anchored: false,
+        fallback: false,
     })
 }
 
@@ -70,6 +86,7 @@ struct Trigger<'a, Message> {
     on_open: Option<Box<dyn Fn(Point) -> Message + 'a>>,
     on_key: Option<KeyHandler<'a, Message>>,
     anchored: bool,
+    fallback: bool,
 }
 
 impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
@@ -121,6 +138,24 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
             shell.capture_event();
             return;
         }
+        let mut update_child = |shell: &mut Shell<'_, Message>| {
+            self.content.as_widget_mut().update(
+                &mut tree.children[0],
+                event,
+                layout,
+                cursor,
+                renderer,
+                clipboard,
+                shell,
+                viewport,
+            );
+        };
+        if self.fallback {
+            update_child(shell);
+            if shell.is_event_captured() {
+                return;
+            }
+        }
         let button = if self.anchored {
             mouse::Button::Left
         } else {
@@ -142,17 +177,11 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
             shell.capture_event();
             return;
         }
-        self.content.as_widget_mut().update(
-            &mut tree.children[0],
-            event,
-            layout,
-            cursor,
-            renderer,
-            clipboard,
-            shell,
-            viewport,
-        );
+        if !self.fallback {
+            update_child(shell);
+        }
     }
+
     fn mouse_interaction(
         &self,
         tree: &Tree,

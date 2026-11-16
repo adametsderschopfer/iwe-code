@@ -67,6 +67,7 @@ pub(crate) struct Preferences {
     pub file_panel_width: f32,
     pub disabled_modules: BTreeSet<String>,
     pub deployment_panel_width: f32,
+    pub assistant_paths: std::collections::BTreeMap<super::explain::Agent, PathBuf>,
 }
 
 impl Preferences {
@@ -110,6 +111,7 @@ impl Default for Preferences {
             file_panels: vec![FilePanel::Project, FilePanel::Changes],
             file_panel_width: Self::DEFAULT_FILE_PANEL_WIDTH,
             disabled_modules: BTreeSet::new(),
+            assistant_paths: Default::default(),
             deployment_panel_width: 300.,
         }
     }
@@ -333,6 +335,40 @@ impl Workspace {
                 *selected -= 1;
             } else if to <= *selected && *selected < from {
                 *selected += 1;
+            }
+        }
+        true
+    }
+
+    pub(crate) fn transfer_project(&mut self, source: usize, path: &Path, target: usize) -> bool {
+        if source == target
+            || self.spaces.get(target).is_none_or(|space| {
+                space
+                    .projects
+                    .iter()
+                    .any(|project| project.directory == path)
+            })
+        {
+            return false;
+        }
+        let Some(index) = self.spaces.get(source).and_then(|space| {
+            space
+                .projects
+                .iter()
+                .position(|project| project.directory == path)
+        }) else {
+            return false;
+        };
+        let project = self.spaces[source].projects.remove(index);
+        let destination = self.spaces[target].projects.len();
+        self.spaces[target].projects.push(project);
+        if self.selected_space == Some(source) {
+            match self.selected_project {
+                Some(selected) if selected == index => {
+                    self.select_project(target, destination);
+                }
+                Some(selected) if selected > index => self.selected_project = Some(selected - 1),
+                _ => {}
             }
         }
         true

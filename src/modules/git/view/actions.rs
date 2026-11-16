@@ -20,11 +20,12 @@ pub(super) fn label(app: View<'_>, action: Action, branch: &str) -> String {
 }
 
 pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<'a, Message> {
+    let base = super::history::menu(app, base);
     let base = if let Some((key, branch, point)) = &app.state.git_actions.menu {
         context_menu::overlay(
             base,
             *point,
-            Size::new(330., 282.),
+            Size::new(365., 610.),
             move || {
                 let mut content = Column::new().spacing(2);
                 for action in [
@@ -43,23 +44,37 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
                                 .style(theme::action(false))
                                 .on_press_maybe(
                                     (git_actions::allowed(action, branch)
-                                        && !app.state.git_actions.pending)
-                                        .then(|| {
-                                            Message::Git(GitMessage::Choose(action, key.clone()))
-                                        }),
+                                        && !app.state.git_actions.pending
+                                        && app
+                                            .state
+                                            .git_actions
+                                            .history
+                                            .menu_context
+                                            .as_ref()
+                                            .is_some_and(|context| context.unfinished.is_none()))
+                                    .then(|| Message::Git(GitMessage::Choose(action, key.clone()))),
                                 ),
                         )
                         .id(format!("git-action-{action:?}")),
                     );
                 }
-                content.into()
+                for item in super::history::branch_items(app, branch, key) {
+                    content = content.push(item);
+                }
+                iced::widget::scrollable(content.push(crate::ui::explain::submenu(
+                    app.i18n,
+                    crate::domain::explain::Target::Branch(key.clone()),
+                    Message::Explain,
+                )))
+                .style(theme::scroll)
+                .into()
             },
             Message::Git(GitMessage::Close),
         )
     } else {
         base
     };
-    let base = super::bulk::overlay(app, base);
+    let base = super::history::overlay(app, super::bulk::overlay(app, base));
     let Some(dialog) = &app.state.git_actions.dialog else {
         return base;
     };
@@ -92,7 +107,10 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
             .style(theme::MUTED.text()),
         );
     }
-    if dialog.action != Action::Delete {
+    if matches!(
+        dialog.action,
+        Action::Create | Action::Rename | Action::Push
+    ) {
         content = content
             .push(text(app.i18n.text(Key::GitBranchName)).size(13))
             .push(
@@ -104,7 +122,7 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
                     .size(14)
                     .style(theme::input),
             );
-    } else {
+    } else if dialog.action == Action::Delete {
         content = content.push(
             text(app.i18n.text(
                 if dialog.branch.kind == crate::domain::repository::ReferenceKind::Remote {
@@ -173,7 +191,8 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
                     .style(theme::primary)
                     .on_press_maybe(
                         (!app.state.git_actions.pending
-                            && (dialog.action == Action::Delete || !dialog.name.trim().is_empty())
+                            && (matches!(dialog.action, Action::Delete | Action::Checkout)
+                                || !dialog.name.trim().is_empty())
                             && (dialog.action != Action::Push || !dialog.remote.is_empty()))
                         .then_some(Message::Git(GitMessage::Submit))
                     )

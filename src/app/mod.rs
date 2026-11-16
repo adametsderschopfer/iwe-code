@@ -1,5 +1,6 @@
 //! Coordinate asynchronous reads, workspace state, and the native window.
 pub(crate) mod editor;
+pub(crate) mod explain;
 pub(crate) mod external;
 use crate::modules::ModuleId;
 pub(crate) use crate::modules::{git::GitPanel, pipelines::PipelineState};
@@ -100,9 +101,9 @@ fn application(
             window::close_events().map(|id| Message::Window(windows::Event::Closed(id))),
             #[cfg(target_os = "macos")]
             app.native_menu_subscription(),
-            window_state_subscription(),
             #[cfg(target_os = "macos")]
             app.zoom_subscription(),
+            window_state_subscription(),
             external::subscription(),
             iced::event::listen_with(|event, status, id| {
                 if let iced::Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) = event {
@@ -188,6 +189,8 @@ pub(crate) struct App {
     pub files: files::State,
     pub file_panel: FilePanel,
     pub file_panel_visible: bool,
+    pub explain: explain::State,
+    pub sidebar_menu_choices: bool,
     pub project_menu: Option<(usize, PathBuf, iced::Point)>,
     pub space_menu: Option<(usize, iced::Point)>,
     pub repository_menu: Option<iced::Point>,
@@ -234,6 +237,7 @@ pub(crate) struct App {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Message {
+    Explain(explain::Event),
     Editor(editor::Event),
     WindowOpened(window::Id),
     Window(windows::Event),
@@ -278,6 +282,11 @@ pub(crate) enum Message {
     TogglePinned,
     RemoveProjectFromSpace,
     CloseProjectMenu,
+    SidebarMenuChoices(bool),
+    ProjectFolder(bool),
+    ProjectFolderOpened(bool),
+    TransferProject(usize),
+    AddProjectFromMenu(usize, bool),
     DismissDialog,
     SelectProject(usize, usize),
     ToggleSpace(usize),
@@ -303,6 +312,7 @@ pub(crate) enum Message {
     ProjectChanges(project_changes::Event),
     OpenFile(PathBuf),
     External(crate::domain::external::Request),
+    InspectWindow(bool, tokio::sync::mpsc::Sender<serde_json::Value>),
     OpenWorkingChange(PathBuf),
     GoToLine(line_navigation::Event),
     SearchEverywhere(search_everywhere::Event),
@@ -312,7 +322,6 @@ pub(crate) enum Message {
     FileLoaded(u64, u64, Result<Document, Failure>),
     FilePrepared(u64, u64, tabs::Preparation, Result<Document, Failure>),
     SelectBranch(BranchKey),
-    InspectWindow(bool, tokio::sync::mpsc::Sender<serde_json::Value>),
     AllRepositories,
     Search(String),
     SelectCommit(CommitKey),
@@ -389,6 +398,8 @@ impl App {
             files: files::State::default(),
             file_panel: FilePanel::Project,
             file_panel_visible: true,
+            explain: explain::State::default(),
+            sidebar_menu_choices: false,
             project_menu: None,
             space_menu: None,
             repository_menu: None,
@@ -445,6 +456,31 @@ impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         if let Message::InspectWindow(include_text, reply) = &message {
             let _ = reply.try_send(external::window_snapshot(self, *include_text));
+            return Task::none();
+        }
+        let file_transaction = self.files.operations.busy
+            || self
+                .editor
+                .pending
+                .as_deref()
+                .and_then(files::operations::request)
+                .is_some();
+        if file_transaction
+            && matches!(
+                message,
+                Message::SelectProject(..)
+                    | Message::RemoveProjectFromSpace
+                    | Message::TransferProject(_)
+                    | Message::AddProjectFromMenu(..)
+                    | Message::Space(_)
+                    | Message::ProjectAdd(_)
+                    | Message::External(_)
+                    | Message::Module(modules::Event::External(_))
+                    | Message::Window(windows::Event::Close(_))
+                    | Message::Update(updates::Event::Install)
+            )
+        {
+            self.notifications.error(Key::FileBusy, None);
             return Task::none();
         }
         if self.protect_editor(&message) {
@@ -504,6 +540,7 @@ impl App {
             return Task::none();
         }
         if (self.editor.pending.is_some()
+            || self.files.operations.draft.is_some()
             || self.auth_dialog.is_some()
             || self.line_navigation.is_some()
             || self.search_everywhere.dialog.is_some()
@@ -567,7 +604,7 @@ impl App {
                 self.space_menu = None;
                 self.project_menu = None;
                 self.files.menu = None;
-                self.modules.git.git_actions.menu = None;
+                self.modules.git.git_actions.close_menu();
                 self.modules.git.git_actions.bulk.menu = None;
                 self.tabs.menu = Some(point);
                 self.repository_menu = None;
@@ -588,7 +625,7 @@ impl App {
                 self.space_menu = None;
                 self.project_menu = None;
                 self.files.menu = None;
-                self.modules.git.git_actions.menu = None;
+                self.modules.git.git_actions.close_menu();
                 self.modules.git.git_actions.bulk.menu = None;
                 self.repository_menu = Some(point);
             }
@@ -597,6 +634,7 @@ impl App {
                 return self.reveal_repository_branches(root);
             }
             Message::ProjectChanges(event) => return self.update_project_changes(event),
+            Message::Explain(event) => return self.update_explain(event),
             Message::Update(event) => return self.update_release(event),
             Message::GoToLine(event) => return self.update_line_navigation(event),
             Message::SearchEverywhere(event) => return self.update_search_everywhere(event),
@@ -609,9 +647,37 @@ impl App {
                     && !self.modules.git.git_actions.has_dialog() =>
             {
                 self.space_menu = None;
-                self.modules.git.git_actions.menu = None;
+                self.modules.git.git_actions.close_menu();
                 self.files.menu = None;
+                self.sidebar_menu_choices = false;
                 self.project_menu = Some((space, path, point));
+            }
+            Message::SidebarMenuChoices(show) => self.sidebar_menu_choices = show,
+            Message::TransferProject(destination) => return self.transfer_project(destination),
+            Message::ProjectFolder(copy) => {
+                if let Some((_, path, _)) = self.project_menu.take() {
+                    if copy {
+                        return iced::clipboard::write(path.to_string_lossy().into_owned());
+                    }
+                    return Task::perform(
+                        async move {
+                            tokio::task::spawn_blocking(move || open::that(path))
+                                .await
+                                .is_ok_and(|result| result.is_ok())
+                        },
+                        Message::ProjectFolderOpened,
+                    );
+                }
+            }
+            Message::ProjectFolderOpened(false) => self.notifications.error(Key::FileAccess, None),
+            Message::AddProjectFromMenu(index, clone) if self.project_add.is_none() => {
+                let open = self.update_project_add(project_add::Message::Open(Some(index)));
+                let source = if clone {
+                    project_add::Message::Remote
+                } else {
+                    project_add::Message::Directories
+                };
+                return Task::batch([open, self.update_project_add(source)]);
             }
             Message::CloseProjectMenu => self.project_menu = None,
             Message::SpaceMenu(index, point)
@@ -624,9 +690,10 @@ impl App {
                     && index < self.workspace.spaces.len() =>
             {
                 self.project_menu = None;
-                self.modules.git.git_actions.menu = None;
+                self.modules.git.git_actions.close_menu();
                 self.modules.git.git_actions.bulk.menu = None;
                 self.files.menu = None;
+                self.sidebar_menu_choices = false;
                 self.space_menu = Some((index, point));
             }
             Message::CloseSpaceMenu => self.space_menu = None,
@@ -635,7 +702,7 @@ impl App {
                 self.space_menu = None;
                 self.project_menu = None;
                 self.files.menu = None;
-                self.modules.git.git_actions.menu = None;
+                self.modules.git.git_actions.close_menu();
                 self.modules.git.git_actions.bulk.menu = None;
                 self.tabs.menu = None;
                 self.repository_menu = None;
@@ -817,6 +884,11 @@ impl App {
             Message::Space(message) => return self.update_space(message),
             Message::ProjectAdd(message) => return self.update_project_add(message),
             Message::DismissDialog => {
+                if self.files.operations.draft.is_some() || self.files.menu.is_some() {
+                    self.files.menu = None;
+                    return self
+                        .update_files(files::Event::Operation(files::operations::Event::Cancel));
+                }
                 if self.modules.deployment.target.is_some()
                     || (self.navigation == Navigation::Settings
                         && self.modules.deployment.has_dialog())
@@ -853,6 +925,7 @@ impl App {
                 }
                 self.project_menu = None;
                 if self.modules.git.git_actions.menu.is_some()
+                    || self.modules.git.git_actions.history.menu.is_some()
                     || self.modules.git.git_actions.bulk.menu.is_some()
                     || self.modules.git.git_actions.has_dialog()
                 {
@@ -886,6 +959,7 @@ impl App {
                 }
             }
             Message::ToggleSpace(index) if index < self.workspace.spaces.len() => {
+                self.space_menu = None;
                 if !self.collapsed_spaces.remove(&index) {
                     self.collapsed_spaces.insert(index);
                 }
@@ -1076,6 +1150,7 @@ impl App {
             }
             Message::OpenFile(path) => return self.open_file(path),
             Message::External(request) => return external::open(self, request),
+            Message::InspectWindow(..) => return Task::none(),
             Message::OpenWorkingChange(path) => return self.open_working_change(path),
             Message::OpenCommitFile(index) => return self.open_commit_file(index),
             Message::FilePrepared(generation, request, stage, result)
@@ -1126,7 +1201,6 @@ impl App {
                     self.modules.git.collapsed_commit_folders.insert(path);
                 }
             }
-            Message::InspectWindow(..) => return Task::none(),
             Message::ToggleBranchFolder(path) => {
                 self.modules.git.branch_selection.selected.clear();
                 if !self.modules.git.expanded_branch_folders.remove(&path) {
@@ -1414,7 +1488,7 @@ impl App {
         self.modules.git.git_actions.bulk.menu = None;
         self.modules.git.branch_attention = None;
         self.line_navigation = None;
-        self.modules.git.git_actions.menu = None;
+        self.modules.git.git_actions.close_menu();
         self.project_menu = None;
         self.space_menu = None;
         let directory = self.workspace.directory().cloned();
@@ -1427,6 +1501,9 @@ impl App {
         self.disconnecting = false;
         self.generation += 1;
         if !same_project {
+            self.modules.git.git_actions.history.dialog = None;
+            self.modules.git.git_actions.request += 1;
+            self.modules.git.git_actions.pending = false;
             self.modules.terminal.reset();
             self.file_panel = self.workspace.preferences.file_panels[0];
             self.file_panel_visible = true;
@@ -1512,6 +1589,7 @@ impl App {
     }
 
     fn close_commit_files(&mut self) {
+        self.modules.git.git_actions.history.revealed = None;
         self.modules.git.selected_commit = None;
         self.modules.git.changed_files.clear();
         self.modules.git.changes_loading = false;

@@ -95,7 +95,7 @@ impl App {
                 if self.bulk_allowed(action) && !self.modules.git.git_actions.has_dialog() =>
             {
                 let targets = self.selected_branch_targets();
-                self.modules.git.git_actions.menu = None;
+                self.modules.git.git_actions.close_menu();
                 self.modules.git.git_actions.bulk.menu = None;
                 self.modules.git.git_actions.bulk.dialog = Some(Dialog { action, targets });
             }

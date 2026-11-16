@@ -195,6 +195,7 @@ fn git_event(event: crate::modules::git::Event) -> Message {
         E::ToggleBranchFolder(v) => Message::ToggleBranchFolder(v),
         E::SelectBranch(v) => Message::SelectBranch(v),
         E::SelectCommit(v) => Message::SelectCommit(v),
+        E::Explain(target, agent) => Message::Explain(super::explain::Event::Choose(target, agent)),
         E::CopyCommitId(v) => Message::CopyCommitId(v),
         E::HistoryScrolled { offset, remaining } => Message::HistoryScrolled { offset, remaining },
         E::LoadMoreHistory => Message::LoadMoreHistory,
@@ -213,6 +214,9 @@ fn pipelines_event(event: crate::modules::pipelines::Event) -> Message {
         E::Hide => Message::TogglePanel(super::Panel::Module(ModuleId::Pipelines)),
         E::ChooseProvider(v) => Message::ChooseProvider(v),
         E::OpenUrl(v) => Message::OpenUrl(v),
+        E::ExplainMenu(target, point) => {
+            Message::Explain(super::explain::Event::Menu(target, point))
+        }
     }
 }
 impl App {
@@ -254,8 +258,9 @@ impl App {
                 ModuleId::Git => {
                     self.modules.git.git_actions.request += 1;
                     self.modules.git.git_actions.pending = false;
-                    self.modules.git.git_actions.menu = None;
+                    self.modules.git.git_actions.close_menu();
                     self.modules.git.git_actions.dialog = None;
+                    self.modules.git.git_actions.history = Default::default();
                     self.modules.git.git_actions.bulk = Default::default();
                     self.modules.git.branch_selection = Default::default();
                     self.modules.git.branch = None;

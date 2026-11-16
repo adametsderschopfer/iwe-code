@@ -83,6 +83,7 @@ File writes reuse the editor's conflict-checked save with a revision token from 
 | `infrastructure/locale.rs`                            | Read `IWE_LANG` and the system locale                                                    |
 | `infrastructure/workspace.rs`                         | Save workspace metadata and read bounded local previews                                  |
 | `infrastructure/project_index.rs`                     | Cache directory metadata and prioritize background folder reads                          |
+| `infrastructure/file_operations/`                     | Validate and execute explicit local project file operations                              |
 | `infrastructure/repository.rs`                        | Read Git history, branches, changed paths, and historical blobs                          |
 | `infrastructure/repository/discovery.rs`              | Discover containing and direct child Git repositories                                    |
 | `infrastructure/repository/project.rs`                | Merge bounded history streams from discovered repositories                               |
@@ -610,3 +611,15 @@ comparison viewer. `infrastructure/editor` replaces local files through temporar
 checking the saved baseline. Server saves use typed deployment operations and completion effects.
 The module does not import application state. Save completions carry operation tokens and never
 replace newer draft text.
+
+### Local project file operations
+
+`app/files/operations.rs` owns file commands, confirmation forms, and the in-memory file clipboard.
+The app finishes affected editor saves before it starts a background file operation. It blocks
+project changes while the operation runs. A move updates working-tab paths and editor save targets.
+A completed operation starts a new file index session and refreshes Git status.
+
+The file adapter checks project boundaries and rejects symbolic links, including Windows reparse
+points. The adapter stages copies beside the destination and publishes them with an exclusive
+rename. The platform must support exclusive rename. Path checks validate observed filesystem state.
+They cannot isolate the project from simultaneous changes by external processes.

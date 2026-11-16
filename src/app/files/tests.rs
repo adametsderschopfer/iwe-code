@@ -373,3 +373,52 @@ fn collapsing_a_folder_keeps_descendants_collapsed_when_reopened() {
     );
     assert!(app.expanded.contains(&PathBuf::from("/project/src-other")));
 }
+
+#[test]
+fn root_and_file_menus_expose_only_applicable_commands() {
+    use iced::Event as UiEvent;
+    use iced::mouse;
+    let project = tempfile::tempdir().unwrap();
+    let root = project.path();
+    let file = root.join("example.rs");
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.loaded = true;
+    app.navigation = Navigation::Files;
+    app.workspace.create_space("Work".into(), vec![root.into()]);
+    let _ = app.load_file_tree();
+    directory(
+        &mut app,
+        root.to_str().unwrap(),
+        vec![entry(file.to_str().unwrap(), false)],
+    );
+    for (id, expected) in [
+        (format!("file-tree-{}", file.display()), file.as_path()),
+        ("project-files-browser".into(), root),
+    ] {
+        let settings = iced::Settings::default();
+        let mut ui = iced_test::Simulator::with_size(settings, (1080., 720.), app.view());
+        let bounds = ui
+            .find(iced::widget::Id::from(id))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        ui.point_at(bounds.center());
+        ui.simulate([UiEvent::Mouse(mouse::Event::ButtonPressed(
+            mouse::Button::Right,
+        ))]);
+        let messages = ui.into_messages().collect::<Vec<_>>();
+        assert!(
+            matches!(messages.as_slice(), [Message::Files(Event::OpenMenu(path, _))] if path == expected),
+            "{messages:?}"
+        );
+    }
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        app.i18n = Rc::new(I18n::new(language));
+        let _ = app.update_files(Event::OpenMenu(root.into(), iced::Point::new(300., 200.)));
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+        assert!(ui.find(app.i18n.text(Key::FileNew).as_str()).is_ok());
+        assert!(ui.find(app.i18n.text(Key::CopyPathMenu).as_str()).is_ok());
+        assert!(ui.find(app.i18n.text(Key::FileTrash).as_str()).is_err());
+    }
+}

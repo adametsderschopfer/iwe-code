@@ -6,10 +6,15 @@ use crate::modules::git::transport as git;
 use iced::Task;
 use std::path::PathBuf;
 mod bulk;
+mod history;
 
 impl App {
     pub(in crate::app) fn update_git(&mut self, message: Message) -> Task<AppMessage> {
         match message {
+            Message::HistoryBrowserOpened(false) => {
+                self.notifications.error(Key::GitOperationFailed, None)
+            }
+            Message::History(event) => return self.update_git_history(*event),
             Message::Bulk(event) => return self.update_bulk_git(event),
             Message::Fetched(request, generation, results)
                 if self.modules.git.git_actions.pending
@@ -57,16 +62,23 @@ impl App {
                             error_key(error),
                             completion.and_then(|(_, context)| context),
                         );
-                        if let Some(dialog) = &mut self.modules.git.git_actions.dialog {
+                        if error == crate::domain::git::Error::Stale {
+                            self.modules.git.git_actions.dialog = None;
+                        } else if let Some(dialog) = &mut self.modules.git.git_actions.dialog {
                             dialog.error = Some(error);
                         }
                         return Task::batch([self.load_repository(), self.refresh_changes()]);
                     }
                 }
             }
-            Message::Close => {
+            Message::Close
+                if !self.modules.git.git_actions.pending
+                    || self.modules.git.git_actions.history.dialog.is_none() =>
+            {
+                self.modules.git.git_actions.history.clear_menu();
+                self.modules.git.git_actions.history.dialog = None;
                 self.modules.git.branch_selection.selected.clear();
-                self.modules.git.git_actions.menu = None;
+                self.modules.git.git_actions.close_menu();
                 self.modules.git.git_actions.dialog = None;
                 self.modules.git.git_actions.bulk.menu = None;
                 self.modules.git.git_actions.bulk.dialog = None;
@@ -75,9 +87,10 @@ impl App {
                 || self.space_draft.is_some()
                 || self.project_add.is_some()
                 || self.auth_dialog.is_some() => {}
-            Message::Menu(key, position) => {
+            Message::Menu(key, position) if !self.modules.git.git_actions.has_dialog() => {
+                self.modules.git.git_actions.history.clear_menu();
                 if self.modules.git.branch_selection.selected.contains(&key) {
-                    self.modules.git.git_actions.menu = None;
+                    self.modules.git.git_actions.close_menu();
                     self.modules.git.git_actions.bulk.menu = Some(position);
                     return Task::none();
                 }
@@ -96,12 +109,29 @@ impl App {
                 {
                     self.project_menu = None;
                     self.space_menu = None;
-                    self.modules.git.git_actions.menu = Some((key, branch, position));
+                    self.modules.git.git_actions.menu = Some((key.clone(), branch, position));
+                    return self.inspect_git_menu(
+                        crate::modules::git::actions::history::Target::Branch(key),
+                    );
                 }
             }
             Message::Fetch => return self.fetch_repositories(),
             Message::Choose(action, key) => {
-                self.modules.git.git_actions.menu = None;
+                let expected = self
+                    .modules
+                    .git
+                    .git_actions
+                    .menu
+                    .as_ref()
+                    .filter(|(open, _, _)| open == &key)
+                    .and(self.modules.git.git_actions.history.menu_context.clone())
+                    .map(|context| {
+                        (
+                            crate::modules::git::actions::history::Target::Branch(key.clone()),
+                            context,
+                        )
+                    });
+                self.modules.git.git_actions.close_menu();
                 let Some(repo) = self
                     .repository
                     .as_ref()
@@ -121,11 +151,15 @@ impl App {
                     return Task::none();
                 }
                 match action {
-                    Action::Checkout => {
+                    Action::Checkout if expected.is_none() => {
                         return self.run_git(key.root, Operation::Checkout(key.reference));
                     }
                     Action::Update => {
-                        return self.run_git(key.root, Operation::Update(key.reference));
+                        return self.run_git_checked(
+                            key.root,
+                            Operation::Update(key.reference),
+                            expected,
+                        );
                     }
                     _ => {
                         self.modules.git.git_actions.dialog = Some(Dialog {
@@ -146,6 +180,7 @@ impl App {
                             branch,
                             checkout: true,
                             error: None,
+                            expected,
                         });
                     }
                 }
@@ -185,9 +220,14 @@ impl App {
                         remote: dialog.remote.clone(),
                     },
                     Action::Delete => Operation::Delete(source),
+                    Action::Checkout => Operation::Checkout(source),
                     _ => return Task::none(),
                 };
-                return self.run_git(dialog.root.clone(), operation);
+                return self.run_git_checked(
+                    dialog.root.clone(),
+                    operation,
+                    dialog.expected.clone(),
+                );
             }
             _ => {}
         }
@@ -195,6 +235,18 @@ impl App {
     }
 
     fn run_git(&mut self, root: PathBuf, operation: Operation) -> Task<AppMessage> {
+        self.run_git_checked(root, operation, None)
+    }
+
+    fn run_git_checked(
+        &mut self,
+        root: PathBuf,
+        operation: Operation,
+        expected: Option<(
+            crate::modules::git::actions::history::Target,
+            crate::modules::git::actions::history::Context,
+        )>,
+    ) -> Task<AppMessage> {
         let Some(repo) = self.repository.as_ref().and_then(|repos| repos.get(&root)) else {
             return Task::none();
         };
@@ -235,9 +287,10 @@ impl App {
         self.modules.git.git_actions.pending = true;
         self.modules.git.git_actions.request += 1;
         let request = self.modules.git.git_actions.request;
-        Task::perform(git::execute(root.clone(), operation), move |result| {
-            AppMessage::Git(Message::Finished(request, root.clone(), result))
-        })
+        Task::perform(
+            git::execute_checked(root.clone(), operation, expected),
+            move |result| AppMessage::Git(Message::Finished(request, root.clone(), result)),
+        )
     }
 
     fn fetch_repositories(&mut self) -> Task<AppMessage> {

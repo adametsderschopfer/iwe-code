@@ -58,6 +58,30 @@ fn all_catalogs_have_the_complete_key_set_and_resolve_without_errors() {
         for &key in Key::ALL {
             let mut args = FluentArgs::new();
             match key {
+                Key::ExplainFile | Key::ExplainDirectory => args.set("path", "/tmp/project"),
+                Key::ExplainCommit => args.set("commit", "abc123"),
+                Key::ExplainBranch => args.set("branch", "main"),
+                Key::ExplainProject | Key::FileTrashPrompt => args.set("name", "project"),
+                Key::ExplainSpace => {
+                    args.set("name", "Work");
+                    args.set("projects", "project");
+                }
+                Key::ExplainPipeline => {
+                    args.set("id", "12");
+                    args.set("title", "build");
+                    args.set("branch", "main");
+                    args.set("commit", "abc123");
+                    args.set("status", "failed");
+                    args.set("url", "https://example.com");
+                    args.set("jobs", "tests");
+                }
+                Key::ExplainJob => {
+                    args.set("id", "42");
+                    args.set("pipeline", "12");
+                    args.set("name", "tests");
+                    args.set("status", "failed");
+                    args.set("url", "https://example.com");
+                }
                 Key::TerminalTab => {
                     args.set("number", 1);
                 }

@@ -140,7 +140,15 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
 }
 
 pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
-    if app.editor.pending.is_none() || app.editor.saving_all {
+    if app.editor.pending.is_none()
+        || app.editor.saving_all
+        || app
+            .editor
+            .pending
+            .as_deref()
+            .and_then(crate::app::files::operations::request)
+            .is_some()
+    {
         return base;
     }
     let busy = app

@@ -2311,3 +2311,41 @@ async fn server_comparison_reuses_only_the_matching_highlighted_local_snapshot()
         }
     }
 }
+
+#[test]
+fn moving_a_folder_retargets_editor_and_preserves_its_buffer() {
+    use super::super::editor::{Buffer, Target};
+    let mut app = app();
+    let previous = open(&mut app, "src/nested/main.rs");
+    loaded(&mut app, previous, "before");
+    let mut buffer = Buffer::new(
+        "before".into(),
+        Target::Local("project/src/nested/main.rs".into()),
+    );
+    buffer.document.edit("after".into());
+    buffer.document.saved = "after".into();
+    app.preview_mut().editor = Some(buffer);
+
+    let _ = app.reconcile_file_tabs(Path::new("project/src"), Some(Path::new("project/lib")));
+    let preview = app.preview();
+    let buffer = preview.editor.as_ref().unwrap();
+    assert_eq!(
+        preview.title,
+        Path::new("lib")
+            .join("nested")
+            .join("main.rs")
+            .to_string_lossy()
+    );
+    assert_ne!(preview.id, previous);
+    assert!(
+        matches!(&buffer.target, Target::Local(path) if path == Path::new("project/lib/nested/main.rs"))
+    );
+    let mut document = buffer.document.clone();
+    document.undo(false);
+    assert_eq!(document.text, "before");
+
+    let _ = app.reconcile_file_tabs(Path::new("project/lib"), None);
+    assert!(app.preview().path.is_none());
+    let _ = app.reopen_closed_tab();
+    assert!(app.preview().path.is_none());
+}

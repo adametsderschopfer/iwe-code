@@ -9,6 +9,8 @@ use std::{
     time::Duration,
 };
 
+pub(crate) mod operations;
+
 #[derive(Default)]
 pub(crate) struct State {
     root: Option<PathBuf>,
@@ -21,12 +23,14 @@ pub(crate) struct State {
     pub selected_path: Option<PathBuf>,
     pub menu: Option<Menu>,
     cache: VecDeque<Cached>,
+    pub operations: operations::State,
 }
 
 pub(crate) struct Menu {
     pub path: PathBuf,
     pub point: iced::Point,
     pub copy_open: bool,
+    pub create_open: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -46,12 +50,14 @@ struct Cached {
 pub(crate) enum Event {
     OpenMenu(PathBuf, iced::Point),
     CopyOptions,
+    CreateOptions,
     CopyPath(PathFormat),
     DismissMenu,
     Index(u64, project_index::Event),
     Slow(u64, PathBuf, u64),
     Finished(u64),
     Retry(PathBuf),
+    Operation(operations::Event),
 }
 
 impl App {
@@ -61,6 +67,9 @@ impl App {
         if root == self.files.root && self.files.worker.is_some() {
             let expanded: Vec<_> = self.expanded.iter().cloned().collect();
             return Task::batch(expanded.into_iter().map(|path| self.refresh_folder(path)));
+        }
+        if root != self.files.root {
+            self.files.operations = operations::State::default();
         }
         self.files.worker = None;
         self.files.epoch += 1;
@@ -159,6 +168,12 @@ impl App {
             Event::OpenMenu(path, point)
                 if self.space_draft.is_none()
                     && self.auth_dialog.is_none()
+                    && self.project_add.is_none()
+                    && !self.modules.deployment.has_dialog()
+                    && !self.modules.git.git_actions.pending
+                    && self.editor.pending.is_none()
+                    && self.files.operations.draft.is_none()
+                    && !self.files.operations.busy
                     && !self.modules.git.git_actions.has_dialog() =>
             {
                 if self
@@ -168,21 +183,30 @@ impl App {
                 {
                     self.project_menu = None;
                     self.space_menu = None;
-                    self.modules.git.git_actions.menu = None;
+                    self.modules.git.git_actions.close_menu();
                     self.files.selected_path = Some(path.clone());
                     self.files.menu = Some(Menu {
                         path,
                         point,
                         copy_open: false,
+                        create_open: false,
                     });
                 }
             }
             Event::CopyOptions => {
                 if let Some(menu) = &mut self.files.menu {
                     menu.copy_open = true;
+                    menu.create_open = false;
+                }
+            }
+            Event::CreateOptions => {
+                if let Some(menu) = &mut self.files.menu {
+                    menu.create_open = true;
+                    menu.copy_open = false;
                 }
             }
             Event::DismissMenu => self.files.menu = None,
+            Event::Operation(event) => return self.update_file_operation(event),
             Event::CopyPath(format) => {
                 if let Some(menu) = self.files.menu.take() {
                     let value = match format {
@@ -228,12 +252,15 @@ impl App {
                                 .retain(|directory, _| retained(directory));
                             self.files.loading.retain(retained);
                             self.files.errors.retain(|directory, _| retained(directory));
-                            if self
-                                .files
-                                .selected_path
-                                .as_ref()
-                                .is_some_and(|selected| !retained(selected))
-                            {
+                            if self.files.selected_path.as_ref().is_some_and(|selected| {
+                                selected != &path
+                                    && selected.starts_with(&path)
+                                    && !entries.iter().any(|entry| {
+                                        selected == &entry.path
+                                            || (entry.directory
+                                                && selected.starts_with(&entry.path))
+                                    })
+                            }) {
                                 self.files.selected_path = None;
                             }
                             self.files.errors.remove(&path);

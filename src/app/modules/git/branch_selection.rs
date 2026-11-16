@@ -32,7 +32,7 @@ impl App {
                     } else {
                         self.modules.git.branch_selection.selected.extend(keys);
                     }
-                    self.modules.git.git_actions.menu = None;
+                    self.modules.git.git_actions.close_menu();
                     self.modules.git.git_actions.bulk.menu = None;
                 }
             }
@@ -43,7 +43,7 @@ impl App {
                         .iter()
                         .any(|key| self.modules.git.branch_selection.selected.contains(key))
                 });
-                self.modules.git.git_actions.menu = None;
+                self.modules.git.git_actions.close_menu();
                 self.modules.git.git_actions.bulk.menu = matches.then_some(point);
                 if !matches {
                     self.modules.git.branch_selection.selected.clear();

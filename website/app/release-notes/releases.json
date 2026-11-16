@@ -1880,6 +1880,26 @@
     "source": null,
     "items": [
       {
+        "id": "explain-with-codex",
+        "category": "added",
+        "text": {
+          "en": "Open Codex and copy a request to explain a file, project, Git reference, or CI run.",
+          "ru": "Открывайте Codex и копируйте запрос на объяснение файла, проекта, ссылки Git или запуска CI.",
+          "es": "Abre Codex y copia una solicitud para explicar un archivo, proyecto, referencia de Git o ejecución de CI."
+        },
+        "sources": ["src/ui/explain.rs"]
+      },
+      {
+        "id": "workspace-context-actions",
+        "category": "added",
+        "text": {
+          "en": "Context menus offer Git history actions, local file operations, and project moves between spaces.",
+          "ru": "Контекстные меню предлагают действия с историей Git, операции с файлами и перенос проектов между пространствами.",
+          "es": "Los menús contextuales ofrecen acciones del historial de Git, operaciones con archivos y traslados de proyectos entre espacios."
+        },
+        "sources": ["src/modules/git/view/history.rs", "src/ui/screens/file_menu.rs", "src/ui/screens/workspace.rs"]
+      },
+      {
         "id": "mcp-live-window-and-ci",
         "category": "added",
         "text": {

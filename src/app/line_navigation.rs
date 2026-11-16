@@ -58,7 +58,7 @@ impl App {
                 self.project_menu = None;
                 self.repository_menu = None;
                 self.space_menu = None;
-                self.modules.git.git_actions.menu = None;
+                self.modules.git.git_actions.close_menu();
                 self.modules.git.git_actions.bulk.menu = None;
                 self.file_request += 1;
                 self.line_navigation = Some(Dialog {

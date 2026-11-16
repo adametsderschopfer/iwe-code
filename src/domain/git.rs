@@ -24,6 +24,8 @@ pub(crate) enum Operation {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Error {
+    Stale,
+    Unfinished,
     Failed,
     InvalidName,
     MissingUpstream,

@@ -33,8 +33,8 @@ an existing local tracking branch or ignored local files. Push never forces upda
 includes annotated tags. Selected pushes and remote deletions disable configured repository
 mirroring. Local deletion rejects the current branch and branches Git considers unmerged. Branches
 open in another working copy receive a specific error. Switch that copy to another branch before
-retrying deletion. Remote deletion explicitly identifies its remote effect in the confirmation
-dialog. Tags cannot be updated, renamed, pushed, or deleted through these branch controls.
+retrying deletion. Remote deletion identifies its remote effect in the confirmation dialog. Tags
+have separate actions for pushing and deleting.
 
 ## Multiple branches
 
@@ -80,3 +80,27 @@ authentication method. These settings apply to Git actions launched by IWE Code.
 Automated tests use temporary repositories and local bare remotes. They cover branch operations,
 dirty files, conflicting histories, linked worktrees, dialogs, and stale results. These tests never
 push to a real provider or change the user's repositories.
+
+## Branch and commit menus
+
+Right-click a branch, tag, or commit to open its menu. The menu keeps the selected repository,
+reference, and commit. The commit menu opens after Git checks which actions are available. Opening
+the menu leaves the history filter unchanged.
+
+- Jump to a branch tip or a related commit. Choose a commit when several parents or children exist.
+- Merge or rebase from a branch. For a remote branch, choose whether to fetch and merge or rebase.
+- Push one tag or delete a local tag. Deleting a local tag leaves remote tags in place.
+- Copy a commit hash, browse its snapshot, export its patch, or open its page on GitHub or GitLab.
+  The snapshot opens for reading. Patch export requires a new file and excludes merge commits.
+- Create a branch or tag from a commit. Enter a tag annotation to create an annotated tag.
+- Switch to a commit, cherry-pick it, or revert it. Cherry-picking and reverting merge commits
+  require you to choose the parent that defines the changes.
+- Reset the current branch with Soft, Mixed, Hard, or Keep. Mixed is the default. Hard requires the
+  current branch name. The reset dialog explains how each mode handles changes.
+- Undo the latest local commit while keeping its changes staged, or edit its message. These actions
+  require an ordinary commit at the branch tip with no evidence of publication in local remote
+  references or tags. When a remote exists, they also require an upstream.
+
+The module checks the repository again before applying confirmed changes. When Git stops on a
+conflict, resolve and stage the affected files before continuing, or cancel the Git operation. While
+that operation is active, the module blocks other Git writes to the repository.

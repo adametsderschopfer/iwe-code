@@ -74,6 +74,15 @@ impl App {
             .editor
             .pending
             .as_deref()
+            .and_then(super::files::operations::request)
+            .and_then(|request| request.source.as_ref())
+        {
+            return self.local_editor_at(id, path);
+        }
+        if let Some(path) = self
+            .editor
+            .pending
+            .as_deref()
             .and_then(|message| self.deployment_local_path(message))
         {
             return self.tabs.files.iter().find(|tab| tab.id == id)
@@ -87,10 +96,35 @@ impl App {
         }
     }
 
+    fn local_editor_at(&self, id: u64, path: &std::path::Path) -> bool {
+        self.tabs
+            .files
+            .iter()
+            .find(|tab| tab.id == id)
+            .and_then(|tab| tab.editor.as_ref())
+            .is_some_and(
+                |buffer| matches!(&buffer.target, Target::Local(local) if local.starts_with(path)),
+            )
+    }
+
     pub(super) fn protect_editor(&mut self, message: &Message) -> bool {
         if self.editor.bypass {
             self.editor.bypass = false;
             return false;
+        }
+        if let Some(request) = super::files::operations::request(message)
+            && request.operation != crate::infrastructure::file_operations::Operation::Reveal
+            && let Some(path) = &request.source
+            && self.tabs.files.iter().any(|tab| {
+                self.local_editor_at(tab.id, path)
+                    && tab.editor.as_ref().is_some_and(Buffer::protected)
+            })
+        {
+            if self.editor.pending.is_none() {
+                self.editor.pending = Some(Box::new(message.clone()));
+                self.editor.saving_all = true;
+            }
+            return true;
         }
         if let Some(path) = self.deployment_local_path(message) {
             let protected = self.tabs.files.iter().filter_map(|tab| tab.editor.as_ref())
@@ -153,6 +187,25 @@ impl App {
     }
 
     pub(super) fn flush_editor(&mut self) -> Task<Message> {
+        if self
+            .editor
+            .pending
+            .as_deref()
+            .and_then(super::files::operations::request)
+            .is_some()
+            && self.tabs.files.iter().any(|tab| {
+                self.editor_pending_tab(tab.id)
+                    && tab
+                        .editor
+                        .as_ref()
+                        .is_some_and(|buffer| buffer.error.is_some())
+            })
+        {
+            self.editor.pending = None;
+            self.editor.saving_all = false;
+            self.notifications.error(Key::FileSaveFirst, None);
+            return Task::none();
+        }
         if self.editor.pending.is_none()
             || self.tabs.files.iter().any(|tab| {
                 self.editor_pending_tab(tab.id)
@@ -241,6 +294,12 @@ impl App {
     }
 
     pub(super) fn update_editor(&mut self, event: Event) -> Task<Message> {
+        if self.files.operations.busy && !matches!(event, Event::Saved(..)) {
+            if let Event::Autosave(id, revision) = event {
+                return autosave_after(id, revision);
+            }
+            return Task::none();
+        }
         if !matches!(
             event,
             Event::Saved(..)
@@ -356,6 +415,15 @@ impl App {
                 let id = tab.id;
                 if let Err(error) = result {
                     self.notifications.error(error, Some(tab.title.clone()));
+                    if self
+                        .editor
+                        .pending
+                        .as_deref()
+                        .and_then(super::files::operations::request)
+                        .is_some()
+                    {
+                        return self.flush_editor();
+                    }
                 }
                 let refresh = if result.is_ok() {
                     self.refresh_saved_editor(id)
@@ -376,10 +444,16 @@ impl App {
             }
             Event::Discard => {
                 if self
-                    .tabs
-                    .files
-                    .iter()
-                    .any(|tab| tab.editor.as_ref().is_some_and(|buffer| buffer.saving))
+                    .editor
+                    .pending
+                    .as_deref()
+                    .and_then(super::files::operations::request)
+                    .is_some()
+                    || self
+                        .tabs
+                        .files
+                        .iter()
+                        .any(|tab| tab.editor.as_ref().is_some_and(|buffer| buffer.saving))
                 {
                     return Task::none();
                 }

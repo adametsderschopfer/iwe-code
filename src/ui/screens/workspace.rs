@@ -163,6 +163,7 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
         ),
     );
     let base = super::project_add::overlay(app, base);
+    let base = crate::ui::explain::overlay(app, base);
     let base = super::search_everywhere::overlay(app, base);
     let base = super::line_navigation::overlay(app, base);
     let base = crate::ui::notifications::overlay(
@@ -176,7 +177,7 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
         let base = super::menu_bar::overlay(app, base);
         crate::ui::window_chrome::overlay(app, base)
     };
-    crate::ui::editor::overlay(app, base)
+    crate::ui::editor::overlay(app, super::file_menu::dialog(app, base))
 }
 
 fn header(app: &App) -> Element<'_, Message> {
@@ -799,23 +800,29 @@ fn project_content(app: &App, width: f32) -> Element<'_, Message> {
             )
             .push(divider());
     }
-    let files = container(
-        files.push(
-            scrollable(container(content).padding(theme::FILE_PANEL_CONTENT_INSET))
-                .id("project-files-browser")
-                .width(Length::Fill)
-                .direction(scrollable::Direction::Both {
-                    vertical: scrollable::Scrollbar::default(),
-                    horizontal: scrollable::Scrollbar::default(),
-                })
-                .style(theme::scroll)
-                .height(Length::Fill),
-        ),
-    )
-    .id("project-files-panel")
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .style(theme::surface);
+    let browser = scrollable(container(content).padding(theme::FILE_PANEL_CONTENT_INSET))
+        .id("project-files-browser")
+        .width(Length::Fill)
+        .direction(scrollable::Direction::Both {
+            vertical: scrollable::Scrollbar::default(),
+            horizontal: scrollable::Scrollbar::default(),
+        })
+        .style(theme::scroll)
+        .height(Length::Fill);
+    let browser = if app.file_panel == FilePanel::Project
+        && let Some(root) = app.workspace.directory()
+    {
+        context_menu::fallback(browser, |point| {
+            Message::Files(crate::app::files::Event::OpenMenu(root.clone(), point))
+        })
+    } else {
+        browser.into()
+    };
+    let files = container(files.push(browser))
+        .id("project-files-panel")
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(theme::surface);
     // Keep the preview in the same child slot when the file panel is hidden.
     let file_divider = if app.file_panel_visible {
         vertical_divider()
@@ -903,69 +910,123 @@ fn project_entry(app: &App, space_index: usize, project_index: usize) -> Element
     })
 }
 
+fn sidebar_menu_item(
+    label: String,
+    message: Option<Message>,
+    destructive: bool,
+) -> iced::widget::Button<'static, Message> {
+    let mut label = text(label).size(13).wrapping(text::Wrapping::None);
+    if destructive {
+        label = label.style(theme::GIT_REMOVED.text());
+    }
+    button(label)
+        .padding([5, 8])
+        .width(Length::Fill)
+        .style(theme::action(false))
+        .on_press_maybe(message)
+}
+
+fn sidebar_menu_separator() -> Element<'static, Message> {
+    container(space())
+        .height(1)
+        .width(Length::Fill)
+        .style(theme::separator)
+        .into()
+}
+
 fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
     let base = space_menu(app, base);
-    let Some((space, path, point)) = &app.project_menu else {
+    let Some((source, path, point)) = &app.project_menu else {
         return base;
     };
-    let Some(project) = app.workspace.spaces.get(*space).and_then(|group| {
-        group
+    let Some(project) = app.workspace.spaces.get(*source).and_then(|space| {
+        space
             .projects
             .iter()
             .find(|project| &project.directory == path)
     }) else {
         return base;
     };
+    let destinations: Vec<_> = app
+        .workspace
+        .spaces
+        .iter()
+        .enumerate()
+        .filter(|(index, space)| {
+            index != source
+                && !space
+                    .projects
+                    .iter()
+                    .any(|project| &project.directory == path)
+        })
+        .collect();
+    let can_edit = !app.modules.git.git_actions.pending && !app.picking;
+    let height = if app.sidebar_menu_choices {
+        ((destinations.len() + 1) as f32 * 28. + 16.).min(212.)
+    } else {
+        185.
+    };
     context_menu::overlay(
         base,
         *point,
-        iced::Size::new(340., 148.),
+        iced::Size::new(252., height),
         move || {
-            column![
-                container(
-                    button(
-                        row![
-                            icon(Icon::Pin, theme::MUTED),
-                            text(app.i18n.text(if project.pinned {
-                                Key::UnpinProject
-                            } else {
-                                Key::PinProject
-                            }))
-                            .size(14)
-                        ]
-                        .spacing(8)
-                        .align_y(Alignment::Center),
-                    )
-                    .on_press(Message::TogglePinned)
-                    .padding([10, 12])
-                    .width(Length::Fill)
-                    .style(theme::action(false)),
+            let item = |key, message| sidebar_menu_item(app.i18n.text(key), Some(message), false);
+            if app.sidebar_menu_choices {
+                let mut choices = column![item(
+                    Key::SidebarMenuBack,
+                    Message::SidebarMenuChoices(false)
+                )];
+                for (index, space) in &destinations {
+                    choices = choices.push(sidebar_menu_item(
+                        short(&space.name, 27),
+                        can_edit.then_some(Message::TransferProject(*index)),
+                        false,
+                    ));
+                }
+                return container(
+                    iced::widget::scrollable(choices)
+                        .height(Length::Shrink)
+                        .style(theme::scroll),
                 )
+                .max_height(196.)
+                .into();
+            }
+            let mut items = column![
+                container(item(
+                    if project.pinned {
+                        Key::UnpinProject
+                    } else {
+                        Key::PinProject
+                    },
+                    Message::TogglePinned,
+                ))
                 .id("toggle-project-pin"),
-                container(
-                    button(
-                        row![
-                            icon(Icon::Close, theme::GIT_REMOVED),
-                            text(app.i18n.text(Key::RemoveProjectFromSpace))
-                                .size(14)
-                                .style(theme::GIT_REMOVED.text())
-                                .wrapping(text::Wrapping::None),
-                        ]
-                        .spacing(8)
-                        .align_y(Alignment::Center),
-                    )
-                    .on_press_maybe(
-                        (!app.modules.git.git_actions.pending && !app.picking)
-                            .then_some(Message::RemoveProjectFromSpace)
-                    )
-                    .padding([10, 12])
-                    .width(Length::Fill)
-                    .style(theme::action(false)),
+                item(Key::ProjectOpenFolder, Message::ProjectFolder(false)),
+                item(Key::CopyPath, Message::ProjectFolder(true)),
+            ];
+            if !destinations.is_empty() {
+                items = items.push(item(
+                    Key::ProjectMoveToSpace,
+                    Message::SidebarMenuChoices(true),
+                ));
+            }
+            items
+                .push(crate::ui::explain::submenu(
+                    &app.i18n,
+                    crate::domain::explain::Target::Project(project.name.clone(), path.clone()),
+                    crate::ui::explain::choose,
+                ))
+                .push(sidebar_menu_separator())
+                .push(
+                    container(sidebar_menu_item(
+                        app.i18n.text(Key::RemoveProjectFromSpace),
+                        can_edit.then_some(Message::RemoveProjectFromSpace),
+                        true,
+                    ))
+                    .id("remove-project-from-space"),
                 )
-                .id("remove-project-from-space")
-            ]
-            .spacing(4)
-            .into()
+                .into()
         },
         Message::CloseProjectMenu,
     )
@@ -975,51 +1036,69 @@ fn space_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Messa
     let Some((index, point)) = app.space_menu else {
         return base;
     };
-    if index >= app.workspace.spaces.len() {
+    let Some(space) = app.workspace.spaces.get(index) else {
         return base;
-    }
+    };
     context_menu::overlay(
         base,
         point,
-        iced::Size::new(340., 104.),
+        iced::Size::new(252., if app.sidebar_menu_choices { 100. } else { 185. }),
         move || {
-            column![
-                container(
-                    button(text(app.i18n.text(Key::EditSpace)).size(14))
-                        .padding([10, 12])
-                        .width(Length::Fill)
-                        .style(theme::action(false))
-                        .on_press(Message::Space(crate::app::spaces::Message::Edit(index)))
+            use crate::app::spaces::Message as Space;
+            let item = |key, message| sidebar_menu_item(app.i18n.text(key), Some(message), false);
+            if app.sidebar_menu_choices {
+                return column![
+                    item(Key::SidebarMenuBack, Message::SidebarMenuChoices(false)),
+                    item(
+                        Key::SpaceAddLocalProject,
+                        Message::AddProjectFromMenu(index, false)
+                    ),
+                    item(
+                        Key::CloneRepository,
+                        Message::AddProjectFromMenu(index, true)
+                    ),
+                ]
+                .into();
+            }
+            let mut items = column![
+                item(Key::SpaceAddProjectMenu, Message::SidebarMenuChoices(true)),
+                container(item(Key::EditSpace, Message::Space(Space::Edit(index))))
+                    .id("space-menu-edit"),
+            ];
+            if !space.projects.is_empty() {
+                let key = if app.collapsed_spaces.contains(&index) {
+                    Key::SpaceExpandProjects
+                } else {
+                    Key::SpaceCollapseProjects
+                };
+                items = items.push(item(key, Message::ToggleSpace(index)));
+            }
+            items
+                .push(
+                    container(item(
+                        Key::DeploymentSettings,
+                        crate::app::modules::deployment_message(
+                            crate::modules::deployment::Event::SpaceSettings(index),
+                        ),
+                    ))
+                    .id("space-menu-deployment"),
                 )
-                .id("space-menu-edit"),
-                container(
-                    button(text(app.i18n.text(Key::DeploymentSettings)).size(14))
-                        .padding([10, 12])
-                        .width(Length::Fill)
-                        .style(theme::action(false))
-                        .on_press(crate::app::modules::deployment_message(
-                            crate::modules::deployment::Event::SpaceSettings(index)
-                        ))
-                )
-                .id("space-menu-deployment"),
-                container(
-                    button(
-                        text(app.i18n.text(Key::DeleteSpace))
-                            .size(14)
-                            .style(theme::GIT_REMOVED.text())
-                    )
-                    .padding([10, 12])
-                    .width(Length::Fill)
-                    .style(theme::action(false))
-                    .on_press_maybe(
+                .push(crate::ui::explain::submenu(
+                    &app.i18n,
+                    crate::domain::explain::Target::Space(index),
+                    crate::ui::explain::choose,
+                ))
+                .push(sidebar_menu_separator())
+                .push(
+                    container(sidebar_menu_item(
+                        app.i18n.text(Key::DeleteSpace),
                         (!app.modules.git.git_actions.pending && !app.picking)
-                            .then_some(Message::Space(crate::app::spaces::Message::Delete(index)))
-                    )
+                            .then_some(Message::Space(Space::Delete(index))),
+                        true,
+                    ))
+                    .id("space-menu-delete"),
                 )
-                .id("space-menu-delete"),
-            ]
-            .spacing(4)
-            .into()
+                .into()
         },
         Message::CloseSpaceMenu,
     )
@@ -1231,10 +1310,7 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
         .iter()
         .filter(|preview| !preview.title.is_empty())
         .map(|preview| {
-            tab_label::width(&tab_label::label(
-                &preview.title,
-                preview.revision.as_deref().filter(|_| !preview.remote),
-            ))
+            tab_label::width(&tab_label::label(&preview.title, preview.label_revision()))
         })
         .sum();
     let remaining = (available_width
@@ -1250,17 +1326,13 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
         .filter(|preview| !preview.title.is_empty())
         .map(|preview| {
             let active = preview.id == app.preview().id;
-            let label = tab_label::label(
-                &preview.title,
-                preview.revision.as_deref().filter(|_| !preview.remote),
-            );
+            let label = tab_label::label(&preview.title, preview.label_revision());
             let width = tab_label::width(&label);
-            let mut description =
-                if let Some(revision) = preview.revision.as_ref().filter(|_| !preview.remote) {
-                    format!("{}\n{}", preview.title, revision)
-                } else {
-                    preview.title.clone()
-                };
+            let mut description = if let Some(revision) = preview.label_revision() {
+                format!("{}\n{}", preview.title, revision)
+            } else {
+                preview.title.clone()
+            };
             if preview
                 .document
                 .as_ref()

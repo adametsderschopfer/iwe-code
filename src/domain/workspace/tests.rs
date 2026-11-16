@@ -314,3 +314,21 @@ fn removing_the_selected_project_selects_the_next_remaining_project() {
     assert_eq!(workspace.spaces[0].projects.len(), 2);
     assert_eq!(workspace.directory(), Some(&PathBuf::from("a")));
 }
+
+#[test]
+fn transferring_a_project_preserves_selection_and_pin() {
+    let mut workspace = Workspace::default();
+    let first = PathBuf::from("/first");
+    let second = PathBuf::from("/second");
+    workspace.create_space("Source".into(), vec![first.clone(), second.clone()]);
+    workspace.create_space("Target".into(), vec![second.clone()]);
+    assert!(workspace.select_project(0, 0));
+    workspace.spaces[0].projects[0].pinned = true;
+
+    assert!(!workspace.transfer_project(0, &second, 1));
+    assert!(workspace.transfer_project(0, &first, 1));
+    assert_eq!(workspace.directory(), Some(&first));
+    assert_eq!(workspace.selected_space, Some(1));
+    assert!(workspace.spaces[1].projects[1].pinned);
+    assert_eq!(workspace.spaces[0].projects[0].directory, second);
+}

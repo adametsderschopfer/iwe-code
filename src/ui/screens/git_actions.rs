@@ -7,6 +7,7 @@ pub(super) fn overlay<'a>(
     base: iced::Element<'a, Message>,
 ) -> iced::Element<'a, Message> {
     if app.modules.git.git_actions.menu.is_none()
+        && app.modules.git.git_actions.history.menu.is_none()
         && !app.modules.git.git_actions.has_dialog()
         && app.modules.git.git_actions.bulk.menu.is_none()
     {

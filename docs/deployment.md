@@ -116,6 +116,8 @@ tab. Closing the comparison prevents its response from reopening the tab.
 | Compare active file with server | Command + Shift + C | Ctrl + Shift + C          |
 | Upload active file              | Command + Shift + A | Ctrl + Shift + A          |
 
+The file context menu groups **Compare with server** and **Upload to server** after a separator.
+
 Deployment commands appear in **Settings → Keyboard shortcuts**. Physical keys also support
 non-Latin keyboard layouts. Settings windows and modal dialogs do not execute deployment shortcuts.
 Focused terminal input retains its keyboard events. The default deployment combinations do not run

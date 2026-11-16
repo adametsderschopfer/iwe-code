@@ -54,41 +54,47 @@ pub(super) fn chain<'a>(app: View<'a>, run: &'a Pipeline) -> Element<'a, Message
         .is_some_and(|remote| remote.provider == Some(Provider::GitHub));
     let mut nodes: Vec<Element<'a, Message>> = Vec::new();
     let mut count = 0;
-    let mut push = |target: Target, name: &'a str, value: Status, id: String| {
-        if count > 0 {
-            nodes.push(
-                container(space())
-                    .width(theme::PIPELINE_CONNECTOR_WIDTH)
-                    .height(2)
-                    .style(theme::separator)
-                    .into(),
+    let mut push =
+        |target: Target, name: &'a str, value: Status, id: String, job: Option<&'a Job>| {
+            if count > 0 {
+                nodes.push(
+                    container(space())
+                        .width(theme::PIPELINE_CONNECTOR_WIDTH)
+                        .height(2)
+                        .style(theme::separator)
+                        .into(),
+                );
+            }
+            let selected = app
+                .state
+                .jobs
+                .overview
+                .popup
+                .as_ref()
+                .is_some_and(|popup| popup.pipeline == run.id && popup.target == target);
+            let hint = column![
+                text(name).size(12),
+                text(app.i18n.text(status::label(value).0))
+                    .size(11)
+                    .style(theme::MUTED.text())
+            ]
+            .spacing(4);
+            let node = context_menu::anchored(
+                tooltip::view(
+                    container(status::badge(value, selected)).id(id),
+                    hint,
+                    tooltip::Position::Top,
+                ),
+                move |point| message(Event::Open(run.id, target.clone(), point)),
             );
-        }
-        let selected = app
-            .state
-            .jobs
-            .overview
-            .popup
-            .as_ref()
-            .is_some_and(|popup| popup.pipeline == run.id && popup.target == target);
-        let hint = column![
-            text(name).size(12),
-            text(app.i18n.text(status::label(value).0))
-                .size(11)
-                .style(theme::MUTED.text())
-        ]
-        .spacing(4);
-        let node = context_menu::anchored(
-            tooltip::view(
-                container(status::badge(value, selected)).id(id),
-                hint,
-                tooltip::Position::Top,
-            ),
-            move |point| message(Event::Open(run.id, target.clone(), point)),
-        );
-        nodes.push(node);
-        count += 1;
-    };
+            let node = if let Some(job) = job {
+                explain_job(node, run.id, job)
+            } else {
+                node
+            };
+            nodes.push(node);
+            count += 1;
+        };
     if github {
         for job in details.stages.iter().flat_map(|stage| &stage.jobs) {
             push(
@@ -96,6 +102,7 @@ pub(super) fn chain<'a>(app: View<'a>, run: &'a Pipeline) -> Element<'a, Message
                 &job.name,
                 Status::from_provider(&job.status),
                 format!("pipeline-node-{}-job-{}", run.id, job.id),
+                Some(job),
             );
         }
     } else {
@@ -106,6 +113,7 @@ pub(super) fn chain<'a>(app: View<'a>, run: &'a Pipeline) -> Element<'a, Message
                     name,
                     stage.status(),
                     format!("pipeline-node-{}-stage-{index}", run.id),
+                    None,
                 );
             }
         }
@@ -335,9 +343,25 @@ fn job_row<'a>(app: View<'a>, pipeline: u64, job: &'a Job) -> Element<'a, Messag
             tooltip::Position::Top,
         ));
     }
-    container(item)
-        .height(theme::PIPELINE_JOB_HEIGHT)
-        .padding([0, 6])
-        .id(format!("pipeline-popup-job-{}", job.id))
-        .into()
+    explain_job(
+        container(item)
+            .height(theme::PIPELINE_JOB_HEIGHT)
+            .padding([0, 6])
+            .id(format!("pipeline-popup-job-{}", job.id)),
+        pipeline,
+        job,
+    )
+}
+
+pub(super) fn explain_job<'a>(
+    content: impl Into<Element<'a, Message>>,
+    pipeline: u64,
+    job: &'a Job,
+) -> Element<'a, Message> {
+    context_menu::trigger(content, move |point| {
+        Message::ExplainMenu(
+            crate::domain::explain::Target::Job(pipeline, job.clone()),
+            point,
+        )
+    })
 }
