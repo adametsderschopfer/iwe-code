@@ -1873,7 +1873,7 @@
     ]
   },
   {
-    "version": "unreleased",
+    "version": "1.4.1",
     "status": "prepared",
     "publishedAt": null,
     "tags": [],
@@ -2120,5 +2120,13 @@
         "sources": ["website/app/components/DownloadSection.vue"]
       }
     ]
+  },
+  {
+    "version": "unreleased",
+    "status": "prepared",
+    "publishedAt": null,
+    "tags": [],
+    "source": null,
+    "items": []
   }
 ]
