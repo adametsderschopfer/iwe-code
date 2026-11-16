@@ -1881,7 +1881,7 @@
     "items": [
       {
         "id": "windows-x86-file-moves",
-        "category": "fix",
+        "category": "fixed",
         "text": {
           "en": "Restore the 32-bit Windows build and preserve destination files during moves.",
           "ru": "Восстановлена 32-битная сборка Windows. Перемещение сохраняет существующие файлы.",
