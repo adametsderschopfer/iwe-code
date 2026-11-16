@@ -338,8 +338,19 @@ pub(crate) async fn execute(
                 .as_ref()
                 .filter(|path| path.is_absolute())
                 .ok_or(Error::InvalidName)?;
-            let bytes =
-                run_bytes(root, &["format-patch", "--stdout", "--binary", "-1", id]).await?;
+            let bytes = run_bytes(
+                root,
+                &[
+                    "format-patch",
+                    "--stdout",
+                    "--binary",
+                    "--no-numbered",
+                    "--subject-prefix=PATCH",
+                    "-1",
+                    id,
+                ],
+            )
+            .await?;
             use tokio::io::AsyncWriteExt;
             let mut file = tokio::fs::OpenOptions::new()
                 .write(true)

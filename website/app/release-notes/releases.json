@@ -1880,6 +1880,16 @@
     "source": null,
     "items": [
       {
+        "id": "stabilize-exported-patch-subject",
+        "category": "fixed",
+        "text": {
+          "en": "Exported Git patches use a consistent subject prefix.",
+          "ru": "Экспортированные Git-патчи используют единый префикс в теме.",
+          "es": "Los parches de Git exportados usan un prefijo uniforme en el asunto."
+        },
+        "sources": ["src/modules/git/transport/history/mod.rs"]
+      },
+      {
         "id": "anchor-context-menus-to-pointer",
         "category": "fixed",
         "text": {
@@ -1957,7 +1967,11 @@
           "ru": "Контекстные меню предлагают действия с историей Git, операции с файлами и перенос проектов между пространствами.",
           "es": "Los menús contextuales ofrecen acciones del historial de Git, operaciones con archivos y traslados de proyectos entre espacios."
         },
-        "sources": ["src/modules/git/view/history.rs", "src/ui/screens/file_menu.rs", "src/ui/screens/workspace.rs"]
+        "sources": [
+          "src/modules/git/view/history.rs",
+          "src/ui/screens/file_menu.rs",
+          "src/ui/screens/workspace.rs"
+        ]
       },
       {
         "id": "mcp-live-window-and-ci",

@@ -2330,11 +2330,8 @@ fn moving_a_folder_retargets_editor_and_preserves_its_buffer() {
     let preview = app.preview();
     let buffer = preview.editor.as_ref().unwrap();
     assert_eq!(
-        preview.title,
-        Path::new("lib")
-            .join("nested")
-            .join("main.rs")
-            .to_string_lossy()
+        Path::new(&preview.title),
+        Path::new("lib").join("nested").join("main.rs")
     );
     assert_ne!(preview.id, previous);
     assert!(
