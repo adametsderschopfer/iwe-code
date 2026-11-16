@@ -1,9 +1,10 @@
 //! Named pipe endpoint for request forwarding on Windows.
 
-use super::deliver;
+use super::{Key, serve_connection};
 use std::{fs::File, io::Write, time::Duration};
-use tokio::io::AsyncReadExt;
-use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
+use tokio::net::windows::named_pipe::{
+    ClientOptions, NamedPipeClient, NamedPipeServer, ServerOptions,
+};
 
 /// The server end of the first named pipe instance.
 ///
@@ -12,7 +13,6 @@ use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 pub(super) struct Listener(NamedPipeServer);
 
 const PIPE_NAME: &str = r"\\.\pipe\iwe-code-external";
-const PAYLOAD_LIMIT: u64 = 1024 * 1024;
 const CONNECT_ATTEMPTS: usize = 5;
 const RETRY_DELAY: Duration = Duration::from_millis(20);
 
@@ -39,53 +39,27 @@ pub(super) fn write_payload(payload: &[u8]) -> bool {
     false
 }
 
-/// Accept forwarded requests until the application exits.
-///
-/// Startup hands over the reserved first instance. Every later connection
-/// gets a freshly created instance, so the next launch can always connect.
-pub(super) async fn accept(listener: Option<Listener>) {
-    let Some(Listener(server)) = listener else {
-        return;
-    };
-    serve_instance(server).await;
-    let mut failures = 0;
+/// Keep the first pipe instance reserved while serving local requests.
+pub(super) async fn accept(Listener(mut server): Listener, key: Option<Key>) {
     loop {
-        match ServerOptions::new()
-            .reject_remote_clients(true)
-            .create(PIPE_NAME)
-        {
-            Ok(server) => {
-                failures = 0;
-                serve_instance(server).await;
-            }
-            // The previous instance lingers until its client has closed.
-            Err(_) => {
-                failures += 1;
-                if failures >= CONNECT_ATTEMPTS {
-                    return;
-                }
-                tokio::time::sleep(RETRY_DELAY).await;
-            }
+        if server.connect().await.is_err() {
+            return;
+        }
+        serve_connection(&mut server, key.as_ref()).await;
+        if server.disconnect().is_err() {
+            return;
         }
     }
 }
 
-/// Wait for one client, read its single payload, and deliver it.
-async fn serve_instance(server: NamedPipeServer) {
-    if server.connect().await.is_err() {
-        return;
-    }
-    let mut payload = Vec::new();
-    let mut limited = server.take(PAYLOAD_LIMIT);
-    let read = limited.read_to_end(&mut payload).await;
-    let server = limited.into_inner();
-    if read.is_ok() {
-        let text = String::from_utf8_lossy(&payload);
-        if let Some(line) = text.lines().next() {
-            deliver(line).await;
+pub(super) async fn connect() -> std::io::Result<NamedPipeClient> {
+    for _ in 1..CONNECT_ATTEMPTS {
+        match ClientOptions::new().open(PIPE_NAME) {
+            Ok(client) => return Ok(client),
+            Err(_) => tokio::time::sleep(RETRY_DELAY).await,
         }
     }
-    let _ = server.disconnect();
+    ClientOptions::new().open(PIPE_NAME)
 }
 
 /// Create the pipe instance that reserves the forwarding role.

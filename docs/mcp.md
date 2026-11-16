@@ -9,8 +9,9 @@ iwe --mcp
 
 The server reads the same workspace metadata as the application. AI assistants connect to it and
 browse the configured spaces and projects, read and edit project files, search file names, read Git
-status and history, and read files on deployment servers. The server never starts the interface. The
-flag works before every other startup step, including the command line and update handling.
+status and history, inspect the open window, read CI runs and jobs, and read files on deployment
+servers. The server never starts the interface. The flag works before every other startup step,
+including the command line and update handling.
 
 ## Transport
 
@@ -25,24 +26,56 @@ JSON-RPC method-not-found error.
 
 ## Tools
 
-The server exposes eleven tools. Only `write_file` changes an existing local project file.
+The server exposes fifteen tools. Only `write_file` changes an existing local project file.
 
-| Tool                      | Input                                     | Behavior                                                                                                   |
-| ------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `list_projects`           | —                                         | Lists spaces and projects with the selected marks and pinned flags.                                        |
-| `list_files`              | `project?`, `directory?`                  | Lists one directory level. Skips `.git` and symlinks. Rejects levels above 5,000 entries.                  |
-| `read_file`               | `project?`, `path`                        | Reads a UTF-8 text file. Rejects files above 512 KiB or 100,000 lines. Returns a revision token.           |
-| `write_file`              | `project?`, `path`, `content`, `revision` | Replaces the content of an existing text file. Requires the revision token.                                |
-| `search_files`            | `query`, `project?`, `limit?`             | Ranks file names and paths with the same fuzzy matcher as the workspace search. Returns up to 50 results.  |
-| `git_status`              | `project?`                                | Shows the current branch and the changed files of every repository in the project.                         |
-| `git_log`                 | `project?`, `limit?`                      | Shows recent commits with authors, dates, and refs. The default limit is 50; the maximum is 250.           |
-| `list_deployments`        | —                                         | Lists deployment connections, SSH keys, and profiles with their mappings. Carries no secrets.              |
-| `resolve_deployment_path` | `profile`, `local` or `remote`            | Translates one path across a profile mapping. Local paths are project-relative; remote paths are absolute. |
-| `deployment_read_remote`  | `profile`, `path`                         | Reads one remote UTF-8 text file through the profile connection. Rejects files above 512 KiB.              |
-| `deployment_compare`      | `profile`, `path`                         | Reads the remote counterpart of one project file and returns both texts with an identical flag.            |
+| Tool                      | Input                                       | Behavior                                                                                                   |
+| ------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `list_projects`           | —                                           | Lists spaces and projects with project IDs, selection, and pinned flags.                                   |
+| `list_files`              | `projectId?`, `directory?`                  | Lists one directory level. Skips `.git` and symlinks. Rejects levels above 5,000 entries.                  |
+| `read_file`               | `projectId?`, `path`                        | Reads a UTF-8 text file. Rejects files above 512 KiB or 100,000 lines. Returns a revision token.           |
+| `write_file`              | `projectId?`, `path`, `content`, `revision` | Replaces the content of an existing text file. Requires the revision token.                                |
+| `search_files`            | `query`, `projectId?`, `limit?`             | Ranks file names and paths with the same fuzzy matcher as the workspace search. Returns up to 50 results.  |
+| `git_status`              | `projectId?`                                | Shows the current branch and the changed files of every repository in the project.                         |
+| `git_log`                 | `projectId?`, `limit?`                      | Shows recent commits with authors, dates, and refs. The default limit is 50; the maximum is 250.           |
+| `get_window_state`        | `includeText?`                              | Reads the running window, the active project, and open tabs.                                               |
+| `list_ci_repositories`    | `projectId?`                                | Lists repositories with GitHub or GitLab CI.                                                               |
+| `list_ci_runs`            | `projectId?`, `repository?`, `limit?`       | Lists up to 30 recent CI runs from one repository.                                                         |
+| `get_ci_run_jobs`         | `projectId?`, `repository?`, `runId`        | Reads stages and jobs for one CI run.                                                                      |
+| `list_deployments`        | —                                           | Lists deployment connections, SSH keys, and profiles with their mappings. Carries no secrets.              |
+| `resolve_deployment_path` | `profile`, `local` or `remote`              | Translates one path across a profile mapping. Local paths are project-relative; remote paths are absolute. |
+| `deployment_read_remote`  | `profile`, `path`                           | Reads one remote UTF-8 text file through the profile connection. Rejects files above 512 KiB.              |
+| `deployment_compare`      | `profile`, `path`                           | Reads the remote counterpart of one project file and returns both texts with an identical flag.            |
 
-The `project` argument selects a project by name. Without it, the tools use the selected project.
-Unknown names fail with the list of available names.
+Use the `id` from `list_projects` as `projectId`. Entries for the same directory share an ID across
+spaces. The ID stays stable across renames and reordering in IWE. Moving the directory changes it.
+The legacy `project` argument accepts a name that resolves to one directory. Ambiguous names and
+requests with both selectors fail. Without either selector the tools use the saved project
+selection.
+
+### Live window state
+
+`get_window_state` queries the running IWE instance in the same data directory. It reports `state:
+"loading"` until the workspace is ready. If the window cannot answer, the tool returns an error. The
+query neither starts nor focuses the window.
+
+The ready response contains `navigation`, `space`, `project`, `activeTab`, `tabs`, and `tabCount`.
+It returns the first 100 open tabs and the active tab separately. Tabs include loading and unsaved
+change flags. Set `includeText: true` to receive the active selection and unsaved editor draft. Each
+field is either null or an object with `text` and `truncated`. Each text field holds up to 32 KiB.
+
+### CI data
+
+Use `list_ci_repositories` to find the repository ID and provider for a project. The response sets
+`incomplete` if discovery encountered a read error. Specify `repository` if more than one repository
+supports CI or discovery was incomplete. Each run contains its ID, number, title, branch, commit,
+status, date, and URL. `get_ci_run_jobs` uses the run ID and returns stage names, statuses, and job
+IDs, names, statuses, and URLs. GitHub returns an unnamed stage.
+
+CI reads use the project's Git remote and saved IWE provider account, when available. They work with
+the IWE window closed. MCP does not renew provider tokens. Reconnect an expired account in IWE
+before retrying. CI tools read metadata and omit job logs, credentials, and controls.
+
+### Deployment data
 
 The deployment tools split into two groups. `list_deployments` and `resolve_deployment_path` stay on
 workspace metadata: they never expose passwords, passphrases, or key files, and they connect to no
@@ -97,6 +130,12 @@ transfer files.
 
 Point an MCP client at the installed binary. Examples:
 
+Codex:
+
+```sh
+codex mcp add iwe -- /path/to/iwe --mcp
+```
+
 Claude Code:
 
 ```sh
@@ -134,8 +173,9 @@ Protocol parsing, version negotiation, and transport limits carry unit tests in
 unit tests beside `src/app/mcp/tools.rs`; the deployment tests connect to the in-memory SSH fixture
 from `infrastructure/deployment/transport/fixtures`. The integration test `tests/mcp_server.rs`
 starts the binary with a temporary data directory and exercises the full protocol: handshake, tool
-catalog, workspace reads, search, Git reads, and revision-checked writes. Tests never touch the
-user's data directory.
+catalog, project ID selection, workspace reads, search, Git reads, CI discovery, and
+revision-checked writes. Unit tests verify the window projection, query authorization, and provider
+requests. Tests never touch the user's data directory.
 
 Run `make check` to run formatting, lint, type checks, tests, and security checks. The website
 explains client setup for users on the

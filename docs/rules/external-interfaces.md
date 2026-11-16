@@ -28,8 +28,8 @@ The feature documents define stable contracts. Contracts include:
 Change a contract only together with its document, tests, and translations. Interface text follows
 the [i18n rules](i18n.md).
 
-Keep every interface usable without the window. Headless code must not depend on the graphics stack
-or open windows.
+Keep headless operations usable without the window. Window inspection may require a running
+instance. Headless code must not depend on the graphics stack or open windows.
 
 ## Startup order
 
@@ -47,9 +47,11 @@ this order with an explicit reason.
 ## Data and security
 
 The command line reads and writes workspace metadata through the shared workspace layer. The MCP
-server reads it the same way and never writes it. Do not duplicate loading or saving logic.
-Deployment commands are the only command-line path that opens network connections. They connect to
-the servers their profiles describe and never print stored secrets.
+server reads it the same way and never writes it. Do not duplicate loading or saving logic. MCP
+window inspection requires the running instance and authenticates through its local endpoint. Keep
+the remaining MCP tools available when the window is closed. Deployment commands are the only
+command-line path that opens network connections. They connect to the servers their profiles
+describe and never print stored secrets.
 
 The command line and the interface save without locking. Keep the documented warning about
 concurrent changes.
@@ -57,9 +59,10 @@ concurrent changes.
 Only `write_file` writes data through MCP. Require a revision token for updates to existing local
 project text files. Keep workspace metadata and remote files read-only. Deployment read tools may
 connect to the configured server with stored credentials. Exclude credentials from tool results. The
-command line and interface manage deployment settings and transfers. Git reads run the `git` command
-with read-only arguments. Validate every file path against the owning project directory or the
-profile mappings. Keep error messages generic and free of file paths.
+command line and interface manage deployment settings and transfers. CI tools read runs and jobs
+through the existing provider adapters. They may use saved credentials and never rotate them. Git
+reads run the `git` command with read-only arguments. Validate every file path against the owning
+project directory or the profile mappings. Keep error messages generic and free of file paths.
 
 Deep links and forwarded requests carry absolute file-system paths only. Ignore unknown actions and
 relative paths.

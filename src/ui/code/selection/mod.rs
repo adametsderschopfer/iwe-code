@@ -146,7 +146,7 @@ impl Selection {
         )
     }
 
-    fn copy(&self, document: &Document) -> Option<String> {
+    pub(crate) fn copy(&self, document: &Document) -> Option<String> {
         let (anchor, focus) = (self.anchor?, self.focus?);
         if anchor == focus {
             return None;

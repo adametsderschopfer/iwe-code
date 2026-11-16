@@ -372,6 +372,10 @@ fn completes_the_handshake_and_lists_tools() {
             "search_files",
             "git_status",
             "git_log",
+            "get_window_state",
+            "list_ci_repositories",
+            "list_ci_runs",
+            "get_ci_run_jobs",
             "list_deployments",
             "resolve_deployment_path",
             "deployment_read_remote",
@@ -567,4 +571,103 @@ fn exits_cleanly_when_the_stream_ends() {
     server.close();
     let status = server.child.wait().expect("wait for the server");
     assert!(status.success(), "clean shutdown expected: {status}");
+}
+
+#[test]
+fn project_ids_distinguish_duplicate_names_and_survive_reloading() {
+    let data = tempfile::tempdir().unwrap();
+    let first = tempfile::tempdir().unwrap();
+    let second = tempfile::tempdir().unwrap();
+    for (project, text) in [(&first, "first"), (&second, "second")] {
+        std::fs::write(project.path().join("readme.md"), text).unwrap();
+    }
+    std::fs::write(
+        data.path().join("workspace.json"),
+        json!({
+            "spaces": [
+                {"name": "First", "projects": [{"name": "app", "directory": first.path()}]},
+                {"name": "Second", "projects": [
+                    {"name": "app", "directory": second.path()},
+                    {"name": "alias", "directory": first.path()}
+                ]},
+            ],
+            "selected_space": 0,
+            "selected_project": 0,
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let list = Server::start(data.path()).tool_value("list_projects", json!({}));
+    let first_id = &list["spaces"][0]["projects"][0]["id"];
+    let second_id = &list["spaces"][1]["projects"][0]["id"];
+    assert_ne!(first_id, second_id);
+    assert_eq!(first_id, &list["spaces"][1]["projects"][1]["id"]);
+
+    let mut server = Server::start(data.path());
+    let ambiguous = server.tool_error("read_file", json!({"project": "app", "path": "readme.md"}));
+    assert!(ambiguous.contains("ambiguous"));
+    let second_file = server.tool_value(
+        "read_file",
+        json!({"projectId": second_id, "path": "readme.md"}),
+    );
+    assert_eq!(second_file["content"], "second");
+    let selected = server.tool_value("read_file", json!({"path": "readme.md"}));
+    assert_eq!(selected["content"], "first");
+    let both = server.tool_error(
+        "read_file",
+        json!({"projectId": second_id, "project": "app", "path": "readme.md"}),
+    );
+    assert!(both.contains("either"));
+}
+
+#[test]
+fn window_state_requires_an_open_instance() {
+    let data = tempfile::tempdir().unwrap();
+    let mut server = Server::start(data.path());
+    let error = server.tool_error("get_window_state", json!({}));
+    assert!(error.contains("window is unavailable"));
+    let error = server.tool_error("get_window_state", json!({"includeText": "yes"}));
+    assert!(error.contains("boolean"));
+}
+
+#[test]
+fn ci_discovers_supported_remotes_and_rejects_ambiguous_selection() {
+    let (data, project) = fixture();
+    git(
+        project.path(),
+        &["remote", "add", "origin", "https://github.com/org/app.git"],
+    );
+    let sub = project.path().join("nested");
+    std::fs::create_dir(&sub).unwrap();
+    git(&sub, &["init"]);
+    git(
+        &sub,
+        &["remote", "add", "origin", "git@gitlab.com:team/nested.git"],
+    );
+    let mut server = Server::start(data.path());
+
+    let result = server.tool_value("list_ci_repositories", json!({}));
+    let repositories = result["repositories"].as_array().unwrap();
+    assert_eq!(repositories.len(), 2);
+    assert!(repositories.iter().any(|repo| repo["provider"] == "GitHub"));
+    assert!(repositories.iter().any(|repo| repo["provider"] == "GitLab"));
+    assert_ne!(repositories[0]["id"], repositories[1]["id"]);
+    assert!(
+        server
+            .tool_error("list_ci_runs", json!({}))
+            .contains("repository ID")
+    );
+    assert!(
+        server
+            .tool_error(
+                "get_ci_run_jobs",
+                json!({"repository":"unknown", "runId": 1})
+            )
+            .contains("Unknown CI repository")
+    );
+    assert!(
+        server
+            .tool_error("get_ci_run_jobs", json!({"runId":0}))
+            .contains("positive integer")
+    );
 }

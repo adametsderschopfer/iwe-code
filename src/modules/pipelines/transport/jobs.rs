@@ -33,11 +33,27 @@ pub(crate) async fn load(
     run: &Pipeline,
     credential: Option<&Credential>,
 ) -> Result<Details, Failure> {
+    let mut details = load_by_id(http, remote, run.id, run.number, credential).await?;
+    if remote.provider == Some(Provider::GitHub) {
+        details.cancelable = run.is_active();
+    }
+    Ok(details)
+}
+
+pub(crate) async fn load_by_id(
+    http: &Http,
+    remote: &Remote,
+    run_id: u64,
+    run_number: Option<u64>,
+    credential: Option<&Credential>,
+) -> Result<Details, Failure> {
     let account = Account::from_remote(remote)?;
     let operation = async {
         match account.provider {
-            Provider::GitLab => gitlab(http, remote, &account, run, credential).await,
-            Provider::GitHub => github(http, remote, &account, run, credential).await,
+            Provider::GitLab => {
+                gitlab(http, remote, &account, run_id, run_number, credential).await
+            }
+            Provider::GitHub => github(http, remote, &account, run_id, credential).await,
         }
     };
     tokio::time::timeout(Duration::from_secs(45), operation)
@@ -49,7 +65,7 @@ async fn github(
     http: &Http,
     remote: &Remote,
     account: &Account,
-    run: &Pipeline,
+    run_id: u64,
     credential: Option<&Credential>,
 ) -> Result<Details, Failure> {
     let mut jobs = Vec::new();
@@ -58,7 +74,7 @@ async fn github(
         let mut url = api_url(
             account,
             &remote.project,
-            &["runs", &run.id.to_string(), "jobs"],
+            &["runs", &run_id.to_string(), "jobs"],
         )?;
         url.query_pairs_mut().extend_pairs([
             ("filter", "latest"),
@@ -114,7 +130,7 @@ async fn github(
                     provider_status: None,
                     jobs,
                 }],
-                cancelable: run.is_active(),
+                cancelable: false,
             });
         }
         if values.is_empty() {
@@ -128,17 +144,18 @@ async fn gitlab(
     http: &Http,
     remote: &Remote,
     account: &Account,
-    run: &Pipeline,
+    run_id: u64,
+    run_number: Option<u64>,
     credential: Option<&Credential>,
 ) -> Result<Details, Failure> {
     let token = credential.map(|value| &value.access_token);
-    let iid = if let Some(number) = run.number {
+    let iid = if let Some(number) = run_number {
         number
     } else {
         let url = api_url(
             account,
             &remote.project,
-            &["pipelines", &run.id.to_string()],
+            &["pipelines", &run_id.to_string()],
         )?;
         let response = http.send(http.get(url.as_str(), token)?).await?;
         response.check(credential.is_some())?;
@@ -175,7 +192,7 @@ async fn gitlab(
             } else {
                 Failure::Access
             })?;
-        if field(pipeline, "id")? != format!("gid://gitlab/Ci::Pipeline/{}", run.id) {
+        if field(pipeline, "id")? != format!("gid://gitlab/Ci::Pipeline/{run_id}") {
             return Err(Failure::Read);
         }
         if page == 0 {

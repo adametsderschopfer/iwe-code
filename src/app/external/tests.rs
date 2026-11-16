@@ -192,3 +192,57 @@ fn dropped_files_route_like_file_requests() {
     ));
     assert!(drop_message(iced::Event::Window(iced::window::Event::Focused)).is_none());
 }
+
+#[test]
+fn inspection_reads_live_tabs_and_requires_opt_in_for_text() {
+    let mut app = app();
+    assert_eq!(window_snapshot(&app, false), json!({"state": "loading"}));
+    let (_guard, directory) = project_directory();
+    let path = write_project_file(&directory, "notes.md");
+    app.loaded = true;
+    app.workspace.spaces.push(crate::domain::workspace::Space {
+        name: "Work".into(),
+        projects: vec![crate::domain::workspace::Project::from_directory(directory)],
+        deployments: vec![],
+    });
+    assert!(app.workspace.select_project(0, 0));
+    assert_eq!(window_snapshot(&app, false)["tabCount"], 0);
+    let _ = open(&mut app, Request::File { path: path.clone() });
+    let mut editor = super::super::editor::Buffer::new(
+        "saved".to_owned(),
+        super::super::editor::Target::Local(path),
+    );
+    editor.document.edit("draft".to_owned());
+    editor.content = iced::widget::text_editor::Content::with_text("draft");
+    editor
+        .content
+        .perform(iced::widget::text_editor::Action::SelectAll);
+    app.preview_mut().editor = Some(editor);
+    let (reply, mut receiver) = tokio::sync::mpsc::channel(1);
+    let _ = app.update(Message::InspectWindow(false, reply));
+    let basic = receiver.try_recv().unwrap();
+    assert_eq!(
+        basic["project"]["id"],
+        app.workspace.project().unwrap().id()
+    );
+    assert_eq!(basic["activeTab"]["title"], "notes.md");
+    assert_eq!(basic["activeTab"]["dirty"], true);
+    assert!(basic.get("draft").is_none());
+    assert!(basic.get("selection").is_none());
+
+    let full = window_snapshot(&app, true);
+    assert_eq!(full["draft"], json!({"text": "draft", "truncated": false}));
+    assert_eq!(
+        full["selection"],
+        json!({"text": "draft", "truncated": false})
+    );
+    assert!(app.preview().editor.as_ref().unwrap().document.dirty());
+}
+
+#[test]
+fn inspection_limits_text_on_a_utf8_boundary() {
+    let input = format!("{}é", "x".repeat(32 * 1024 - 1));
+    let result = text_snapshot(&input);
+    assert_eq!(result["text"].as_str().unwrap().len(), 32 * 1024 - 1);
+    assert_eq!(result["truncated"], true);
+}

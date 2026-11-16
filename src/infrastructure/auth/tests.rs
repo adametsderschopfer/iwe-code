@@ -414,3 +414,54 @@ async fn cancellation_during_vault_write_restores_the_previous_account() {
         server.await.unwrap();
     }
 }
+
+#[tokio::test]
+async fn headless_ci_reads_recent_runs_with_the_saved_account() {
+    let (origin, server) = fixture(vec![
+        ("200 OK", r#"{"workflow_runs":[{"id":42,"status":"completed","conclusion":"failure","head_branch":"main"}]}"#),
+        ("200 OK", r#"[{"id":17,"status":"running","ref":"main"}]"#),
+    ]).await;
+    let service = Service {
+        http: Ok(Http::fixture(&origin)),
+        ..service()
+    };
+    let github = Remote::parse("https://github.com/group/app.git").unwrap();
+    let gitlab = Remote::parse("https://gitlab.com/group/app.git").unwrap();
+    service
+        .write(Account::from_remote(&gitlab).unwrap(), credential())
+        .await
+        .unwrap();
+    let github_runs = service.read_ci_runs(&github).await.unwrap();
+    let gitlab_runs = service.read_ci_runs(&gitlab).await.unwrap();
+    assert_eq!(
+        (github_runs[0].id, github_runs[0].status.as_str()),
+        (42, "failure")
+    );
+    assert_eq!(
+        (gitlab_runs[0].id, gitlab_runs[0].status.as_str()),
+        (17, "running")
+    );
+    let requests = server.await.unwrap();
+    assert!(requests[0].starts_with("GET /repos/group/app/actions/runs?per_page=30 "));
+    assert!(requests[1].starts_with("GET /api/v4/projects/group%2Fapp/pipelines?per_page=30 "));
+    assert!(requests[1].contains("authorization: Bearer test-access"));
+}
+
+#[tokio::test]
+async fn headless_ci_does_not_rotate_an_expired_credential() {
+    let service = service();
+    let remote = Remote::parse("https://gitlab.example.test/group/app.git").unwrap();
+    let mut expired = credential();
+    expired.expires_at = Some(0);
+    service.write(account(), expired).await.unwrap();
+    assert!(matches!(
+        service.read_ci_runs(&remote).await,
+        Err(Failure::AuthExpired)
+    ));
+    assert!(matches!(
+        service.read_ci_jobs(&remote, 17).await,
+        Err(Failure::AuthExpired)
+    ));
+    let still_expired = service.read(account()).await.unwrap().unwrap();
+    assert_eq!(still_expired.expires_at, Some(0));
+}

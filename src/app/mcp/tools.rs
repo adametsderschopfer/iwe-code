@@ -1,5 +1,7 @@
 //! Implement the MCP tools over workspace metadata, project files, and Git.
 
+mod ci;
+
 use crate::domain::{
     Failure,
     changes::FileStatus,
@@ -45,7 +47,7 @@ pub(crate) fn list() -> Value {
                 json!({
                     "type": "object",
                     "properties": {
-                        "project": project_parameter(),
+                        "project": project_parameter(), "projectId": project_id_parameter(),
                         "directory": {
                             "type": "string",
                             "description": "Directory path relative to the project root. Defaults to the root."
@@ -59,7 +61,7 @@ pub(crate) fn list() -> Value {
                 json!({
                     "type": "object",
                     "properties": {
-                        "project": project_parameter(),
+                        "project": project_parameter(), "projectId": project_id_parameter(),
                         "path": {
                             "type": "string",
                             "description": "File path relative to the project root."
@@ -74,7 +76,7 @@ pub(crate) fn list() -> Value {
                 json!({
                     "type": "object",
                     "properties": {
-                        "project": project_parameter(),
+                        "project": project_parameter(), "projectId": project_id_parameter(),
                         "path": {
                             "type": "string",
                             "description": "File path relative to the project root."
@@ -101,7 +103,7 @@ pub(crate) fn list() -> Value {
                             "type": "string",
                             "description": "Fuzzy subsequence to search for."
                         },
-                        "project": project_parameter(),
+                        "project": project_parameter(), "projectId": project_id_parameter(),
                         "limit": {
                             "type": "number",
                             "description": "Maximum results, up to 50. Defaults to 50."
@@ -115,7 +117,7 @@ pub(crate) fn list() -> Value {
                 "Show the current branch and the changed files of the Git repositories inside a workspace project.",
                 json!({
                     "type": "object",
-                    "properties": { "project": project_parameter() }
+                    "properties": { "project": project_parameter(), "projectId": project_id_parameter() }
                 }),
             ),
             tool(
@@ -124,12 +126,57 @@ pub(crate) fn list() -> Value {
                 json!({
                     "type": "object",
                     "properties": {
-                        "project": project_parameter(),
+                        "project": project_parameter(), "projectId": project_id_parameter(),
                         "limit": {
                             "type": "number",
                             "description": "Maximum commits, up to 250. Defaults to 50."
                         }
                     }
+                }),
+            ),
+            tool(
+                "get_window_state",
+                "Read the current IWE window, including its project and open tabs. Set includeText only when the user needs the active selection or unsaved draft.",
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "includeText": { "type": "boolean", "default": false }
+                    }
+                }),
+            ),
+            tool(
+                "list_ci_repositories",
+                "List GitHub and GitLab repositories available for CI reads in a workspace project.",
+                json!({
+                    "type": "object",
+                    "properties": { "project": project_parameter(), "projectId": project_id_parameter() }
+                }),
+            ),
+            tool(
+                "list_ci_runs",
+                "Read recent GitHub Actions or GitLab pipeline runs. Select a repository when the project has several CI repositories.",
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "project": project_parameter(),
+                        "projectId": project_id_parameter(),
+                        "repository": ci::repository_parameter(),
+                        "limit": { "type": "integer", "minimum": 1, "maximum": 30 }
+                    }
+                }),
+            ),
+            tool(
+                "get_ci_run_jobs",
+                "Read stages and job statuses for a GitHub Actions or GitLab run. Use the run ID from list_ci_runs.",
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "project": project_parameter(),
+                        "projectId": project_id_parameter(),
+                        "repository": ci::repository_parameter(),
+                        "runId": { "type": "integer", "minimum": 1 }
+                    },
+                    "required": ["runId"]
                 }),
             ),
             tool(
@@ -200,13 +247,25 @@ pub(crate) fn list() -> Value {
 }
 
 fn tool(name: &str, description: &str, schema: Value) -> Value {
-    json!({ "name": name, "description": description, "inputSchema": schema })
+    json!({
+        "name": name,
+        "description": description,
+        "inputSchema": schema,
+        "annotations": { "readOnlyHint": name != "write_file" }
+    })
 }
 
 fn project_parameter() -> Value {
     json!({
         "type": "string",
-        "description": "Project name. Defaults to the selected project."
+        "description": "Legacy project name. Use only if unique. Omit both selectors for the saved selection."
+    })
+}
+
+fn project_id_parameter() -> Value {
+    json!({
+        "type": "string",
+        "description": "Project ID from list_projects. Use instead of project."
     })
 }
 
@@ -220,6 +279,10 @@ pub(crate) async fn dispatch(name: &str, arguments: &Value) -> Result<Value, Str
         "search_files" => search_files(arguments).await,
         "git_status" => git_status(arguments).await,
         "git_log" => git_log(arguments).await,
+        "get_window_state" => window_state(arguments).await,
+        "list_ci_repositories" => ci::list_repositories(arguments).await,
+        "list_ci_runs" => ci::list_runs(arguments).await,
+        "get_ci_run_jobs" => ci::run_jobs(arguments).await,
         "list_deployments" => list_deployments().await,
         "resolve_deployment_path" => resolve_deployment_path(arguments).await,
         "deployment_read_remote" => deployment_read_remote(arguments).await,
@@ -228,6 +291,18 @@ pub(crate) async fn dispatch(name: &str, arguments: &Value) -> Result<Value, Str
             "Unknown tool '{name}'. Call tools/list for the available tools."
         )),
     }
+}
+
+async fn window_state(arguments: &Value) -> Result<Value, String> {
+    let include_text = match arguments.get("includeText") {
+        Some(value) => value.as_bool().ok_or("includeText must be a boolean.")?,
+        None => false,
+    };
+    crate::infrastructure::external::inspect_window(include_text)
+        .await
+        .ok_or_else(|| {
+            "The IWE Code window is unavailable. Open IWE Code and try again.".to_owned()
+        })
 }
 
 async fn list_projects() -> Result<Value, String> {
@@ -246,6 +321,7 @@ async fn list_projects() -> Result<Value, String> {
                     .enumerate()
                     .map(|(project_index, project)| {
                         json!({
+                            "id": project.id(),
                             "name": project.name,
                             "directory": project.directory.display().to_string(),
                             "pinned": project.pinned,
@@ -261,8 +337,7 @@ async fn list_projects() -> Result<Value, String> {
 }
 
 async fn list_files(arguments: &Value) -> Result<Value, String> {
-    let name = optional_string(arguments, "project")?;
-    let project = resolve_project(name.as_deref()).await?;
+    let project = resolve_project(arguments).await?;
     let directory = match optional_string(arguments, "directory")? {
         Some(text) => Some(relative_path(&text, "directory")?),
         None => None,
@@ -295,8 +370,7 @@ async fn list_files(arguments: &Value) -> Result<Value, String> {
 }
 
 async fn read_file(arguments: &Value) -> Result<Value, String> {
-    let name = optional_string(arguments, "project")?;
-    let project = resolve_project(name.as_deref()).await?;
+    let project = resolve_project(arguments).await?;
     let relative = relative_path(&required_string(arguments, "path")?, "path")?;
     let root = project.directory;
     let target = root.join(&relative);
@@ -311,8 +385,7 @@ async fn read_file(arguments: &Value) -> Result<Value, String> {
 }
 
 async fn write_file(arguments: &Value) -> Result<Value, String> {
-    let name = optional_string(arguments, "project")?;
-    let project = resolve_project(name.as_deref()).await?;
+    let project = resolve_project(arguments).await?;
     let relative = relative_path(&required_string(arguments, "path")?, "path")?;
     let content = required_string(arguments, "content")?;
     let revision = required_string(arguments, "revision")?;
@@ -356,8 +429,7 @@ async fn write_file(arguments: &Value) -> Result<Value, String> {
 }
 
 async fn search_files(arguments: &Value) -> Result<Value, String> {
-    let name = optional_string(arguments, "project")?;
-    let project = resolve_project(name.as_deref()).await?;
+    let project = resolve_project(arguments).await?;
     let query = required_string(arguments, "query")?;
     let limit = optional_count(arguments, "limit")?
         .unwrap_or(search::MAX_RESULTS)
@@ -382,8 +454,7 @@ async fn search_files(arguments: &Value) -> Result<Value, String> {
 }
 
 async fn git_status(arguments: &Value) -> Result<Value, String> {
-    let name = optional_string(arguments, "project")?;
-    let project = resolve_project(name.as_deref()).await?;
+    let project = resolve_project(arguments).await?;
     let repository = repository::load(project.directory.clone(), None)
         .await
         .map_err(failure_message)?;
@@ -411,8 +482,7 @@ async fn git_status(arguments: &Value) -> Result<Value, String> {
 }
 
 async fn git_log(arguments: &Value) -> Result<Value, String> {
-    let name = optional_string(arguments, "project")?;
-    let project = resolve_project(name.as_deref()).await?;
+    let project = resolve_project(arguments).await?;
     let limit = optional_count(arguments, "limit")?
         .unwrap_or(DEFAULT_LOG_LIMIT)
         .clamp(1, repository::HISTORY_PAGE_SIZE);
@@ -735,21 +805,39 @@ async fn workspace_metadata() -> Result<Workspace, String> {
         .map_err(|_| "IWE Code could not read the workspace metadata.".to_owned())
 }
 
-/// Resolve the named project, or fall back to the selected one.
-async fn resolve_project(name: Option<&str>) -> Result<Project, String> {
+/// Resolve an ID, a unique name, or the saved selection.
+async fn resolve_project(arguments: &Value) -> Result<Project, String> {
+    let id = optional_string(arguments, "projectId")?;
+    let name = optional_string(arguments, "project")?;
+    if id.is_some() && name.is_some() {
+        return Err("Specify either projectId or project.".to_owned());
+    }
     let workspace = workspace_metadata().await?;
-    match name {
-        Some(name) => workspace
-            .spaces
-            .iter()
-            .find_map(|space| space.projects.iter().find(|project| project.name == name))
-            .cloned()
-            .ok_or_else(|| unknown_project(name, &workspace)),
-        None => workspace
+    if id.is_none() && name.is_none() {
+        return workspace
             .project()
             .cloned()
-            .ok_or_else(|| "No project is selected. List the projects first.".to_owned()),
+            .ok_or_else(|| "No project is selected. List the projects first.".to_owned());
     }
+
+    let mut matches = workspace
+        .spaces
+        .iter()
+        .flat_map(|space| &space.projects)
+        .filter(|project| match id.as_deref() {
+            Some(id) => project.id() == id,
+            None => name.as_deref() == Some(&project.name),
+        });
+    let Some(first) = matches.next() else {
+        return Err(match name {
+            Some(name) => unknown_project(&name, &workspace),
+            None => "Unknown project ID. Call list_projects for the available IDs.".to_owned(),
+        });
+    };
+    if matches.any(|project| project.directory != first.directory) {
+        return Err("The project name is ambiguous. Use projectId from list_projects.".to_owned());
+    }
+    Ok(first.clone())
 }
 
 fn unknown_project(name: &str, workspace: &Workspace) -> String {

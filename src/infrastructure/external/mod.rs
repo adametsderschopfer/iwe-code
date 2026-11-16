@@ -8,13 +8,39 @@
 #[cfg(target_os = "macos")]
 mod macos;
 
+use super::{
+    ipc::{Line, read_line},
+    secret_files,
+};
 use crate::domain::external::{Link, Request};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{
     ffi::OsString,
     path::PathBuf,
     sync::{Mutex, OnceLock},
 };
-use tokio::sync::mpsc;
+use tokio::{
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader},
+    sync::mpsc,
+    time::{Duration, timeout},
+};
+
+const PAYLOAD_LIMIT: usize = 1024 * 1024;
+const QUERY_TIMEOUT: Duration = Duration::from_secs(2);
+type Key = [u8; 32];
+
+#[derive(Debug)]
+pub(crate) enum Event {
+    Open(Request),
+    Inspect(bool, mpsc::Sender<Value>),
+}
+
+#[derive(Deserialize, Serialize)]
+struct Inspection {
+    window_key: Key,
+    include_text: bool,
+}
 
 /// The result of preparing this process to receive external requests.
 pub(crate) enum Startup {
@@ -24,8 +50,8 @@ pub(crate) enum Startup {
     Primary,
 }
 
-static SENDER: OnceLock<mpsc::UnboundedSender<Request>> = OnceLock::new();
-static RECEIVER: Mutex<Option<mpsc::UnboundedReceiver<Request>>> = Mutex::new(None);
+static SENDER: OnceLock<mpsc::UnboundedSender<Event>> = OnceLock::new();
+static RECEIVER: Mutex<Option<mpsc::UnboundedReceiver<Event>>> = Mutex::new(None);
 static LISTENER: Mutex<Option<Listener>> = Mutex::new(None);
 
 #[cfg(unix)]
@@ -79,7 +105,7 @@ pub(crate) fn shutdown() {
 /// Take the receiver that turns external requests into application messages.
 ///
 /// The application subscription calls this once. Later calls receive nothing.
-pub(crate) fn take_receiver() -> Option<mpsc::UnboundedReceiver<Request>> {
+pub(crate) fn take_receiver() -> Option<mpsc::UnboundedReceiver<Event>> {
     let mut slot = RECEIVER.lock().ok()?;
     slot.take()
 }
@@ -88,7 +114,7 @@ pub(crate) fn take_receiver() -> Option<mpsc::UnboundedReceiver<Request>> {
 /// consumes it.
 pub(crate) fn send(request: Request) {
     if let Some(sender) = SENDER.get() {
-        let _ = sender.send(request);
+        let _ = sender.send(Event::Open(request));
     }
 }
 
@@ -97,9 +123,15 @@ pub(crate) fn send(request: Request) {
 /// The application subscription calls this once, inside the tokio runtime.
 pub(crate) fn serve() {
     let listener = LISTENER.lock().ok().and_then(|mut slot| slot.take());
-    tokio::spawn(async move {
-        accept(listener).await;
-    });
+    if let Some(listener) = listener {
+        tokio::spawn(async move {
+            let key = tokio::task::spawn_blocking(create_inspection_key)
+                .await
+                .ok()
+                .flatten();
+            accept(listener, key).await;
+        });
+    }
 }
 
 /// Classify one command-line argument.
@@ -136,25 +168,101 @@ fn forward(requests: &[Request]) -> bool {
     write_payload(payload.as_bytes())
 }
 
-/// Read one line-delimited JSON payload and deliver its requests.
-async fn deliver(line: &str) {
-    let Ok(requests) = serde_json::from_str::<Vec<Request>>(line) else {
-        return;
-    };
-    for request in requests {
-        send(request);
+fn inspection_key_path() -> std::io::Result<PathBuf> {
+    secret_files::path("external", "window")
+}
+
+fn create_inspection_key() -> Option<Key> {
+    let mut key = [0; 32];
+    getrandom::fill(&mut key).ok()?;
+    secret_files::write(&inspection_key_path().ok()?, &key).ok()?;
+    Some(key)
+}
+
+/// Request a snapshot from the running window without raising it.
+pub(crate) async fn inspect_window(include_text: bool) -> Option<Value> {
+    timeout(QUERY_TIMEOUT, async {
+        let key = tokio::task::spawn_blocking(|| {
+            let stored = secret_files::read(&inspection_key_path().ok()?).ok()??;
+            Key::try_from(stored.as_slice()).ok()
+        })
+        .await
+        .ok()??;
+        let mut stream = BufReader::new(connect().await.ok()?);
+        let mut request = serde_json::to_vec(&Inspection {
+            window_key: key,
+            include_text,
+        })
+        .ok()?;
+        request.push(b'\n');
+        stream.write_all(&request).await.ok()?;
+        let Line::Text(line) = read_line(&mut stream, PAYLOAD_LIMIT).await.ok()?? else {
+            return None;
+        };
+        stream.write_all(b"\n").await.ok()?;
+        serde_json::from_str(&line).ok()
+    })
+    .await
+    .ok()?
+}
+
+/// Accept one forwarded launch or authenticated window inspection.
+async fn serve_connection(stream: impl AsyncRead + AsyncWrite + Unpin, key: Option<&Key>) {
+    if let Some(sender) = SENDER.get() {
+        let _ = timeout(QUERY_TIMEOUT, handle_connection(stream, key, sender)).await;
     }
+}
+
+async fn handle_connection(
+    stream: impl AsyncRead + AsyncWrite + Unpin,
+    key: Option<&Key>,
+    sender: &mpsc::UnboundedSender<Event>,
+) -> Option<()> {
+    let mut stream = BufReader::new(stream);
+    let Line::Text(line) = read_line(&mut stream, PAYLOAD_LIMIT).await.ok()?? else {
+        return None;
+    };
+    if let Ok(requests) = serde_json::from_str::<Vec<Request>>(&line) {
+        for request in requests {
+            let _ = sender.send(Event::Open(request));
+        }
+        return Some(());
+    }
+
+    let key = key?;
+    let request = serde_json::from_str::<Inspection>(&line).ok()?;
+    let difference = key
+        .iter()
+        .zip(request.window_key)
+        .fold(0, |diff, (a, b)| diff | (a ^ b));
+    if difference != 0 {
+        return None;
+    }
+    let (reply, mut response) = mpsc::channel(1);
+    sender
+        .send(Event::Inspect(request.include_text, reply))
+        .ok()?;
+    let snapshot = response.recv().await?;
+    let mut payload = serde_json::to_vec(&snapshot).ok()?;
+    if payload.len() > PAYLOAD_LIMIT {
+        return None;
+    }
+    payload.push(b'\n');
+    stream.write_all(&payload).await.ok()?;
+    // Let the client consume the reply before the Windows pipe handle closes.
+    stream.read_u8().await.ok()?;
+    Some(())
 }
 
 #[cfg(unix)]
 mod unix;
 #[cfg(unix)]
-use unix::{accept, bind, write_payload};
+use unix::{accept, bind, connect, write_payload};
 
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
-use windows::{accept, bind, write_payload};
+use windows::{accept, bind, connect, write_payload};
 
 #[cfg(test)]
 mod tests;

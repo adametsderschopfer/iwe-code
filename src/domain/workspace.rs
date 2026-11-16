@@ -21,6 +21,13 @@ pub(crate) struct Project {
 }
 
 impl Project {
+    /// Identify a project by its stored directory across all spaces.
+    pub(crate) fn id(&self) -> String {
+        use sha2::{Digest, Sha256};
+        let hash = Sha256::digest(self.directory.as_os_str().as_encoded_bytes());
+        format!("{hash:x}")
+    }
+
     pub(crate) fn from_directory(directory: PathBuf) -> Self {
         let name = directory
             .file_name()

@@ -54,15 +54,18 @@ external requests to a running instance or accepts them before opening a window.
 The `--mcp` flag starts the Model Context Protocol server before all gates. The transport in
 `infrastructure/mcp/` exchanges JSON-RPC messages over standard input and output, one per line.
 `app/mcp/` routes tool calls to workspace metadata, bounded file reads and writes, the fuzzy search
-walk, read-only Git commands, and deployment reads. File writes reuse the editor's conflict-checked
-save with a revision token from the latest read. See [the MCP server](mcp.md) for tools and limits.
+walk, read-only Git commands, CI reads, and deployment reads. The MCP window tool queries the live
+window through the local endpoint. The event loop returns a bounded projection without changing
+application state. CI tools reuse repository discovery, provider adapters, and saved credentials.
+File writes reuse the editor's conflict-checked save with a revision token from the latest read. See
+[the MCP server](mcp.md) for tools and limits.
 
 | Module                                                | Responsibility                                                                           |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `main.rs`                                             | Route headless commands and connect the graphics launcher to the window process          |
 | `cli/`                                                | Run headless workspace and deployment commands                                           |
 | `infrastructure/mcp/`                                 | Serve JSON-RPC transport lines and negotiate the MCP protocol                            |
-| `app/mcp/`                                            | Serve workspace, files, search, Git, and deployment tools                                |
+| `app/mcp/`                                            | Serve workspace, files, window state, search, Git, CI, and deployment tools              |
 | `app/`                                                | Configure the window, own interface state, and process native material results           |
 | `app/notifications.rs`                                | Bound operation notifications, coalesce duplicates, and manage dismissal timers          |
 | `app/project_changes/`                                | Refresh sidebar change indicators for inactive projects with bounded Git status reads    |

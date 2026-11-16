@@ -1880,6 +1880,16 @@
     "source": null,
     "items": [
       {
+        "id": "mcp-live-window-and-ci",
+        "category": "added",
+        "text": {
+          "en": "MCP can inspect the running window and read CI runs and jobs.",
+          "ru": "MCP может читать состояние открытого окна, запуски CI и их задания.",
+          "es": "MCP puede consultar la ventana abierta, las ejecuciones de CI y sus tareas."
+        },
+        "sources": ["src/app/mcp/tools.rs"]
+      },
+      {
         "id": "opaque-window-zoom",
         "category": "changed",
         "text": {

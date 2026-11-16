@@ -227,6 +227,10 @@ pub(crate) struct Preview {
 }
 
 impl Preview {
+    pub(super) fn is_open(&self) -> bool {
+        self.source.is_some() || self.pending_comparison.is_some()
+    }
+
     pub(crate) fn working_comparison(&self) -> bool {
         matches!(self.source, Some(Source::Working { compare: true, .. }))
     }

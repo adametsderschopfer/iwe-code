@@ -48,6 +48,14 @@ systems remain an open limitation: the pipe's access control cannot be narrowed 
 security-descriptor access outside the supported safe APIs. Payloads are size-capped on every
 platform.
 
+## Window inspection
+
+The MCP window tool sends an authenticated request through the same endpoint. The window process
+generates a new random key when it starts. It stores the key in the data directory's private secrets
+store. The server checks the key before asking the window for its current state. The request and
+reply are bounded. The query never raises the window or changes navigation. See
+[MCP window state](mcp.md#live-window-state) for the response and text limits.
+
 ## Platform registration
 
 - macOS bundles declare the `iwe://` scheme and text document types in `Info.plist`.

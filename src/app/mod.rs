@@ -312,6 +312,7 @@ pub(crate) enum Message {
     FileLoaded(u64, u64, Result<Document, Failure>),
     FilePrepared(u64, u64, tabs::Preparation, Result<Document, Failure>),
     SelectBranch(BranchKey),
+    InspectWindow(bool, tokio::sync::mpsc::Sender<serde_json::Value>),
     AllRepositories,
     Search(String),
     SelectCommit(CommitKey),
@@ -442,6 +443,10 @@ impl App {
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
+        if let Message::InspectWindow(include_text, reply) = &message {
+            let _ = reply.try_send(external::window_snapshot(self, *include_text));
+            return Task::none();
+        }
         if self.protect_editor(&message) {
             return self.flush_editor();
         }
@@ -1121,6 +1126,7 @@ impl App {
                     self.modules.git.collapsed_commit_folders.insert(path);
                 }
             }
+            Message::InspectWindow(..) => return Task::none(),
             Message::ToggleBranchFolder(path) => {
                 self.modules.git.branch_selection.selected.clear();
                 if !self.modules.git.expanded_branch_folders.remove(&path) {

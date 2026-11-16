@@ -349,6 +349,35 @@ impl Service {
         result
     }
 
+    /// Headless readers can share saved credentials, but only the window rotates them.
+    async fn read_ci_credential(&self, remote: &Remote) -> Result<Option<Credential>, Failure> {
+        let credential = self.read(Account::from_remote(remote)?).await?;
+        if credential
+            .as_ref()
+            .is_some_and(|value| value.expires_at.is_some_and(|expires| expires <= now()))
+        {
+            return Err(Failure::AuthExpired);
+        }
+        Ok(credential)
+    }
+
+    pub(crate) async fn read_ci_runs(
+        &self,
+        remote: &Remote,
+    ) -> Result<Vec<crate::domain::repository::Pipeline>, Failure> {
+        let credential = self.read_ci_credential(remote).await?;
+        pipelines::load(self.http()?, remote, credential.as_ref()).await
+    }
+
+    pub(crate) async fn read_ci_jobs(
+        &self,
+        remote: &Remote,
+        run_id: u64,
+    ) -> Result<Details, Failure> {
+        let credential = self.read_ci_credential(remote).await?;
+        pipelines::jobs::load_by_id(self.http()?, remote, run_id, None, credential.as_ref()).await
+    }
+
     pub(crate) async fn control_job(
         &self,
         remote: Remote,

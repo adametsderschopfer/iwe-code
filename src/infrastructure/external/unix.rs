@@ -1,22 +1,17 @@
 //! Local socket endpoint for request forwarding on Unix platforms.
 
-use super::deliver;
-use crate::infrastructure::ipc::{Line, read_line};
+use super::{Key, serve_connection};
 use std::{
     io::Write,
     os::unix::fs::PermissionsExt,
     os::unix::net::{UnixListener as StdListener, UnixStream},
     path::{Path, PathBuf},
 };
-use tokio::io::BufReader;
 
 /// The bound local socket that later instances forward requests to.
 pub(super) struct Listener(StdListener);
 
 const ENDPOINT_NAME: &str = "external.sock";
-
-/// Cap one forwarded payload, matching the other local transports.
-const PAYLOAD_LIMIT: usize = 1024 * 1024;
 
 fn endpoint_path() -> Option<PathBuf> {
     endpoint_parent().map(|directory| directory.join(ENDPOINT_NAME))
@@ -82,10 +77,7 @@ fn write_payload_at(path: &Path, payload: &[u8]) -> bool {
 }
 
 /// Accept forwarded requests until the application exits.
-pub(super) async fn accept(listener: Option<Listener>) {
-    let Some(Listener(listener)) = listener else {
-        return;
-    };
+pub(super) async fn accept(Listener(listener): Listener, key: Option<Key>) {
     // Tokio refuses to register a blocking socket.
     if listener.set_nonblocking(true).is_err() {
         return;
@@ -97,11 +89,15 @@ pub(super) async fn accept(listener: Option<Listener>) {
         let Ok((stream, _)) = listener.accept().await else {
             return;
         };
-        let mut reader = BufReader::new(stream);
-        if let Ok(Some(Line::Text(line))) = read_line(&mut reader, PAYLOAD_LIMIT).await {
-            deliver(&line).await;
-        }
+        serve_connection(stream, key.as_ref()).await;
     }
+}
+
+pub(super) async fn connect() -> std::io::Result<tokio::net::UnixStream> {
+    let path = storage_directory()
+        .ok_or(std::io::ErrorKind::NotFound)?
+        .join(ENDPOINT_NAME);
+    tokio::net::UnixStream::connect(path).await
 }
 
 #[cfg(test)]
