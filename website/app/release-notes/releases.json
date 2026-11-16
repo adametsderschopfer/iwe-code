@@ -1880,6 +1880,16 @@
     "source": null,
     "items": [
       {
+        "id": "wait-for-patch-export",
+        "category": "fixed",
+        "text": {
+          "en": "Finish writing a Git patch before reporting a successful export.",
+          "ru": "Экспорт Git-патча сообщает об успехе после завершения записи.",
+          "es": "La exportación del parche Git confirma el éxito al terminar la escritura."
+        },
+        "sources": ["src/modules/git/transport/history/mod.rs"]
+      },
+      {
         "id": "windows-x86-file-moves",
         "category": "fixed",
         "text": {

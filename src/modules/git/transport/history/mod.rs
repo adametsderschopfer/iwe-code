@@ -358,7 +358,7 @@ pub(crate) async fn execute(
                 .open(path)
                 .await
                 .map_err(|_| Error::Failed)?;
-            if file.write_all(&bytes).await.is_err() {
+            if file.write_all(&bytes).await.is_err() || file.flush().await.is_err() {
                 drop(file);
                 let _ = tokio::fs::remove_file(path).await;
                 return Err(Error::Failed);
