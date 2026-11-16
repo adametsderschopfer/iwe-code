@@ -2,6 +2,7 @@
 
 mod ftp;
 mod sftp;
+mod ssh_config;
 
 use crate::domain::deployment::{
     Authentication, Connection, Connections, Error, Protocol, safe_text,
@@ -140,7 +141,10 @@ pub(crate) fn connect(
     connection.validate()?;
     let secret = if let Some(secret) = supplied {
         secret.clone()
-    } else if connection.authentication == Authentication::Agent {
+    } else if matches!(
+        connection.authentication,
+        Authentication::Agent | Authentication::SshConfig
+    ) {
         Secret::default()
     } else {
         read_secret(secret_id(connection))?

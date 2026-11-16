@@ -28,6 +28,7 @@ pub(crate) enum Authentication {
     Password,
     Agent,
     Key(String),
+    SshConfig,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -39,6 +40,8 @@ pub(crate) struct Connection {
     pub port: u16,
     pub username: String,
     pub authentication: Authentication,
+    #[serde(default)]
+    pub parse_ssh_config: bool,
     #[serde(default)]
     pub trusted_host_key: Option<String>,
 }
@@ -133,15 +136,30 @@ pub(crate) fn contains(root: &str, path: &str) -> bool {
 }
 
 impl Connection {
+    pub(crate) fn uses_ssh_config(&self) -> bool {
+        self.parse_ssh_config || self.authentication == Authentication::SshConfig
+    }
+
     pub(crate) fn validate(&self) -> Result<(), Error> {
         if self.name.trim().is_empty()
             || self.host.trim().is_empty()
-            || self.port == 0
-            || self.username.is_empty()
             || ![&self.name, &self.host, &self.username]
                 .into_iter()
                 .all(|s| safe_text(s))
         {
+            return Err(Error::Configuration);
+        }
+        if self.uses_ssh_config() {
+            if self.protocol != Protocol::Sftp
+                || self.host.starts_with('-')
+                || !self
+                    .host
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'-' | b'_' | b':'))
+            {
+                return Err(Error::Configuration);
+            }
+        } else if self.port == 0 || self.username.is_empty() || !safe_text(&self.username) {
             return Err(Error::Configuration);
         }
         Ok(())

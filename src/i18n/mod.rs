@@ -128,6 +128,8 @@ message_keys! {
     DeploymentUsername => "deployment-username",
     DeploymentPassword => "deployment-password",
     DeploymentAgent => "deployment-agent",
+    DeploymentUseSshConfig => "deployment-use-ssh-config",
+    DeploymentOpenSshAgent => "deployment-openssh-agent",
     DeploymentSshIdentity => "deployment-key",
     DeploymentSecretHelp => "deployment-secret-help",
     DeploymentSave => "deployment-save",

@@ -4,6 +4,63 @@ use crate::{i18n::Language, infrastructure::deployment::transport::Entry};
 use iced::{Event as IcedEvent, mouse};
 
 #[test]
+fn ssh_config_checkbox_keeps_manual_fields_and_follows_authentication() {
+    use crate::domain::deployment::{Authentication, Connection, Protocol};
+
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let i18n = I18n::new(language);
+        let settings = Connections::default();
+        let mut state = State::default();
+        for (protocol, authentication, parse_ssh_config) in [
+            (Protocol::Sftp, Authentication::Password, false),
+            (Protocol::Sftp, Authentication::Key("key".into()), true),
+            (Protocol::Sftp, Authentication::SshConfig, false),
+            (Protocol::Ftps, Authentication::Password, false),
+        ] {
+            let automatic = authentication == Authentication::SshConfig;
+            state.connection = Some(Connection {
+                protocol,
+                authentication,
+                parse_ssh_config,
+                ..Default::default()
+            });
+            let mut ui = iced_test::Simulator::with_size(
+                iced::Settings::default(),
+                (610., 520.),
+                connection_form(&state, &settings, &i18n),
+            );
+            let checkbox = i18n.text(Key::DeploymentUseSshConfig);
+            for key in [
+                Key::DeploymentHost,
+                Key::DeploymentUsername,
+                Key::DeploymentPort,
+            ] {
+                assert!(ui.find(i18n.text(key)).unwrap().visible_bounds().is_some());
+            }
+            if protocol == Protocol::Sftp {
+                assert!(
+                    ui.find(checkbox.as_str())
+                        .unwrap()
+                        .visible_bounds()
+                        .is_some()
+                );
+                ui.click(checkbox).unwrap();
+                let mut events = ui.into_messages();
+                if automatic {
+                    assert!(events.next().is_none());
+                } else {
+                    assert!(events.any(
+                        |event| matches!(event, Event::ParseSshConfig(value) if value != parse_ssh_config)
+                    ));
+                }
+            } else {
+                assert!(ui.find(checkbox).is_err());
+            }
+        }
+    }
+}
+
+#[test]
 fn profile_tabs_fit_translations_share_a_baseline_and_select_each_page() {
     use crate::modules::deployment::state::ProfileTab;
     for language in [Language::English, Language::Russian, Language::Spanish] {

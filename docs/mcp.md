@@ -51,7 +51,8 @@ its stored credentials and read text files. They never modify the remote server 
 credentials. Transfers and remote writes belong to the command line. An untrusted SFTP host key
 causes an error with the fingerprint. Verify the fingerprint before using `iwe deployment test
 <profile> --trust-host-key FINGERPRINT`. Use a unique profile name or its identifier when calling
-the MCP deployment tools.
+the MCP deployment tools. Connections that [use SSH config](deployment.md#connections-and-servers)
+report the authentication value `ssh-config`. Their host field contains the alias.
 
 Tool results arrive as text content with a JSON payload. `resolve_deployment_path` returns
 `profile`, `local`, and `remote`. `deployment_read_remote` returns `profile`, `path`, and `content`.

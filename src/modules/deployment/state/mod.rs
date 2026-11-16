@@ -77,6 +77,7 @@ pub(crate) enum Event {
     Password(Secret),
     Protocol(Protocol),
     Authentication(Authentication),
+    ParseSshConfig(bool),
     SaveConnection,
     ConnectionSaved(u64, Connection, Result<(), Error>),
     DeleteConnection,
@@ -369,6 +370,13 @@ impl State {
         } else {
             Subscription::none()
         }
+    }
+
+    fn validate_connection_draft(&self, connection: &Connection) -> Result<(), Error> {
+        if connection.port == 0 && !self.port.trim().is_empty() {
+            return Err(Error::Configuration);
+        }
+        connection.validate()
     }
 
     fn start(&mut self, request: Request) -> Task<Event> {
@@ -713,6 +721,7 @@ impl State {
                 self.port = self
                     .connection
                     .as_ref()
+                    .filter(|c| c.port != 0)
                     .map(|c| c.port.to_string())
                     .unwrap_or_default();
                 self.secret = Secret::default();
@@ -748,7 +757,12 @@ impl State {
                                 connection.port = value.parse().unwrap_or(0);
                                 connection.trusted_host_key = None;
                             }
-                            Field::Username => connection.username = value,
+                            Field::Username => {
+                                if connection.uses_ssh_config() && connection.username != value {
+                                    connection.trusted_host_key = None;
+                                }
+                                connection.username = value;
+                            }
                             _ => {}
                         }
                     }
@@ -768,22 +782,37 @@ impl State {
                     self.port = connection.port.to_string();
                     if protocol != Protocol::Sftp {
                         connection.authentication = Authentication::Password;
+                        connection.parse_ssh_config = false;
                     }
                     connection.trusted_host_key = None;
                 }
             }
             Event::Authentication(authentication) => {
                 if let Some(connection) = &mut self.connection {
+                    let used_config = connection.uses_ssh_config();
                     connection.authentication = authentication;
+                    if used_config != connection.uses_ssh_config() {
+                        connection.trusted_host_key = None;
+                    }
                     self.secret = Secret::default();
                     self.secret_changed = false;
+                }
+            }
+            Event::ParseSshConfig(enabled) => {
+                if let Some(connection) = &mut self.connection
+                    && connection.protocol == Protocol::Sftp
+                    && connection.authentication != Authentication::SshConfig
+                    && connection.parse_ssh_config != enabled
+                {
+                    connection.parse_ssh_config = enabled;
+                    connection.trusted_host_key = None;
                 }
             }
             Event::SaveConnection if !self.saving => {
                 self.operation_label = None;
                 self.test_connection = None;
                 if let Some(connection) = self.connection.clone() {
-                    let validation = connection.validate().and_then(|()| {
+                    let validation = self.validate_connection_draft(&connection).and_then(|()| {
                         if let Authentication::Key(id) = &connection.authentication
                             && !settings.keys.iter().any(|key| &key.id == id)
                         {
@@ -959,6 +988,11 @@ impl State {
             }
             Event::Test => {
                 if let Some(connection) = self.connection.clone() {
+                    if let Err(error) = self.validate_connection_draft(&connection) {
+                        self.error = Some(error);
+                        self.operation_label = None;
+                        return (Task::none(), effect);
+                    }
                     let request = Request {
                         connection,
                         settings: settings.clone(),
@@ -1498,6 +1532,8 @@ impl State {
                         c.id == request.connection.id
                             && c.host == request.connection.host
                             && c.port == request.connection.port
+                            && c.uses_ssh_config() == request.connection.uses_ssh_config()
+                            && (!c.uses_ssh_config() || c.username == request.connection.username)
                     }) {
                         connection.trusted_host_key = Some(key.clone());
                         effect = Effect::Save;
@@ -1506,6 +1542,8 @@ impl State {
                         c.id == request.connection.id
                             && c.host == request.connection.host
                             && c.port == request.connection.port
+                            && c.uses_ssh_config() == request.connection.uses_ssh_config()
+                            && (!c.uses_ssh_config() || c.username == request.connection.username)
                     }) {
                         connection.trusted_host_key = Some(key);
                     }

@@ -32,6 +32,16 @@ directly above its button. Progress uses neutral text; success uses green, and f
 button stays unavailable while the test runs. Cancellation and SSH fingerprint confirmation remain
 available beside the test controls.
 
+For SFTP, enter a server address or a name from a `Host` entry in **Host**. Select **Use
+~/.ssh/config** to read settings for that server. Leave **Username** or **Port** empty to use the
+value from the file. Password and SSH key modes use the credentials you specify in the form.
+
+**OpenSSH config and SSH agent** always reads the file. This mode uses the configured private keys
+and the SSH agent. Use the agent for passphrase-protected keys. With `IdentitiesOnly yes`, keep each
+key's companion `.pub` file beside it. Use an absolute path or start the path with `~/` for each key
+file. Reading the file requires an OpenSSH client. IWE Code still asks you to verify new server
+fingerprints.
+
 The workspace shows file operation progress and results outside deployment settings.
 
 An unknown SSH server requires fingerprint confirmation before authentication. A changed server key
@@ -138,10 +148,12 @@ Text previews and comparisons accept UTF-8 files up to 2 MiB and 100,000 lines p
 files remain transferable. Transfers use 64 KiB buffers. Recursive transfers allow 10,000 entries
 and 64 directory levels. The pending operation queue holds at most 32 requests. Transfer sessions
 are not persisted across application restarts. The module does not delete remote files, synchronize
-directories, or interpret SSH config and ProxyJump. FTP directory browsing requires a supported LIST
-response. Server permissions and filesystem features can restrict available operations. Local-change
-checks cannot eliminate every race with unrelated external writers. SSH-agent availability depends
-on the operating system and its configured agent.
+directories, or use SSH proxies. The OpenSSH authentication mode supports direct, public-key
+connections. It rejects `ProxyJump`, `ProxyCommand`, and SSH certificates. The local OpenSSH client
+evaluates the configuration, including any `Match exec` commands in it. FTP directory browsing
+requires a supported LIST response. Server permissions and filesystem features can restrict
+available operations. Local-change checks cannot eliminate every race with unrelated external
+writers. SSH-agent availability depends on the operating system and its configured agent.
 
 Automated tests use isolated temporary files and loopback servers. They exercise SFTP, FTP, explicit
 FTPS, and implicit FTPS. Tests cover server trust, password authentication, private keys, encrypted
@@ -185,7 +197,7 @@ Intentional differences preserve the requested product behavior. Deployment uses
 Local and mapped server text files autosave. Comparison tabs remain immutable snapshots. The chosen
 shortcuts remain Command+Shift+A and Command+Shift+C on macOS. Overlapping mappings and
 symbolic-link transfers remain prohibited. Directory synchronization, server deletion, WebDAV,
-rsync, SSH config, and ProxyJump remain outside this feature.
+rsync, and ProxyJump remain outside this feature.
 
 Official references:
 

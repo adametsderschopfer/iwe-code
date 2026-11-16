@@ -330,6 +330,7 @@ fn authentication_name(authentication: &Authentication) -> &'static str {
     match authentication {
         Authentication::Password => "password",
         Authentication::Agent => "agent",
+        Authentication::SshConfig => "ssh-config",
         Authentication::Key(_) => "key",
     }
 }

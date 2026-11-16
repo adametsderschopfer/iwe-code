@@ -150,6 +150,7 @@ fn fixture_workspace(project: &Path, port: u16, trusted: Option<String>) -> Work
                 port,
                 username: "user".to_owned(),
                 authentication: crate::domain::deployment::Authentication::Password,
+                parse_ssh_config: false,
                 trusted_host_key: trusted,
             }],
             keys: Vec::new(),

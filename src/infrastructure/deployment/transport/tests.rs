@@ -162,6 +162,88 @@ async fn sftp_checks_host_keys_passwords_and_private_keys_over_loopback() {
 }
 
 #[test]
+fn ssh_config_reads_identity_options_and_rejects_proxies() {
+    let home = std::env::temp_dir();
+    let output = "hostname 127.0.0.1\nport 2202\nuser deploy\nidentityfile none\n\
+                  identityfile ~/.ssh/key with spaces\nidentityagent none\nidentitiesonly yes\n";
+    let config = ssh_config::Config::parse(output, &home).unwrap();
+    assert_eq!(config.host, "127.0.0.1");
+    assert_eq!(config.port, 2202);
+    assert_eq!(config.user, "deploy");
+    assert_eq!(config.files, vec![home.join(".ssh/key with spaces")]);
+    assert!(matches!(config.agent, ssh_config::Agent::Disabled));
+    assert!(config.identities_only);
+    for option in ["proxyjump gateway", "proxycommand command"] {
+        assert!(matches!(
+            ssh_config::Config::parse(&format!("{output}{option}"), &home),
+            Err(Error::Unsupported)
+        ));
+    }
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn sftp_uses_openssh_alias_and_keeps_host_key_verification() {
+    let server = fixtures::Ssh::start().await;
+    let temp = tempfile::tempdir().unwrap();
+    let home = temp.path().to_owned();
+    std::fs::create_dir(home.join(".ssh")).unwrap();
+    let user_key =
+        russh::keys::PrivateKey::random(&mut rand::rng(), russh::keys::Algorithm::Ed25519).unwrap();
+    std::fs::write(
+        home.join(".ssh/deploy_key"),
+        user_key.to_openssh(Default::default()).unwrap().as_bytes(),
+    )
+    .unwrap();
+    std::fs::write(
+        home.join(".ssh/config"),
+        format!(
+            "Host deploy-test\n HostName 127.0.0.1\n Port {}\n User deploy\n IdentityFile ~/.ssh/deploy_key\n IdentityAgent none\n",
+            server.port
+        ),
+    )
+    .unwrap();
+
+    tokio::task::spawn_blocking(move || {
+        let mut connection = Connection {
+            name: "Deployment".into(),
+            host: "deploy-test".into(),
+            authentication: Authentication::SshConfig,
+            ..Connection::default()
+        };
+        connection.validate().unwrap();
+        let config = ssh_config::Config::read(&connection.host, &home).unwrap();
+        assert_eq!(config.user, "deploy");
+        let settings = Connections::default();
+        let secret = Secret::default();
+        let connect = |connection: &Connection| {
+            sftp::Sftp::connect_resolved(connection, &settings, &secret, None, Some(&config))
+        };
+        let Err(Error::HostUnknown(fingerprint)) = connect(&connection) else {
+            panic!("Expected the server fingerprint before authentication");
+        };
+        connection.trusted_host_key = Some(fingerprint);
+        let mut transport = connect(&connection).unwrap();
+        assert_eq!(transport.list("/").unwrap()[0].name, "hello.txt");
+
+        connection.authentication = Authentication::Password;
+        connection.parse_ssh_config = true;
+        connection.username = "user".into();
+        connection.port = config.port;
+        let mut config = config;
+        config.port = 1;
+        config.public_key_auth = false;
+        let password = Secret(Zeroizing::new("fixture".into()));
+        let mut manual =
+            sftp::Sftp::connect_resolved(&connection, &settings, &password, None, Some(&config))
+                .unwrap();
+        assert!(manual.stat("/hello.txt").unwrap().is_some());
+    })
+    .await
+    .unwrap();
+}
+
+#[test]
 fn streaming_counts_bytes_and_honors_cancellation() {
     let progress = Progress::default();
     let bytes = vec![7; 150_000];

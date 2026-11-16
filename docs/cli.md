@@ -63,6 +63,10 @@ applies. Without `--auth`, the connection uses a password. `--auth key` needs `-
 registered key name. `--password-stdin` reads the password or the key passphrase from standard
 input. Secrets are never accepted as command-line options.
 
+CLI operations also use SSH config connections created in the interface. Listings identify these
+connections with the authentication value `ssh-config`. The host field contains the alias. See
+[Deployment](deployment.md#connections-and-servers) for connection setup.
+
 Profiles bind one project directory to one connection. `--root` is the absolute remote root.
 `--mapping` pairs a project-relative local folder with a root-relative remote folder. At least one
 mapping is required. `--exclude` ignores project-relative paths. `--default` marks the profile as

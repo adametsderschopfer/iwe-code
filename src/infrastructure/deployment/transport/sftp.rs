@@ -1,4 +1,7 @@
-use super::{Entry, Progress, Secret, Transport, child_path, copy, socket};
+use super::{
+    Entry, Progress, Secret, Transport, child_path, copy, socket,
+    ssh_config::{Agent, Config},
+};
 use crate::domain::deployment::{Authentication, Connection, Connections, Error};
 use base64::Engine;
 use sha2::{Digest, Sha256};
@@ -27,8 +30,34 @@ impl Sftp {
         secret: &Secret,
         agent_path: Option<&Path>,
     ) -> Result<Self, Error> {
+        let config = if connection.uses_ssh_config() {
+            Some(Config::load(&connection.host)?)
+        } else {
+            None
+        };
+        Self::connect_resolved(connection, settings, secret, agent_path, config.as_ref())
+    }
+
+    pub(super) fn connect_resolved(
+        connection: &Connection,
+        settings: &Connections,
+        secret: &Secret,
+        agent_path: Option<&Path>,
+        config: Option<&Config>,
+    ) -> Result<Self, Error> {
+        let host = config.map_or(connection.host.as_str(), |config| config.host.as_str());
+        let port = if connection.port == 0 {
+            config.ok_or(Error::Configuration)?.port
+        } else {
+            connection.port
+        };
+        let user = if connection.username.is_empty() {
+            config.ok_or(Error::Configuration)?.user.as_str()
+        } else {
+            connection.username.as_str()
+        };
         let mut session = ssh2::Session::new().map_err(|_| Error::Connection)?;
-        session.set_tcp_stream(socket(&connection.host, connection.port)?);
+        session.set_tcp_stream(socket(host, port)?);
         session.set_timeout(super::TIMEOUT.as_millis() as u32);
         session.handshake().map_err(|_| Error::Connection)?;
         let (key, _) = session.host_key().ok_or(Error::Connection)?;
@@ -42,46 +71,100 @@ impl Sftp {
             _ => {}
         }
         match &connection.authentication {
-            Authentication::Password => session.userauth_password(&connection.username, &secret.0),
-            Authentication::Agent => {
-                let mut agent = session.agent().map_err(|_| Error::Credentials)?;
-                if let Some(path) = agent_path {
-                    agent
-                        .set_identity_path(path)
-                        .map_err(|_| Error::Credentials)?;
-                }
-                agent.connect().map_err(|_| Error::Credentials)?;
-                agent.list_identities().map_err(|_| Error::Credentials)?;
-                let identities = agent.identities().map_err(|_| Error::Credentials)?;
-                if !identities
-                    .iter()
-                    .any(|identity| agent.userauth(&connection.username, identity).is_ok())
-                {
-                    return Err(Error::Credentials);
-                }
-                Ok(())
-            }
+            Authentication::Password => session
+                .userauth_password(user, &secret.0)
+                .map_err(|_| Error::Credentials)?,
+            Authentication::Agent => authenticate_agent(&session, user, agent_path, None)?,
             Authentication::Key(id) => {
                 let key = settings
                     .keys
                     .iter()
                     .find(|key| key.id == *id)
                     .ok_or(Error::Configuration)?;
-                session.userauth_pubkey_file(
-                    &connection.username,
-                    None,
-                    &key.path,
-                    (!secret.0.is_empty()).then_some(secret.0.as_str()),
-                )
+                session
+                    .userauth_pubkey_file(
+                        user,
+                        None,
+                        &key.path,
+                        (!secret.0.is_empty()).then_some(secret.0.as_str()),
+                    )
+                    .map_err(|_| Error::Credentials)?;
+            }
+            Authentication::SshConfig => {
+                authenticate_config(&session, user, config.ok_or(Error::Configuration)?)?
             }
         }
-        .map_err(|_| Error::Credentials)?;
         let files = session.sftp().map_err(|_| Error::Connection)?;
         Ok(Self {
             _session: session,
             files,
         })
     }
+}
+
+fn authenticate_agent(
+    session: &ssh2::Session,
+    user: &str,
+    path: Option<&Path>,
+    allowed: Option<&[Vec<u8>]>,
+) -> Result<(), Error> {
+    let mut agent = session.agent().map_err(|_| Error::Credentials)?;
+    if let Some(path) = path {
+        agent
+            .set_identity_path(path)
+            .map_err(|_| Error::Credentials)?;
+    }
+    agent.connect().map_err(|_| Error::Credentials)?;
+    agent.list_identities().map_err(|_| Error::Credentials)?;
+    let identities = agent.identities().map_err(|_| Error::Credentials)?;
+    identities
+        .iter()
+        .any(|identity| {
+            allowed.is_none_or(|keys| keys.iter().any(|key| key == identity.blob()))
+                && agent.userauth(user, identity).is_ok()
+        })
+        .then_some(())
+        .ok_or(Error::Credentials)
+}
+
+fn authenticate_config(session: &ssh2::Session, user: &str, config: &Config) -> Result<(), Error> {
+    if !config.public_key_auth {
+        return Err(Error::Unsupported);
+    }
+    if !matches!(config.agent, Agent::Disabled) {
+        let path = match &config.agent {
+            Agent::Socket(path) => Some(path.as_path()),
+            _ => None,
+        };
+        let allowed = config.identities_only.then(|| {
+            config
+                .files
+                .iter()
+                .filter_map(|path| {
+                    let mut public_path = path.as_os_str().to_os_string();
+                    public_path.push(".pub");
+                    let mut text = String::new();
+                    std::fs::File::open(public_path)
+                        .ok()?
+                        .take(64 * 1024)
+                        .read_to_string(&mut text)
+                        .ok()?;
+                    base64::engine::general_purpose::STANDARD
+                        .decode(text.split_whitespace().nth(1)?)
+                        .ok()
+                })
+                .collect::<Vec<_>>()
+        });
+        if authenticate_agent(session, user, path, allowed.as_deref()).is_ok() {
+            return Ok(());
+        }
+    }
+    config
+        .files
+        .iter()
+        .any(|path| session.userauth_pubkey_file(user, None, path, None).is_ok())
+        .then_some(())
+        .ok_or(Error::Credentials)
 }
 
 fn entry(path: String, stat: ssh2::FileStat) -> Entry {

@@ -17,8 +17,8 @@ use crate::{
 use iced::{
     Alignment, Element, Length,
     widget::{
-        Column, button, column, container, pick_list, row, scrollable, space, text, text_input,
-        toggler,
+        Column, button, checkbox, column, container, pick_list, row, scrollable, space, text,
+        text_input, toggler,
     },
 };
 use std::path::Path;
@@ -90,6 +90,7 @@ fn test_controls<'a>(
         Some((Key::DeploymentChecking, theme::MUTED))
     } else {
         state.test_result.as_ref().map(|result| match result {
+            Ok(()) if detecting_root => (Key::DeploymentRootDetected, theme::GREEN),
             Ok(()) => (Key::DeploymentConnected, theme::GREEN),
             Err(error) => (error_key(error), theme::RED),
         })
@@ -425,27 +426,29 @@ pub(super) fn connection_form<'a>(
     if connection.protocol == Protocol::Sftp {
         let mode = match connection.authentication {
             Authentication::Password => 0,
-            Authentication::Agent => 1,
-            Authentication::Key(_) => 2,
+            Authentication::Key(_) => 1,
+            Authentication::SshConfig => 2,
+            Authentication::Agent => 3,
         };
+        let mut modes = vec![
+            (0, i18n.text(Key::DeploymentPassword)),
+            (1, i18n.text(Key::DeploymentSshIdentity)),
+            (2, i18n.text(Key::DeploymentOpenSshAgent)),
+        ];
+        if mode == 3 {
+            modes.push((3, i18n.text(Key::DeploymentAgent)));
+        }
         form = form.push(form_row(
             i18n,
             Key::DeploymentAuthentication,
-            select(
-                vec![
-                    (0, i18n.text(Key::DeploymentPassword)),
-                    (1, i18n.text(Key::DeploymentAgent)),
-                    (2, i18n.text(Key::DeploymentSshIdentity)),
-                ],
-                Some(&mode),
-                |mode| {
-                    Event::Authentication(match mode {
-                        1 => Authentication::Agent,
-                        2 => Authentication::Key(String::new()),
-                        _ => Authentication::Password,
-                    })
-                },
-            ),
+            select(modes, Some(&mode), |mode| {
+                Event::Authentication(match mode {
+                    1 => Authentication::Key(String::new()),
+                    2 => Authentication::SshConfig,
+                    3 => Authentication::Agent,
+                    _ => Authentication::Password,
+                })
+            }),
         ));
         if let Authentication::Key(id) = &connection.authentication {
             form = form.push(form_row(
@@ -478,7 +481,10 @@ pub(super) fn connection_form<'a>(
             ));
         }
     }
-    if connection.authentication != Authentication::Agent {
+    if !matches!(
+        connection.authentication,
+        Authentication::Agent | Authentication::SshConfig
+    ) {
         let label = if matches!(connection.authentication, Authentication::Key(_)) {
             Key::DeploymentPassphrase
         } else {
@@ -505,6 +511,21 @@ pub(super) fn connection_form<'a>(
                 ]
                 .spacing(12),
             );
+    }
+    if connection.protocol == Protocol::Sftp {
+        form = form.push(
+            row![
+                space().width(LABEL_WIDTH),
+                checkbox(connection.uses_ssh_config())
+                    .label(i18n.text(Key::DeploymentUseSshConfig))
+                    .text_size(13)
+                    .on_toggle_maybe(
+                        (connection.authentication != Authentication::SshConfig)
+                            .then_some(Event::ParseSshConfig)
+                    )
+            ]
+            .spacing(12),
+        );
     }
     if state.operation_label.is_none()
         && let Some(error) = &state.error

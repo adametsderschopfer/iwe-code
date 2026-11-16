@@ -190,6 +190,7 @@ fn connection_set(i18n: &I18n, name: &str, changes: args::ConnectionChanges) -> 
     };
     {
         let connection = &mut workspace.deployment.connections[index];
+        let previous = connection.clone();
         if let Some(host) = non_empty(changes.host.as_deref().unwrap_or_default()) {
             connection.host = host;
         }
@@ -198,6 +199,9 @@ fn connection_set(i18n: &I18n, name: &str, changes: args::ConnectionChanges) -> 
         }
         if changes.protocol.is_some() {
             connection.protocol = protocol;
+            if protocol != Protocol::Sftp {
+                connection.parse_ssh_config = false;
+            }
             if changes.port.is_none() {
                 connection.port = port;
             }
@@ -207,6 +211,14 @@ fn connection_set(i18n: &I18n, name: &str, changes: args::ConnectionChanges) -> 
         }
         if changes.auth.is_some() {
             connection.authentication = authentication;
+        }
+        if previous.host != connection.host
+            || previous.port != connection.port
+            || previous.protocol != connection.protocol
+            || previous.uses_ssh_config() != connection.uses_ssh_config()
+            || (connection.uses_ssh_config() && previous.username != connection.username)
+        {
+            connection.trusted_host_key = None;
         }
         if connection.validate().is_err() {
             return exit(
@@ -670,6 +682,7 @@ fn connection_of(
         port,
         username: draft.username.clone(),
         authentication,
+        parse_ssh_config: false,
         trusted_host_key: None,
     };
     connection

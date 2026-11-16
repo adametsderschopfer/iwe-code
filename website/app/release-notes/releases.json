@@ -1944,6 +1944,16 @@
           "es": "Los servidores SFTP pueden detectar su carpeta remota inicial."
         },
         "sources": ["src/infrastructure/deployment/transfer/mod.rs"]
+      },
+      {
+        "id": "sftp-openssh-config",
+        "category": "added",
+        "text": {
+          "en": "SFTP connections can read settings from the local OpenSSH configuration.",
+          "ru": "Подключения SFTP могут читать настройки из локальной конфигурации OpenSSH.",
+          "es": "Las conexiones SFTP pueden leer ajustes de la configuración local de OpenSSH."
+        },
+        "sources": ["src/infrastructure/deployment/transport/ssh_config.rs"]
       }
     ]
   }
