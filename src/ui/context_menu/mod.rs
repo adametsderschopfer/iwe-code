@@ -18,6 +18,7 @@ pub(crate) fn trigger<'a, Message: 'a>(
         content: content.into(),
         on_open: Some(Box::new(on_open)),
         on_key: None,
+        popup_position: None,
         anchored: false,
         fallback: false,
     })
@@ -31,6 +32,7 @@ pub(crate) fn fallback<'a, Message: 'a>(
         content: content.into(),
         on_open: Some(Box::new(on_open)),
         on_key: None,
+        popup_position: None,
         anchored: false,
         fallback: true,
     })
@@ -44,6 +46,7 @@ pub(crate) fn anchored<'a, Message: 'a>(
         content: content.into(),
         on_open: Some(Box::new(on_open)),
         on_key: None,
+        popup_position: None,
         anchored: true,
         fallback: false,
     })
@@ -60,6 +63,7 @@ pub(crate) fn on_key<'a, Message: 'a>(
         content: content.into(),
         on_open: None,
         on_key: Some(Box::new(handler)),
+        popup_position: None,
         anchored: false,
         fallback: false,
     })
@@ -85,6 +89,7 @@ struct Trigger<'a, Message> {
     content: Element<'a, Message>,
     on_open: Option<Box<dyn Fn(Point) -> Message + 'a>>,
     on_key: Option<KeyHandler<'a, Message>>,
+    popup_position: Option<Point>,
     anchored: bool,
     fallback: bool,
 }
@@ -105,9 +110,19 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        self.content
+        let node = self
+            .content
             .as_widget_mut()
-            .layout(&mut tree.children[0], renderer, limits)
+            .layout(&mut tree.children[0], renderer, limits);
+        let Some(position) = self.popup_position else {
+            return node;
+        };
+        let available = limits.max();
+        let panel = node.size();
+        node.move_to(Point::new(
+            popup_origin(position.x, panel.width, available.width),
+            popup_origin(position.y, panel.height, available.height),
+        ))
     }
     fn operate(
         &mut self,
@@ -243,6 +258,15 @@ pub(crate) const ROW_PADDING: [u16; 2] = [5, 8];
 pub(crate) const TEXT_SIZE: f32 = 13.;
 pub(crate) const SURFACE_PADDING: u16 = 6;
 
+pub(crate) fn row<'a, Message: Clone + 'a>(
+    content: impl Into<Element<'a, Message>>,
+) -> iced::widget::Button<'a, Message> {
+    iced::widget::button(content)
+        .padding(ROW_PADDING)
+        .width(Length::Fill)
+        .style(super::theme::action(false))
+}
+
 pub(crate) fn surface<'a, Message: 'a>(
     content: Element<'a, Message>,
     width: f32,
@@ -263,6 +287,17 @@ pub(crate) fn separator<'a, Message: 'a>() -> Element<'a, Message> {
         .into()
 }
 
+fn popup_origin(anchor: f32, extent: f32, available: f32) -> f32 {
+    let anchor = anchor.clamp(0., available);
+    if anchor + extent <= available {
+        anchor
+    } else if extent <= anchor {
+        anchor - extent
+    } else {
+        (available - extent).max(0.)
+    }
+}
+
 pub(crate) fn overlay<'a, Message: Clone + 'a>(
     base: Element<'a, Message>,
     position: Point,
@@ -271,17 +306,14 @@ pub(crate) fn overlay<'a, Message: Clone + 'a>(
     dismiss: Message,
 ) -> Element<'a, Message> {
     let popup = responsive(move |available| {
-        container(surface(content(), size.width))
-            .padding(iced::Padding {
-                left: position.x.clamp(0., (available.width - size.width).max(0.)),
-                top: position
-                    .y
-                    .clamp(0., (available.height - size.height).max(0.)),
-                ..iced::Padding::ZERO
-            })
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+        Element::new(Trigger {
+            content: surface(content(), size.width.min(available.width)),
+            on_open: None,
+            on_key: None,
+            popup_position: Some(position),
+            anchored: false,
+            fallback: false,
+        })
     });
     let content = stack![
         base,

@@ -48,3 +48,30 @@ fn escape_closes_dialogs_and_context_menus_with_focused_inputs() {
         assert_eq!(ui.into_messages().collect::<Vec<_>>(), [Message::Close]);
     }
 }
+
+#[test]
+fn a_short_menu_stays_next_to_its_anchor_near_the_window_bottom() {
+    let view = overlay(
+        container(space())
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into(),
+        Point::new(20., 355.),
+        Size::new(180., 350.),
+        || {
+            container(space())
+                .width(Length::Fill)
+                .height(24)
+                .id("short-menu")
+                .into()
+        },
+        Message::Close,
+    );
+    let mut ui = iced_test::Simulator::with_size(iced::Settings::default(), (520., 400.), view);
+    let bounds = ui
+        .find(iced::widget::Id::new("short-menu"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    assert_eq!(bounds.y, 355. + f32::from(SURFACE_PADDING));
+}

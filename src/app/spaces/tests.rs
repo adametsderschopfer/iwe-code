@@ -758,7 +758,7 @@ fn dragging_spaces_preserves_selection_collapsed_state_and_saved_order() {
         .visible_bounds()
         .unwrap();
     let third = ui
-        .find(Id::new("space-group-2"))
+        .find(Id::new("space-project-2-0"))
         .unwrap()
         .visible_bounds()
         .unwrap();
@@ -767,7 +767,7 @@ fn dragging_spaces_preserves_selection_collapsed_state_and_saved_order() {
         mouse::Button::Left,
     ))]);
     // Move past the last group's midpoint, including its project rows.
-    let end = Point::new(third.center_x(), third.y + 110.);
+    let end = Point::new(third.center_x(), third.y + third.height - 1.);
     ui.point_at(end);
     ui.simulate([
         Event::Mouse(mouse::Event::CursorMoved { position: end }),

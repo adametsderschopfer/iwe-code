@@ -83,9 +83,9 @@ push to a real provider or change the user's repositories.
 
 ## Branch and commit menus
 
-Right-click a branch, tag, or commit to open its menu. The menu keeps the selected repository,
-reference, and commit. The commit menu opens after Git checks which actions are available. Opening
-the menu leaves the history filter unchanged.
+Right-click a branch, tag, or commit to open its menu near the pointer. The menu keeps the selected
+repository, reference, and commit. The commit menu opens after Git checks which actions are
+available. Opening the menu leaves the history filter unchanged.
 
 - Jump to a branch tip or a related commit. Choose a commit when several parents or children exist.
 - Merge or rebase from a branch. For a remote branch, choose whether to fetch and merge or rebase.

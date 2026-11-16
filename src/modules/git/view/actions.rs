@@ -7,7 +7,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length, Size,
-    widget::{Column, button, column, container, pick_list, row, space, text, text_input, toggler},
+    widget::{button, column, container, pick_list, row, space, text, text_input, toggler},
 };
 
 pub(super) fn label(app: View<'_>, action: Action, branch: &str) -> String {
@@ -25,50 +25,52 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
         context_menu::overlay(
             base,
             *point,
-            Size::new(365., 610.),
+            Size::new(300., 350.),
             move || {
-                let mut content = Column::new().spacing(2);
-                for action in [
-                    Action::Checkout,
-                    Action::Create,
-                    Action::Update,
-                    Action::Push,
-                    Action::Rename,
-                    Action::Delete,
-                ] {
-                    content = content.push(
-                        container(
-                            button(ellipsis::text(
-                                label(app, action, &branch.name),
-                                context_menu::TEXT_SIZE,
-                            ))
-                            .padding(context_menu::ROW_PADDING)
-                            .width(Length::Fill)
-                            .style(theme::action(false))
-                            .on_press_maybe(
-                                (git_actions::allowed(action, branch)
-                                    && !app.state.git_actions.pending
-                                    && app
-                                        .state
-                                        .git_actions
-                                        .history
-                                        .menu_context
-                                        .as_ref()
-                                        .is_some_and(|context| context.unfinished.is_none()))
-                                .then(|| Message::Git(GitMessage::Choose(action, key.clone()))),
-                            ),
-                        )
-                        .id(format!("git-action-{action:?}")),
-                    );
+                let item = |action| {
+                    let enabled = git_actions::allowed(action, branch)
+                        && !app.state.git_actions.pending
+                        && app
+                            .state
+                            .git_actions
+                            .history
+                            .menu_context
+                            .as_ref()
+                            .is_some_and(|context| context.unfinished.is_none());
+                    container(
+                        context_menu::row(ellipsis::text(
+                            label(app, action, &branch.name),
+                            context_menu::TEXT_SIZE,
+                        ))
+                        .on_press_maybe(
+                            enabled.then(|| Message::Git(GitMessage::Choose(action, key.clone()))),
+                        ),
+                    )
+                    .id(format!("git-action-{action:?}"))
+                };
+                let mut content = column![
+                    item(Action::Checkout),
+                    item(Action::Create),
+                    item(Action::Update),
+                    item(Action::Push),
+                    item(Action::Rename),
+                    context_menu::separator(),
+                ];
+                for action in super::history::branch_items(app, branch, key) {
+                    content = content.push(action);
                 }
-                for item in super::history::branch_items(app, branch, key) {
-                    content = content.push(item);
-                }
-                iced::widget::scrollable(content.push(crate::ui::explain::submenu(
-                    app.i18n,
-                    crate::domain::explain::Target::Branch(key.clone()),
-                    Message::Explain,
-                )))
+                iced::widget::scrollable(
+                    content
+                        .push(context_menu::separator())
+                        .push(crate::ui::explain::submenu(
+                            app.i18n,
+                            crate::domain::explain::Target::Branch(key.clone()),
+                            Message::Explain,
+                        ))
+                        .push(context_menu::separator())
+                        .push(item(Action::Delete)),
+                )
+                .height(Length::Shrink)
                 .style(theme::scroll)
                 .into()
             },

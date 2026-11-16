@@ -1880,6 +1880,26 @@
     "source": null,
     "items": [
       {
+        "id": "anchor-context-menus-to-pointer",
+        "category": "fixed",
+        "text": {
+          "en": "Context menus use their actual size to stay near the pointer.",
+          "ru": "Контекстные меню учитывают свой размер, чтобы открываться рядом с курсором.",
+          "es": "Los menús contextuales usan su tamaño real para abrirse cerca del cursor."
+        },
+        "sources": ["src/ui/context_menu/mod.rs"]
+      },
+      {
+        "id": "compact-spaces-and-projects",
+        "category": "changed",
+        "text": {
+          "en": "The sidebar uses tighter spacing for spaces and projects.",
+          "ru": "В боковой панели уменьшены отступы между пространствами и проектами.",
+          "es": "La barra lateral reduce el espacio entre los espacios y los proyectos."
+        },
+        "sources": ["src/ui/screens/workspace.rs"]
+      },
+      {
         "id": "cancel-index-on-quit",
         "category": "fixed",
         "text": {

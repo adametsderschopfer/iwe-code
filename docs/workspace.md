@@ -99,9 +99,9 @@ separate **Pinned** group. Each row identifies its space. The project retains it
 and disappears from that space's sidebar list. **Unpin project** returns it to the list. Pinning
 survives restarts and does not reload the open project.
 
-Click a space heading or its arrow to collapse or expand its projects. Spaces collapse
-independently. Collapsing a space keeps its selected project open. The edit button remains
-available.
+The sidebar uses compact rows and narrow gaps between spaces. Click a space heading or its arrow to
+collapse or expand its projects. Spaces collapse independently. Collapsing a space keeps its
+selected project open. The edit button remains available.
 
 Context menus use compact rows and the same panel styling across the workspace. The project menu can
 open its folder, copy its path, or move the project to another space. Moving a project preserves its

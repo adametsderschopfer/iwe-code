@@ -7,7 +7,7 @@ use crate::{
     i18n::{I18n, Key},
 };
 use iced::{
-    Element, Length, Size,
+    Element, Size,
     widget::{button, column, image, row, text},
 };
 
@@ -26,10 +26,7 @@ pub(crate) fn submenu<'a, M: Clone + 'a>(
         content = content.push(image(handle.clone()).width(16).height(16));
     }
     content = content.push(text(i18n.text(Key::Explain)).size(context_menu::TEXT_SIZE));
-    button(content)
-        .width(Length::Fill)
-        .padding(context_menu::ROW_PADDING)
-        .style(theme::action(false))
+    context_menu::row(content)
         .on_press(choose(target, Agent::Codex))
         .into()
 }

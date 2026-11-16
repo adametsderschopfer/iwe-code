@@ -411,17 +411,17 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                 ]
                 .spacing(8),
             )
-            .padding([8, 12]),
+            .padding([4, 9]),
         );
         for (space, project) in pinned {
             body = body.push(project_entry(app, space, project));
         }
-        body = body.push(space().height(12));
+        body = body.push(space().height(5));
     }
     {
-        let mut groups = Column::new().spacing(4).width(Length::Fill);
+        let mut groups = Column::new().spacing(3).width(Length::Fill);
         for (space_index, group) in app.workspace.spaces.iter().enumerate() {
-            let mut group_body = Column::new().spacing(4).width(Length::Fill);
+            let mut group_body = Column::new().spacing(2).width(Length::Fill);
             group_body = group_body.push(context_menu::trigger(
                 container(
                     row![
@@ -445,18 +445,18 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                             ]
                             .spacing(6)
                             .align_y(Alignment::Center)
-                            .height(28)
+                            .height(24)
                         )
-                        .padding([2, 10])
+                        .padding([0, 8])
                         .width(Length::Fill)
                         .on_press(Message::ToggleSpace(space_index))
                         .style(theme::action(false)),
                         tooltip::view(
                             container(
                                 button(icon(Icon::Settings, theme::FAINT))
-                                    .padding(6)
-                                    .width(32)
-                                    .height(32)
+                                    .padding(4)
+                                    .width(26)
+                                    .height(26)
                                     .style(theme::action(false))
                                     .on_press_maybe((!app.picking).then_some(Message::Space(
                                         crate::app::spaces::Message::Edit(space_index)
@@ -471,7 +471,7 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                     .align_y(Alignment::Center),
                 )
                 .id(format!("space-group-{space_index}"))
-                .padding([3, 0])
+                .padding([1, 0])
                 .width(Length::Fill),
                 move |point| Message::SpaceMenu(space_index, point),
             ));
@@ -479,7 +479,7 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                 groups = groups.push(group_body);
                 continue;
             }
-            let mut projects = Column::new().spacing(4).width(Length::Fill);
+            let mut projects = Column::new().spacing(2).width(Length::Fill);
             let visible: Vec<_> = group
                 .projects
                 .iter()
@@ -521,7 +521,7 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                             .size(12)
                             .style(theme::FAINT.text()),
                     )
-                    .padding([6, 12]),
+                    .padding([3, 9]),
                 );
             }
             group_body = group_body.push(
@@ -537,10 +537,9 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                     crate::app::project_add::Message::Open(Some(space_index)),
                 )))
                 .style(theme::action(false))
-                .padding([8, 12])
+                .padding([4, 9])
                 .width(Length::Fill),
             );
-            group_body = group_body.push(space().height(8));
             groups = groups.push(group_body);
         }
         let groups: Element<'_, Message> = if app.picking
@@ -553,7 +552,7 @@ fn sidebar(app: &App) -> Element<'_, Message> {
         } else {
             reorder::groups(
                 groups,
-                38.,
+                28.,
                 |from, to| Message::Space(crate::app::spaces::Message::MoveSpace(from, to)),
                 |offset| Message::Space(crate::app::spaces::Message::ScrollSpaces(offset)),
             )
@@ -862,7 +861,7 @@ fn project_entry(app: &App, space_index: usize, project_index: usize) -> Element
     let project = &group.projects[project_index];
     let active = app.workspace.selected_space == Some(space_index)
         && app.workspace.selected_project == Some(project_index);
-    let mut title = column![text(short(&project.name, 20)).size(14)];
+    let mut title = column![text(short(&project.name, 20)).size(13)];
     if project.pinned {
         title = title.push(
             text(short(&group.name, 24))
@@ -877,7 +876,7 @@ fn project_entry(app: &App, space_index: usize, project_index: usize) -> Element
         ),
         title.width(Length::Fill),
     ]
-    .spacing(10)
+    .spacing(7)
     .align_y(Alignment::Center);
     if app.project_has_changes(&project.directory) {
         contents = contents.push(tooltip::view(
@@ -894,7 +893,7 @@ fn project_entry(app: &App, space_index: usize, project_index: usize) -> Element
     let entry = tooltip::view(
         container(
             button(contents)
-                .padding([9, 12])
+                .padding([5, 9])
                 .width(Length::Fill)
                 .style(theme::action(active))
                 .on_press(Message::SelectProject(space_index, project_index)),
@@ -921,11 +920,7 @@ fn sidebar_menu_item(
     if destructive {
         label = label.style(theme::GIT_REMOVED.text());
     }
-    button(label)
-        .padding(context_menu::ROW_PADDING)
-        .width(Length::Fill)
-        .style(theme::action(false))
-        .on_press_maybe(message)
+    context_menu::row(label).on_press_maybe(message)
 }
 
 fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {

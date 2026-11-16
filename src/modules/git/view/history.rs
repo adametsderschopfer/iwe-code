@@ -56,10 +56,7 @@ fn key(action: Action) -> Key {
 }
 
 fn menu_item<'a>(label: String, message: Message) -> Element<'a, Message> {
-    button(ellipsis::text(label, context_menu::TEXT_SIZE))
-        .width(Length::Fill)
-        .padding(context_menu::ROW_PADDING)
-        .style(theme::action(false))
+    context_menu::row(ellipsis::text(label, context_menu::TEXT_SIZE))
         .on_press(message)
         .into()
 }

@@ -43,10 +43,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
             + usize::from(!is_root);
         let height = (items as f32 * 27. + 12.).min(available.height);
         let action = |key, event| {
-            button(text(app.i18n.text(key)).size(context_menu::TEXT_SIZE))
-                .padding(context_menu::ROW_PADDING)
-                .width(Length::Fill)
-                .style(theme::action(false))
+            context_menu::row(text(app.i18n.text(key)).size(context_menu::TEXT_SIZE))
                 .on_press_maybe(event)
         };
         let command = |command| Some(operations::message(operations::Event::Command(command)));
@@ -89,17 +86,15 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         )
         .on_enter(Message::Files(Event::CopyOptions));
         let deployment_action = |key, compare| {
-            button(text(app.i18n.text(key)).size(context_menu::TEXT_SIZE))
-                .padding(context_menu::ROW_PADDING)
-                .width(Length::Fill)
-                .style(theme::action(false))
-                .on_press(crate::app::modules::deployment_message(
-                    crate::modules::deployment::Event::Run(if compare {
+            context_menu::row(text(app.i18n.text(key)).size(context_menu::TEXT_SIZE)).on_press(
+                crate::app::modules::deployment_message(crate::modules::deployment::Event::Run(
+                    if compare {
                         crate::modules::deployment::Operation::Compare(menu.path.clone())
                     } else {
                         crate::modules::deployment::Operation::Upload(menu.path.clone())
-                    }),
-                ))
+                    },
+                )),
+            )
         };
         let create = Message::Files(Event::CreateOptions);
         let mut menu_items = column![arrow(Key::FileNew, create.clone()).on_enter(create)];

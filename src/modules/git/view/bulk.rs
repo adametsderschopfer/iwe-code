@@ -27,19 +27,25 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
         context_menu::overlay(
             base,
             point,
-            Size::new(330., 154.),
+            Size::new(300., 110.),
             move || {
                 let mut content = Column::new().spacing(2);
-                for action in [Action::Push, Action::Delete, Action::Pull] {
+                for action in [Action::Push, Action::Pull, Action::Delete] {
+                    if action == Action::Delete {
+                        content = content.push(context_menu::separator());
+                    }
                     content = content.push(
                         container(
-                            button(ellipsis::text(app.i18n.text(action.label()), 14.))
-                                .width(Length::Fill)
-                                .padding(context_menu::ROW_PADDING)
-                                .style(theme::action(false))
-                                .on_press_maybe(app.bulk_allowed(action).then_some(Message::Git(
-                                    GitMessage::Bulk(Event::Choose(action)),
-                                ))),
+                            context_menu::row(ellipsis::text(
+                                app.i18n.text(action.label()),
+                                context_menu::TEXT_SIZE,
+                            ))
+                            .on_press_maybe(
+                                app.bulk_allowed(action)
+                                    .then_some(Message::Git(GitMessage::Bulk(Event::Choose(
+                                        action,
+                                    )))),
+                            ),
                         )
                         .id(format!("git-bulk-{action:?}")),
                     );
