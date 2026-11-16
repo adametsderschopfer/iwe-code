@@ -166,7 +166,7 @@ fn settings_window_fits_all_languages_without_the_project_sidebar() {
 fn settings_content_covers_the_native_titlebar_without_hiding_system_controls() {
     let settings = settings_settings();
     assert!(settings.decorations);
-    assert!(settings.transparent);
+    assert!(!settings.transparent);
     assert!(settings.platform_specific.fullsize_content_view);
     assert!(settings.platform_specific.titlebar_transparent);
     assert!(settings.platform_specific.title_hidden);

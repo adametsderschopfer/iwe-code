@@ -1880,6 +1880,16 @@
     "source": null,
     "items": [
       {
+        "id": "verify-opaque-window-settings",
+        "category": "maintenance",
+        "text": {
+          "en": "Window tests verify opaque backgrounds and native window controls.",
+          "ru": "Тесты окон проверяют непрозрачный фон и системные кнопки окна.",
+          "es": "Las pruebas verifican los fondos opacos y los controles nativos de las ventanas."
+        },
+        "sources": ["src/app/windows/tests.rs"]
+      },
+      {
         "id": "codex-context-menu-logo",
         "category": "changed",
         "text": {

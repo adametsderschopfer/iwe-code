@@ -2286,7 +2286,7 @@ fn welcome_and_settings_fit_supported_window_sizes_in_every_language() {
         let settings = windows::main_settings();
         assert_eq!(settings.decorations, !cfg!(target_os = "windows"));
         assert!(!settings.exit_on_close_request);
-        assert_eq!(settings.transparent, cfg!(target_os = "macos"));
+        assert!(!settings.transparent);
         for size in [settings.size, settings.min_size.unwrap()] {
             for (navigation, key) in [
                 (Navigation::Projects, Key::Greeting),
