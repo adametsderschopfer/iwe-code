@@ -46,10 +46,10 @@ expanded branch groups. Project switches restore cached data before starting gen
 repository reads. Temporary errors preserve cached content. Confirmed missing repositories
 invalidate their entries.
 
-`main` routes each launch through three gates. The update helper handles internal flags. The command
-line in `cli/` handles commands such as `workspace list` and exits headless. External request
-handling forwards files and deep links to a running instance, or accepts them. What remains starts
-the graphics launcher. See [the command line](cli.md) for commands, output formats, and exit codes.
+`main` checks internal update flags before running command-line commands such as `workspace list`.
+The graphics launcher starts a separate process for each graphics attempt. That process forwards
+external requests to a running instance or accepts them before opening a window. See
+[the command line](cli.md) for commands, output formats, and exit codes.
 
 The `--mcp` flag starts the Model Context Protocol server before all gates. The transport in
 `infrastructure/mcp/` exchanges JSON-RPC messages over standard input and output, one per line.
@@ -59,7 +59,7 @@ save with a revision token from the latest read. See [the MCP server](mcp.md) fo
 
 | Module                                                | Responsibility                                                                           |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `main.rs`                                             | Route the command line and external requests, then start the graphics launcher           |
+| `main.rs`                                             | Route headless commands and connect the graphics launcher to the window process          |
 | `cli/`                                                | Run headless workspace and deployment commands                                           |
 | `infrastructure/mcp/`                                 | Serve JSON-RPC transport lines and negotiate the MCP protocol                            |
 | `app/mcp/`                                            | Serve workspace, files, search, Git, and deployment tools                                |

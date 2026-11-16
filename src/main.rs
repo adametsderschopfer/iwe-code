@@ -18,11 +18,10 @@ fn main() -> std::process::ExitCode {
     if let Some(code) = cli::run() {
         return code;
     }
-    match infrastructure::external::startup() {
-        infrastructure::external::Startup::Forwarded => return std::process::ExitCode::SUCCESS,
-        infrastructure::external::Startup::Primary => {}
-    }
     let language = infrastructure::locale::detect();
     let i18n = std::rc::Rc::new(i18n::I18n::new(language));
-    infrastructure::graphics::run(&i18n, || app::run(std::rc::Rc::clone(&i18n)))
+    infrastructure::graphics::run(&i18n, || match infrastructure::external::startup() {
+        infrastructure::external::Startup::Forwarded => Ok(()),
+        infrastructure::external::Startup::Primary => app::run(std::rc::Rc::clone(&i18n)),
+    })
 }

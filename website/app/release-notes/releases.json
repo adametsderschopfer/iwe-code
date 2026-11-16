@@ -1954,6 +1954,16 @@
           "es": "Las conexiones SFTP pueden leer ajustes de la configuración local de OpenSSH."
         },
         "sources": ["src/infrastructure/deployment/transport/ssh_config.rs"]
+      },
+      {
+        "id": "forward-requests-to-window-process",
+        "category": "fixed",
+        "text": {
+          "en": "File and link requests reach the running window after graphics startup.",
+          "ru": "Запросы на открытие файлов и ссылок доходят до окна после запуска графики.",
+          "es": "Las solicitudes de archivos y enlaces llegan a la ventana tras iniciar los gráficos."
+        },
+        "sources": ["src/main.rs"]
       }
     ]
   }

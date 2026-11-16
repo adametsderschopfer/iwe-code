@@ -101,3 +101,23 @@ fn a_launch_without_arguments_focuses_the_running_instance() {
     let request = forwarded_payload(&[]);
     assert_eq!(request["type"], "focus");
 }
+
+#[cfg(target_os = "linux")]
+#[test]
+fn first_launch_reaches_graphics_initialization_without_a_running_instance() {
+    let directory = tempfile::tempdir().expect("isolated data directory");
+    let output = Command::new(env!("CARGO_BIN_EXE_iwe"))
+        .env("IWE_DATA_DIR", directory.path())
+        .env_remove("IWE_GRAPHICS_CHILD")
+        .env_remove("DISPLAY")
+        .env_remove("WAYLAND_DISPLAY")
+        .env_remove("WAYLAND_SOCKET")
+        .env_remove("XDG_RUNTIME_DIR")
+        .output()
+        .expect("run without a graphical session");
+
+    assert!(
+        !output.status.success(),
+        "a first launch without a display must report a startup failure"
+    );
+}

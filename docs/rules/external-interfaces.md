@@ -38,7 +38,7 @@ or open windows.
 1. MCP server.
 2. Internal update flag.
 3. Command line gate.
-4. External request forwarding.
+4. External request forwarding in the process that opens the window.
 5. Interface.
 
 Preserve this order. Each step can exit the process before later steps run. A new startup step joins

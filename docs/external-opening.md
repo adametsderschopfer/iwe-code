@@ -36,10 +36,10 @@ queue.
 
 ## Single instance
 
-The first launch binds a local endpoint in the settings directory. Later launches forward their
-requests to that endpoint and exit. A launch without requests forwards a focus request, so a second
-launch always raises the running window instead of starting a second one. macOS delivers open events
-directly, so LaunchServices handles the same deduplication.
+The process that opens the window binds a local endpoint in the settings directory. Later launches
+forward their requests to that endpoint and exit. A launch without requests forwards a focus
+request, so a second launch raises the running window. macOS also delivers open events directly to
+the running application.
 
 The endpoint is private to your account. The Unix socket and its directory restrict access to the
 current user, and connecting requires write permission on the socket file. The Windows named pipe
