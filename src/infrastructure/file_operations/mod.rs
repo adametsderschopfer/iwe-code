@@ -163,7 +163,7 @@ pub(crate) fn run(root: &Path, repositories: &[PathBuf], request: &Request) -> R
         (CreateFolder, None, Some(destination)) => fs::create_dir(destination)?,
         (Copy, Some(source), Some(destination)) => copy(root, source, destination)?,
         (Move, Some(source), Some(destination)) => {
-            renamore::rename_exclusive(source, destination)?;
+            rename_exclusive(source, destination)?;
         }
         (Trash, Some(source), None) => move_to_trash(source)?,
         _ => return Err(Error::Protected),
@@ -217,6 +217,18 @@ fn scan_source(root: &Path, source: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+#[cfg(not(windows))]
+use renamore::rename_exclusive;
+
+#[cfg(windows)]
+fn rename_exclusive(source: &Path, destination: &Path) -> io::Result<()> {
+    let invalid_path = || io::Error::from(ErrorKind::InvalidInput);
+    let source = source.to_str().ok_or_else(invalid_path)?;
+    let destination = destination.to_str().ok_or_else(invalid_path)?;
+    winsafe::MoveFileEx(source, Some(destination), winsafe::co::MOVEFILE::default())
+        .map_err(|error| io::Error::from_raw_os_error(error.raw() as i32))
+}
+
 fn copy(root: &Path, source: &Path, destination: &Path) -> Result<(), Error> {
     let parent = destination.parent().ok_or(Error::Protected)?;
     let staging = tempfile::Builder::new()
@@ -225,7 +237,7 @@ fn copy(root: &Path, source: &Path, destination: &Path) -> Result<(), Error> {
     let staged = staging.path().join("entry");
     let result = copy_entry(root, source, &staged, 0).and_then(|()| {
         checked_entry(root, parent)?;
-        renamore::rename_exclusive(&staged, destination)?;
+        rename_exclusive(&staged, destination)?;
         Ok(())
     });
     #[cfg(unix)]

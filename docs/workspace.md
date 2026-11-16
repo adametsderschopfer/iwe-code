@@ -40,7 +40,8 @@ use, enter a different name or cancel. To transfer an item between volumes withi
 **Move to Trash** asks for confirmation. Use the system Trash to restore an item. On macOS, drag the
 item out of Trash if Finder offers no **Put Back** action. If the system Trash is unavailable, the
 operation fails. IWE Code protects project roots, Git metadata, and folders containing repositories.
-File operations reject symbolic links and their targets reached through a link.
+File operations reject symbolic links and their targets reached through a link. Copy and move
+operations protect existing destination entries on all supported platforms.
 
 IWE Code saves affected edits before copying, moving, renaming, or sending an item to Trash. If a
 save fails, the operation stops and the editor keeps your changes. A move updates open local tabs.

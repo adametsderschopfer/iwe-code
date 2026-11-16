@@ -242,7 +242,7 @@ async fn pull_uses_updated_remote_and_push_tag_sends_only_one_tag() {
 
 #[tokio::test]
 async fn patch_exports_a_commit_without_overwriting_an_existing_file() {
-    use super::super::tests::repository;
+    use super::super::tests::{command, repository};
     let dir = repository();
     let root = dir.path();
     let revision = commit(root, "Export example", "patch contents\n");
@@ -273,13 +273,16 @@ async fn patch_exports_a_commit_without_overwriting_an_existing_file() {
             .any(|line| line == "Subject: Export example"),
         "unexpected patch metadata: {metadata:?}"
     );
-    assert!(patch.contains("+patch contents"));
     assert!(
         execute(&target, Action::Patch, &context, &input)
             .await
             .is_err()
     );
-    assert_eq!(std::fs::read_to_string(path).unwrap(), patch);
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), patch);
+
+    command(root, &["switch", "--detach", "HEAD^"]);
+    command(root, &["apply", "--index", path.to_str().unwrap()]);
+    assert_eq!(command(root, &["show", ":example.txt"]), "patch contents");
 }
 
 #[tokio::test]

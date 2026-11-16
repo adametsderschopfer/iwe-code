@@ -1880,12 +1880,22 @@
     "source": null,
     "items": [
       {
+        "id": "windows-x86-file-moves",
+        "category": "fix",
+        "text": {
+          "en": "Restore the 32-bit Windows build and preserve destination files during moves.",
+          "ru": "Восстановлена 32-битная сборка Windows. Перемещение сохраняет существующие файлы.",
+          "es": "Se restaura la compilación de Windows de 32 bits y se protegen los archivos de destino al mover."
+        },
+        "sources": ["src/infrastructure/file_operations/mod.rs"]
+      },
+      {
         "id": "verify-exported-patch-content",
         "category": "maintenance",
         "text": {
-          "en": "Patch tests verify the exported commit subject and changes using Git.",
-          "ru": "Тесты экспорта проверяют тему коммита и изменения с помощью Git.",
-          "es": "Las pruebas de exportación verifican el asunto y los cambios con Git."
+          "en": "Patch tests verify the commit subject and apply the exported patch with Git.",
+          "ru": "Тесты экспорта проверяют тему коммита и применяют патч через Git.",
+          "es": "Las pruebas verifican el asunto del commit y aplican el parche con Git."
         },
         "sources": ["src/modules/git/transport/history/tests.rs"]
       },
