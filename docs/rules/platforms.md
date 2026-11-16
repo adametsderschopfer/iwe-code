@@ -13,16 +13,10 @@ Follow these rules when [AGENTS.md](../../AGENTS.md) directs you here.
 - Keep the three-platform CI matrix.
 - Check interface changes with a local application run.
 - Report visual checks separately from compilation checks.
-- Use native Liquid Glass for the window on supported macOS versions.
-- Show an opaque neutral gray background when Liquid Glass is unavailable or initialization fails.
-- Keep the Iced background transparent only after native material initialization succeeds.
-- Keep native material below the renderer. Never blur application content with the background
-  material.
+- Use an opaque neutral background in every application window.
 - Preserve native window controls on macOS and Linux, and preserve system window corners.
 - On Windows, use application caption controls without a native title bar. Preserve dragging,
   resizing, minimizing, maximizing, restoring, and closing through safe window APIs.
-- Do not simulate window glass with inset panels, gradients, outlines, shadows, or custom corner
-  radii.
 
 ## Cross-Platform Development
 

@@ -100,7 +100,7 @@ save with a revision token from the latest read. See [the MCP server](mcp.md) fo
 | `infrastructure/http.rs`                              | Enforce HTTPS, response bounds, request deadlines, and redirect restrictions             |
 | `infrastructure/process.rs`                           | Bound asynchronous subprocess time and output                                            |
 | `infrastructure/graphics/`                            | Start graphics backends in platform priority order                                       |
-| `infrastructure/window_effect/`                       | Place native Liquid Glass below the renderer on supported macOS versions                 |
+| `infrastructure/window_effect/`                       | Configure native resizing and zoom on macOS                                              |
 
 Composition connects the interface, localization, and infrastructure. Interface modules never import
 infrastructure. Translation logic performs no operating-system access. Add application and domain
@@ -482,7 +482,9 @@ window controls on macOS and Linux. Windows uses application-drawn caption contr
 On macOS, content extends into the native title bar. The sidebar reserves 32 pixels above its
 heading for native window controls. The main header remains 56 pixels high, including in settings.
 Drag either header's empty area to move the window. Double-click its empty area to maximize or
-restore the window. Linux keeps its native title bar.
+restore the window. On macOS, the app updates the window frame over 240 milliseconds and redraws
+between updates. The app changes the frame immediately when Reduce Motion is enabled. Linux keeps
+its native title bar.
 
 Windows disables the native title bar and places minimize, maximize, restore, and close controls in
 the application header. `ui/window_chrome.rs` keeps these controls above dialogs and provides edge
@@ -494,8 +496,8 @@ strip from the expected content width on Windows. Other platforms retain the ful
 
 On macOS, renderer layers anchor their contents at the top left instead of stretching the previous
 frame during resizing. AppKit requests redraws during live resizing. This policy preserves display
-scaling and applies without Liquid Glass. The native glass and window controls remain separate.
-Foundation and QuartzCore bindings provide safe access to these native layer settings.
+scaling and keeps the native window controls. Foundation and QuartzCore bindings provide safe access
+to these native layer settings.
 
 The default dark theme uses an opaque charcoal background (`#212121`) and navigation surfaces
 (`#181818`). The optional light theme uses `#fafafa` and `#f0f0f0`. Headers, settings, and panel
@@ -537,10 +539,6 @@ the popup and routes popup keys before the focused search input.
 
 Terminal, Git, and Pipelines share one optional bottom panel position. The workspace guide lists
 platform-specific keyboard shortcuts. Middle-click closes the targeted tab.
-
-Native Liquid Glass remains beneath the renderer on supported macOS versions. The renderer keeps an
-opaque neutral fallback until native initialization succeeds. The fallback follows the selected
-theme. Other platforms retain the same opaque workspace palette.
 
 The launcher tries these backends in order:
 

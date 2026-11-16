@@ -2366,23 +2366,21 @@ fn header_moves_the_window_without_capturing_action_buttons() {
 }
 
 #[test]
-fn background_remains_opaque_until_glass_succeeds() {
+fn application_windows_use_opaque_theme_backgrounds() {
+    assert!(!super::windows::main_settings().transparent);
+    assert!(!super::windows::settings_settings().transparent);
+
     let app = application(Rc::new(I18n::new(Language::English)));
     let (mut state, _) = app.boot();
     for appearance in [Appearance::Dark, Appearance::Light] {
         let _ = state.update(Message::SetAppearance(appearance));
-        for (ready, alpha) in [(false, 1.), (true, 0.), (false, 1.)] {
-            let _ = state.update(Message::GlassConfigured(ready));
-            let style = Program::style(&app, &state, &state.theme());
-            assert_eq!(style.background_color.a, alpha);
-            assert_eq!(style.text_color, theme::TEXT.resolve(&state.theme()));
-            if !ready {
-                assert_eq!(
-                    Some(style.background_color.into()),
-                    theme::surface(&state.theme()).background
-                );
-            }
-        }
+        let style = Program::style(&app, &state, &state.theme());
+        assert_eq!(style.background_color.a, 1.);
+        assert_eq!(style.text_color, theme::TEXT.resolve(&state.theme()));
+        assert_eq!(
+            Some(style.background_color.into()),
+            theme::surface(&state.theme()).background
+        );
     }
 }
 

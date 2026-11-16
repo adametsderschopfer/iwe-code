@@ -8,7 +8,7 @@ Build a native Rust workspace with Iced.
 - Organize shared code by layers and bundled capabilities under `src/modules/`. Follow
   [architecture rules](docs/rules/architecture.md).
 - Preserve the graphics priorities in [platform rules](docs/rules/platforms.md).
-- Use native Liquid Glass when available. Follow the gray fallback policy in
+- Use opaque window backgrounds. Follow the window rules in
   [platform rules](docs/rules/platforms.md).
 - Keep unit tests in adjacent `tests.rs` files. Reserve root `tests/` for integration tests.
 - Add meaningful tests for behavior changes and regression tests for bug fixes.

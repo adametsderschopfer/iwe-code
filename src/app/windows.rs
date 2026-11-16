@@ -1,9 +1,10 @@
 //! Keep settings and deployment in independent secondary windows.
 
 use super::{App, Message};
+#[cfg(target_os = "macos")]
+use crate::infrastructure::window_effect;
 use crate::{
     i18n::Key,
-    infrastructure::window_effect,
     ui::{screens, theme},
 };
 use iced::{Element, Length, Size, Task, widget::container, window};
@@ -13,6 +14,8 @@ pub(crate) struct State {
     pub settings: Option<window::Id>,
     pub deployment: Option<window::Id>,
     pub connections: Option<window::Id>,
+    #[cfg(target_os = "macos")]
+    zoom: std::sync::Arc<std::sync::Mutex<window_effect::Zoom>>,
     #[cfg(target_os = "windows")]
     pub connections_maximized: bool,
     #[cfg(target_os = "windows")]
@@ -46,7 +49,10 @@ impl State {
 pub(crate) enum Event {
     Close(window::Id),
     Closed(window::Id),
-    Configured,
+    #[cfg(target_os = "macos")]
+    ZoomTick,
+    #[cfg(target_os = "macos")]
+    ZoomUpdated,
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     Drag(window::Id),
     #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -65,7 +71,6 @@ pub(super) fn main_settings() -> window::Settings {
         min_size: Some(Size::new(1080., 720.)),
         position: window::Position::Centered,
         icon: crate::ui::branding::window_icon(),
-        transparent: cfg!(target_os = "macos"),
         decorations: !cfg!(target_os = "windows"),
         exit_on_close_request: false,
         #[cfg(target_os = "macos")]
@@ -85,7 +90,6 @@ pub(super) fn settings_settings() -> window::Settings {
         position: window::Position::Centered,
         icon: crate::ui::branding::window_icon(),
         decorations: !cfg!(target_os = "windows"),
-        transparent: cfg!(target_os = "macos"),
         exit_on_close_request: false,
         #[cfg(target_os = "macos")]
         platform_specific: window::settings::PlatformSpecific {
@@ -136,10 +140,10 @@ impl App {
 
     pub(super) fn window_opened(&mut self, id: window::Id) -> Task<Message> {
         if self.windows.is_secondary(id) {
-            return window::run(id, |window| {
-                window_effect::apply(window);
-            })
-            .map(|()| Message::Window(Event::Configured));
+            #[cfg(target_os = "macos")]
+            return window::run(id, window_effect::configure_resize).discard();
+            #[cfg(not(target_os = "macos"))]
+            return Task::none();
         }
         if self.window_id.is_none() {
             self.window_id = Some(id);
@@ -147,14 +151,70 @@ impl App {
         if self.window_id != Some(id) {
             return Task::none();
         }
-        Task::batch([
-            window::run(id, window_effect::apply).map(Message::GlassConfigured),
-            window::is_maximized(id).map(Message::WindowMaximized),
-        ])
+        let maximized = window::is_maximized(id).map(Message::WindowMaximized);
+        #[cfg(target_os = "macos")]
+        let maximized = Task::batch([
+            window::run(id, window_effect::configure_resize).discard(),
+            maximized,
+        ]);
+        maximized
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(super) fn zoom_subscription(&self) -> iced::Subscription<Message> {
+        let active = self
+            .windows
+            .zoom
+            .lock()
+            .is_ok_and(|zoom| zoom.is_animating());
+        if active {
+            iced::time::every(std::time::Duration::from_millis(8))
+                .map(|_| Message::Window(Event::ZoomTick))
+        } else {
+            iced::Subscription::none()
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn tick_window_zoom(&self) -> Task<Message> {
+        let ids = self
+            .windows
+            .zoom
+            .lock()
+            .map(|zoom| zoom.active_windows())
+            .unwrap_or_default();
+        Task::batch(ids.into_iter().map(|id| {
+            let zoom = self.windows.zoom.clone();
+            window::run(id, move |window| {
+                if let Ok(mut zoom) = zoom.lock() {
+                    zoom.tick(id, window);
+                }
+            })
+            .map(|()| Message::Window(Event::ZoomUpdated))
+        }))
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(super) fn toggle_window_zoom(&self, id: window::Id) -> Task<Message> {
+        let zoom = self.windows.zoom.clone();
+        window::run(id, move |window| {
+            if let Ok(mut zoom) = zoom.lock() {
+                zoom.toggle(id, window);
+            }
+        })
+        .map(|()| Message::Window(Event::ZoomUpdated))
     }
 
     pub(super) fn update_window(&mut self, event: Event) -> Task<Message> {
+        #[cfg(target_os = "macos")]
+        if let Event::Closed(id) = &event
+            && let Ok(mut zoom) = self.windows.zoom.lock()
+        {
+            zoom.forget(*id);
+        }
         match event {
+            #[cfg(target_os = "macos")]
+            Event::ZoomTick => return self.tick_window_zoom(),
             Event::Close(id) if self.windows.is_secondary(id) => return window::close(id),
             Event::Close(id) if self.window_id == Some(id) => {
                 if self.protect_editor(&Message::Window(Event::Close(id))) {
@@ -182,7 +242,7 @@ impl App {
             Event::Drag(id) if self.windows.is_secondary(id) => return window::drag(id),
             #[cfg(target_os = "macos")]
             Event::ToggleMaximized(id) if self.windows.is_secondary(id) => {
-                return window::toggle_maximize(id);
+                return self.toggle_window_zoom(id);
             }
             #[cfg(target_os = "windows")]
             Event::ToggleMaximized(id) if self.windows.is_secondary(id) => {

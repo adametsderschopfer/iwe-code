@@ -1880,6 +1880,16 @@
     "source": null,
     "items": [
       {
+        "id": "opaque-window-zoom",
+        "category": "changed",
+        "text": {
+          "en": "Windows use opaque backgrounds. On macOS, double-click the header to animate resizing.",
+          "ru": "Окна используют непрозрачный фон. В macOS двойной щелчок по заголовку плавно меняет размер окна.",
+          "es": "Las ventanas usan fondos opacos. En macOS, haz doble clic en el encabezado para animar el cambio de tamaño."
+        },
+        "sources": ["src/infrastructure/window_effect/macos.rs"]
+      },
+      {
         "id": "verify-website-release-publication",
         "category": "fixed",
         "text": {

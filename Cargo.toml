@@ -46,8 +46,8 @@ muda = { version = "0.21.2", default-features = false }
 # Enable the optional macOS fallback backends in Iced's wgpu dependency.
 wgpu = { version = "27.0.1", default-features = false, features = ["vulkan-portability", "angle"] }
 objc2 = "0.6.5"
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSButton", "NSControl", "NSGlassEffectView", "NSGraphics", "NSResponder", "NSView", "NSWindow", "objc2-quartz-core"] }
-objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSKeyValueCoding", "NSString"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSAccessibility", "NSApplication", "NSButton", "NSControl", "NSGraphics", "NSResponder", "NSScreen", "NSView", "NSWindow", "NSWorkspace", "objc2-quartz-core"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSGeometry", "NSKeyValueCoding", "NSString"] }
 objc2-quartz-core = { version = "0.3.2", default-features = false, features = ["std", "CALayer", "objc2-core-foundation"] }
 raw-window-handle = "0.6.2"
 

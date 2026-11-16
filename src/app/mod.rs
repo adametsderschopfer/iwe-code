@@ -101,6 +101,8 @@ fn application(
             #[cfg(target_os = "macos")]
             app.native_menu_subscription(),
             window_state_subscription(),
+            #[cfg(target_os = "macos")]
+            app.zoom_subscription(),
             external::subscription(),
             iced::event::listen_with(|event, status, id| {
                 if let iced::Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) = event {
@@ -117,7 +119,7 @@ fn application(
     })
     .theme(|app: &App, _| app.theme())
     .default_font(theme::font())
-    .style(|state, theme| theme::application_style(state.glass_ready, theme))
+    .style(|_, theme| theme::application_style(theme))
 }
 
 fn window_state_subscription() -> Subscription<Message> {
@@ -216,7 +218,6 @@ pub(crate) struct App {
     #[cfg(target_os = "macos")]
     native_menu: native_menu::State,
     pub window_maximized: bool,
-    glass_ready: bool,
     generation: u64,
     project_directory: Option<PathBuf>,
     repo_request: u64,
@@ -262,7 +263,6 @@ pub(crate) enum Message {
     CloseMenuBar,
     #[cfg(target_os = "windows")]
     MenuAbout,
-    GlassConfigured(bool),
     Loaded(Result<(Workspace, Option<PathBuf>), Failure>),
     Saved(Result<(), Failure>),
     Navigate(Navigation),
@@ -422,7 +422,6 @@ impl App {
             #[cfg(target_os = "macos")]
             native_menu: native_menu::State::default(),
             window_maximized: false,
-            glass_ready: false,
             generation: 0,
             project_directory: None,
             repo_request: 0,
@@ -694,6 +693,13 @@ impl App {
             Message::DragWindow => {
                 return self.window_id.map_or_else(Task::none, window::drag);
             }
+            #[cfg(target_os = "macos")]
+            Message::ToggleWindowMaximized => {
+                return self
+                    .window_id
+                    .map_or_else(Task::none, |id| self.toggle_window_zoom(id));
+            }
+            #[cfg(not(target_os = "macos"))]
             Message::ToggleWindowMaximized => {
                 return self.window_id.map_or_else(Task::none, |id| {
                     window::toggle_maximize::<Message>(id)
@@ -726,7 +732,6 @@ impl App {
                     .window_id
                     .map_or_else(Task::none, |id| window::drag_resize(id, direction));
             }
-            Message::GlassConfigured(ready) => self.glass_ready = ready,
             Message::Loaded(result) => {
                 self.loaded = true;
                 let mut dialog = Task::none();

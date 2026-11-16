@@ -20,5 +20,6 @@ pub(crate) mod project_index;
 pub(crate) mod repository;
 pub(crate) mod secret_files;
 pub(crate) mod updates;
+#[cfg(target_os = "macos")]
 pub(crate) mod window_effect;
 pub(crate) mod workspace;

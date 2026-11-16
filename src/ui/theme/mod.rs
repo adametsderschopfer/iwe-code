@@ -689,13 +689,9 @@ pub(crate) fn scroll(theme: &Theme, status: scrollable::Status) -> scrollable::S
     style
 }
 
-pub(crate) fn application_style(glass_ready: bool, theme: &Theme) -> theme::Style {
+pub(crate) fn application_style(theme: &Theme) -> theme::Style {
     theme::Style {
-        background_color: if glass_ready {
-            Color::TRANSPARENT
-        } else {
-            BACKGROUND.resolve(theme)
-        },
+        background_color: BACKGROUND.resolve(theme),
         text_color: TEXT.resolve(theme),
     }
 }

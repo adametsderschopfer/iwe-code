@@ -1,40 +1,174 @@
-//! Keep AppKit material and Iced rendering in separate sibling views.
+//! Configure native macOS window resizing.
 
-use objc2::{
-    MainThreadMarker, MainThreadOnly,
-    rc::Retained,
-    runtime::{AnyClass, AnyObject},
-};
+use objc2::{MainThreadMarker, rc::Retained, runtime::AnyObject};
 use objc2_app_kit::{
-    NSApplication, NSGlassEffectView, NSGlassEffectViewStyle, NSView, NSViewLayerContentsPlacement,
-    NSViewLayerContentsRedrawPolicy, NSWindowButton, NSWindowOrderingMode,
+    NSApplication, NSView, NSViewLayerContentsPlacement, NSViewLayerContentsRedrawPolicy, NSWindow,
+    NSWindowStyleMask, NSWorkspace,
 };
-use objc2_foundation::{NSArray, NSObjectNSKeyValueCoding, ns_string};
+use objc2_foundation::{NSArray, NSObjectNSKeyValueCoding, NSRect, ns_string};
 use objc2_quartz_core::CALayer;
 use raw_window_handle::RawWindowHandle;
+use std::time::{Duration, Instant};
 
-pub(crate) fn apply(window: &dyn iced::window::Window) -> bool {
-    configure(window).is_some()
+const ZOOM_DURATION: Duration = Duration::from_millis(240);
+
+struct Transition {
+    start: Instant,
+    from: NSRect,
+    to: NSRect,
+    last_frame: NSRect,
 }
 
-fn configure(window: &dyn iced::window::Window) -> Option<()> {
+fn interpolate(from: NSRect, to: NSRect, progress: f64) -> NSRect {
+    let eased = progress * progress * (3. - 2. * progress);
+    let blend = |from: f64, to: f64| from + (to - from) * eased;
+    NSRect::new(
+        objc2_foundation::NSPoint::new(
+            blend(from.origin.x, to.origin.x),
+            blend(from.origin.y, to.origin.y),
+        ),
+        objc2_foundation::NSSize::new(
+            blend(from.size.width, to.size.width),
+            blend(from.size.height, to.size.height),
+        ),
+    )
+}
+
+#[derive(Default)]
+pub(crate) struct Zoom {
+    frames: std::collections::HashMap<iced::window::Id, (NSRect, NSRect)>,
+    transitions: std::collections::HashMap<iced::window::Id, Transition>,
+}
+
+impl Zoom {
+    pub(crate) fn forget(&mut self, id: iced::window::Id) {
+        self.frames.remove(&id);
+        self.transitions.remove(&id);
+    }
+
+    fn restore_frame(&mut self, id: iced::window::Id, current: NSRect) -> Option<NSRect> {
+        let (previous, maximized) = self.frames.remove(&id)?;
+        (current == maximized).then_some(previous)
+    }
+
+    pub(crate) fn toggle(&mut self, id: iced::window::Id, window: &dyn iced::window::Window) {
+        let Some((native_window, _)) = native_window(window) else {
+            return;
+        };
+        if native_window
+            .styleMask()
+            .contains(NSWindowStyleMask::FullScreen)
+        {
+            return;
+        }
+        let Some(screen) = native_window.screen() else {
+            return;
+        };
+        let current = native_window.frame();
+        let visible = screen.visibleFrame();
+        let target = match self.transitions.remove(&id) {
+            Some(transition) if transition.last_frame == current => {
+                let (original, maximized) = self.frames[&id];
+                if transition.to == maximized {
+                    original
+                } else {
+                    maximized
+                }
+            }
+            _ => self.restore_frame(id, current).unwrap_or_else(|| {
+                self.frames.insert(id, (current, visible));
+                visible
+            }),
+        };
+        if current == target {
+            self.forget(id);
+        } else if NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceMotion() {
+            native_window.setFrame_display(target, true);
+            self.finish(id, target, native_window.frame());
+        } else {
+            self.frames.entry(id).or_insert((target, current));
+            self.transitions.insert(
+                id,
+                Transition {
+                    start: Instant::now(),
+                    from: current,
+                    to: target,
+                    last_frame: current,
+                },
+            );
+        }
+    }
+
+    pub(crate) fn is_animating(&self) -> bool {
+        !self.transitions.is_empty()
+    }
+
+    pub(crate) fn active_windows(&self) -> Vec<iced::window::Id> {
+        self.transitions.keys().copied().collect()
+    }
+
+    pub(crate) fn tick(&mut self, id: iced::window::Id, window: &dyn iced::window::Window) {
+        let Some(transition) = self.transitions.get_mut(&id) else {
+            return;
+        };
+        let Some((window, _)) = native_window(window) else {
+            self.forget(id);
+            return;
+        };
+        if window.frame() != transition.last_frame
+            || window.isMiniaturized()
+            || window.styleMask().contains(NSWindowStyleMask::FullScreen)
+        {
+            self.forget(id);
+            return;
+        }
+        let progress = transition.start.elapsed().as_secs_f64() / ZOOM_DURATION.as_secs_f64();
+        let target = transition.to;
+        if progress >= 1. {
+            window.setFrame_display(target, false);
+            self.transitions.remove(&id);
+            self.finish(id, target, window.frame());
+        } else {
+            window.setFrame_display(interpolate(transition.from, target, progress), false);
+            transition.last_frame = window.frame();
+        }
+    }
+
+    fn finish(&mut self, id: iced::window::Id, target: NSRect, actual: NSRect) {
+        if let Some((original, maximized)) = self.frames.get_mut(&id) {
+            if target == *original {
+                self.frames.remove(&id);
+            } else {
+                *maximized = actual;
+            }
+        }
+    }
+}
+
+fn native_window(
+    window: &dyn iced::window::Window,
+) -> Option<(Retained<NSWindow>, Retained<NSView>)> {
     let mtm = MainThreadMarker::new()?;
     let handle = window.window_handle().ok()?;
     let RawWindowHandle::AppKit(handle) = handle.as_raw() else {
         return None;
     };
 
-    let application = NSApplication::sharedApplication(mtm);
-    let (native_window, content) =
-        application
-            .windows()
-            .to_vec()
-            .into_iter()
-            .find_map(|native_window| {
-                let content = native_window.contentView()?;
-                (Retained::as_ptr(&content).cast() == handle.ns_view.as_ptr())
-                    .then_some((native_window, content))
-            })?;
+    NSApplication::sharedApplication(mtm)
+        .windows()
+        .to_vec()
+        .into_iter()
+        .find_map(|native_window| {
+            let content = native_window.contentView()?;
+            (Retained::as_ptr(&content).cast() == handle.ns_view.as_ptr())
+                .then_some((native_window, content))
+        })
+}
+
+pub(crate) fn configure_resize(window: &dyn iced::window::Window) {
+    let Some((_, content)) = native_window(window) else {
+        return;
+    };
 
     // Preserve pixel size while the renderer prepares a frame for the new window bounds.
     content.setLayerContentsPlacement(NSViewLayerContentsPlacement::TopLeft);
@@ -42,39 +176,6 @@ fn configure(window: &dyn iced::window::Window) -> Option<()> {
     if let Some(layer) = content.layer() {
         anchor_renderer_layers(&layer);
     }
-
-    // Resize behavior also applies on macOS versions without Liquid Glass.
-    AnyClass::get(c"NSGlassEffectView")?;
-
-    // Find the shared parent through retained views, without dereferencing the raw window handle.
-    let close_button = native_window.standardWindowButton(NSWindowButton::CloseButton)?;
-    let parent = content.ancestorSharedWithView(&close_button)?;
-    if !parent.subviews().to_vec().contains(&content) {
-        return None;
-    }
-
-    let glass = NSGlassEffectView::initWithFrame(NSGlassEffectView::alloc(mtm), content.frame());
-    glass.setStyle(NSGlassEffectViewStyle::Regular);
-    glass.setAutoresizingMask(content.autoresizingMask());
-    parent.addSubview_positioned_relativeTo(&glass, NSWindowOrderingMode::Below, Some(&content));
-
-    let siblings: Vec<_> = parent
-        .subviews()
-        .to_vec()
-        .iter()
-        .map(Retained::as_ptr)
-        .collect();
-    let glass_view: &NSView = &glass;
-    if !super::background_precedes_content(
-        &siblings,
-        &(glass_view as *const NSView),
-        &Retained::as_ptr(&content),
-    ) {
-        glass.removeFromSuperview();
-        return None;
-    }
-
-    Some(())
 }
 
 fn anchor_renderer_layers(layer: &CALayer) {

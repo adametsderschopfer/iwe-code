@@ -59,9 +59,8 @@ Preserve document state when appearance changes. Invalidate cached drawing color
 changes.
 
 Centralize colors in `ui/theme`. Do not duplicate hexadecimal values across screens. Do not derive
-entity meaning from color alone. Keep foregrounds readable on each surface. Preserve native Liquid
-Glass and the platform's opaque gray fallback. Native window material and opaque content surfaces
-have separate responsibilities. Keep workspace surfaces opaque above the native material.
+entity meaning from color alone. Keep foregrounds readable on each surface. Keep window and
+workspace backgrounds opaque.
 
 Centralize:
 
