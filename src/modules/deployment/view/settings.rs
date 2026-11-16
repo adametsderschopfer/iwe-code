@@ -78,7 +78,9 @@ fn test_controls<'a>(
     connection: Option<&crate::domain::deployment::Connection>,
     profile: Option<&str>,
 ) -> Element<'a, Event> {
-    let relevant = state.operation_label == Some(Key::DeploymentTest)
+    let detecting_root =
+        profile.is_some() && state.operation_label == Some(Key::DeploymentAutodetectRoot);
+    let relevant = (detecting_root || state.operation_label == Some(Key::DeploymentTest))
         && state.test_profile.as_deref() == profile
         && state.test_connection.is_some()
         && state.test_connection.as_ref() == connection;
@@ -704,6 +706,32 @@ fn profile_form<'a>(
     let mut form = column![].spacing(12);
     match state.profile_tab {
         ProfileTab::Connection => {
+            let connection = settings
+                .connections
+                .iter()
+                .find(|connection| connection.id == profile.connection);
+            let mut root_controls = row![
+                field(&profile.root, |value| Event::Input(Field::Root, value)),
+                tool(
+                    i18n,
+                    Icon::Folder,
+                    Key::DeploymentBrowse,
+                    (!state.busy).then_some(Event::BrowseRoot)
+                )
+            ]
+            .align_y(Alignment::Center)
+            .spacing(6);
+            if connection.is_some_and(|connection| connection.protocol == Protocol::Sftp) {
+                root_controls = root_controls.push(
+                    container(
+                        button(text(i18n.text(Key::DeploymentAutodetectRoot)).size(13))
+                            .on_press_maybe((!state.busy).then_some(Event::AutodetectRoot))
+                            .padding([7, 12])
+                            .style(style::secondary),
+                    )
+                    .id("deployment-autodetect-root"),
+                );
+            }
             let projects: Vec<_> = spaces
                 .iter()
                 .enumerate()
@@ -760,28 +788,12 @@ fn profile_form<'a>(
                     ]
                     .spacing(6),
                 ))
-                .push(form_row(
-                    i18n,
-                    Key::DeploymentRoot,
-                    row![
-                        field(&profile.root, |v| Event::Input(Field::Root, v)),
-                        tool(
-                            i18n,
-                            Icon::Folder,
-                            Key::DeploymentBrowse,
-                            (!state.busy).then_some(Event::BrowseRoot)
-                        )
-                    ]
-                    .spacing(6),
-                ))
+                .push(form_row(i18n, Key::DeploymentRoot, root_controls))
                 .push(test_controls(
                     state,
                     i18n,
                     Event::TestProfile,
-                    settings
-                        .connections
-                        .iter()
-                        .find(|c| c.id == profile.connection),
+                    connection,
                     Some(&profile.id),
                 ))
                 .push(

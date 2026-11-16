@@ -21,6 +21,7 @@ pub(crate) enum Operation {
         text: Arc<String>,
     },
     Test,
+    AutodetectRoot,
     List(String),
     Preview(String),
     Compare(PathBuf),
@@ -32,6 +33,7 @@ pub(crate) enum Operation {
 pub(crate) enum Output {
     SavedText(u64),
     Connected,
+    RootDetected(String),
     Listed(String, Vec<Entry>),
     Preview {
         profile_id: String,
@@ -98,6 +100,11 @@ pub(crate) fn run(
             Ok(Output::SavedText(*token))
         }
         Operation::Test => Ok(Output::Connected),
+        Operation::AutodetectRoot => {
+            let root = transport.initial_directory()?;
+            progress.check()?;
+            Ok(Output::RootDetected(root))
+        }
         Operation::List(path) => {
             check_remote(transport, path, false)?;
             if !contains(&remote_path(&profile.root)?, &remote_path(path)?) {

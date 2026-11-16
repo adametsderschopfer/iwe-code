@@ -1934,6 +1934,16 @@
           "es": "La guía de CLI muestra cada explicación debajo de su comando."
         },
         "sources": ["website/app/components/DocsPage.vue", "website/app/i18n/en.json"]
+      },
+      {
+        "id": "sftp-detect-server-root",
+        "category": "added",
+        "text": {
+          "en": "SFTP servers can detect their initial remote folder.",
+          "ru": "Для серверов SFTP можно определить начальную папку.",
+          "es": "Los servidores SFTP pueden detectar su carpeta remota inicial."
+        },
+        "sources": ["src/infrastructure/deployment/transfer/mod.rs"]
       }
     ]
   }

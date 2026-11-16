@@ -50,6 +50,7 @@ fn ftps_rejects_untrusted_certificates() {
 
 #[tokio::test]
 async fn sftp_checks_host_keys_passwords_and_private_keys_over_loopback() {
+    use crate::{domain::deployment::Profile, infrastructure::deployment::transfer};
     use base64::Engine;
     use sha2::Digest;
     let server = fixtures::Ssh::start().await;
@@ -103,6 +104,17 @@ async fn sftp_checks_host_keys_passwords_and_private_keys_over_loopback() {
             Err(Error::Credentials)
         ));
         let mut transport = sftp::Sftp::connect(&connection, &settings, &secret).unwrap();
+        let root = transfer::run(
+            &mut transport,
+            &Profile::default(),
+            &transfer::Operation::AutodetectRoot,
+            &Progress::default(),
+        );
+        assert!(matches!(
+            root,
+            Ok(transfer::Output::RootDetected(path))
+                if path == "/home/user"
+        ));
         assert_eq!(transport.list("/").unwrap()[0].name, "hello.txt");
         let mut content = Vec::new();
         transport

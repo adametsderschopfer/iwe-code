@@ -104,6 +104,7 @@ pub(crate) enum Event {
     DeleteProfile,
     SelectProfile(String),
     BrowseRoot,
+    AutodetectRoot,
     BrowseMapping(usize),
     PickLocalMapping(usize),
     LocalMappingPicked(Profile, usize, Option<PathBuf>),
@@ -386,8 +387,11 @@ impl State {
         self.error = None;
         self.status = None;
         self.test_result = None;
-        self.test_connection =
-            matches!(request.operation, Operation::Test).then(|| request.connection.clone());
+        self.test_connection = matches!(
+            request.operation,
+            Operation::Test | Operation::AutodetectRoot
+        )
+        .then(|| request.connection.clone());
         self.test_profile = (self.test_connection.is_some() && !request.profile.id.is_empty())
             .then(|| request.profile.id.clone());
         self.operation_name = if request.profile.name.is_empty() {
@@ -400,6 +404,7 @@ impl State {
         self.activity_visible = true;
         self.operation_label = Some(match &request.operation {
             Operation::Test => Key::DeploymentTest,
+            Operation::AutodetectRoot => Key::DeploymentAutodetectRoot,
             Operation::List(_) => Key::DeploymentRefresh,
             Operation::Preview(_) => Key::DeploymentLoadingRemote,
             Operation::Compare(_) => Key::DeploymentCompare,
@@ -414,7 +419,7 @@ impl State {
                 path.clone()
             }
             Operation::SaveText { path, .. } => path.clone(),
-            Operation::Test => String::new(),
+            Operation::Test | Operation::AutodetectRoot => String::new(),
         };
         self.current = Some(request.clone());
         Task::perform(
@@ -539,6 +544,35 @@ impl State {
             self.pending = Some(Box::new(event));
             return (Task::none(), effect);
         }
+        if matches!(
+            event,
+            Event::CloseSettings(false)
+                | Event::Input(Field::Root, _)
+                | Event::EditProfile(_)
+                | Event::NewProfile
+                | Event::DeleteProfile
+                | Event::ProfileProject(_, _)
+                | Event::ProfileConnection(_)
+                | Event::SaveProfile
+        ) {
+            if self
+                .current
+                .as_ref()
+                .is_some_and(|request| request.operation == Operation::AutodetectRoot)
+            {
+                self.progress.cancel.cancel();
+                self.test_connection = None;
+            }
+            if self
+                .failed
+                .as_ref()
+                .is_some_and(|request| request.operation == Operation::AutodetectRoot)
+            {
+                self.failed = None;
+                self.test_connection = None;
+                self.error = None;
+            }
+        }
         match event {
             Event::OpenConnections if self.connection.is_none() => {
                 if let Some(connection) = settings.connections.first() {
@@ -609,18 +643,30 @@ impl State {
                     self.key_error = None;
                 }
             }
-            Event::TestProfile => {
+            Event::TestProfile | Event::AutodetectRoot
+                if !self.busy || matches!(event, Event::TestProfile) =>
+            {
+                let operation = if matches!(event, Event::AutodetectRoot) {
+                    Operation::AutodetectRoot
+                } else {
+                    Operation::Test
+                };
                 if let Some(profile) = &self.profile
                     && let Some(connection) = settings
                         .connections
                         .iter()
                         .find(|c| c.id == profile.connection)
                 {
+                    if operation == Operation::AutodetectRoot
+                        && connection.protocol != Protocol::Sftp
+                    {
+                        return (Task::none(), effect);
+                    }
                     let request = Request {
                         connection: connection.clone(),
                         settings: settings.clone(),
                         profile: settings::normalized_profile(profile),
-                        operation: Operation::Test,
+                        operation,
                         secret: None,
                     };
                     return (self.start(request), effect);
@@ -1365,11 +1411,32 @@ impl State {
             }
             Event::Finished(id, result) if id == self.request => {
                 self.busy = false;
-                if self
-                    .current
-                    .as_ref()
-                    .is_some_and(|request| matches!(request.operation, Operation::Test))
+                if let Some(request) = &self.current
+                    && request.operation == Operation::AutodetectRoot
+                    && (self.progress.cancel.is_cancelled()
+                        || !self.profile.as_ref().is_some_and(|profile| {
+                            profile.id == request.profile.id
+                                && profile.project == request.profile.project
+                                && profile.connection == request.profile.connection
+                                && profile.root == request.profile.root
+                        })
+                        || !settings.connections.contains(&request.connection))
                 {
+                    self.current = None;
+                    self.activity_visible = false;
+                    self.activity_expanded = false;
+                    let task = self
+                        .queue
+                        .pop_front()
+                        .map_or_else(Task::none, |next| self.start(next));
+                    return (task, effect);
+                }
+                if self.current.as_ref().is_some_and(|request| {
+                    matches!(
+                        request.operation,
+                        Operation::Test | Operation::AutodetectRoot
+                    )
+                }) {
                     self.test_result = Some(result.as_ref().map(|_| ()).map_err(Clone::clone));
                 }
                 match result {
@@ -1380,6 +1447,12 @@ impl State {
                         match output {
                             Output::SavedText(token) => effect = Effect::EditorSaved(token, Ok(())),
                             Output::Connected => self.status = Some(Key::DeploymentConnected),
+                            Output::RootDetected(root) => {
+                                if let Some(profile) = &mut self.profile {
+                                    profile.root = root;
+                                }
+                                self.status = Some(Key::DeploymentRootDetected);
+                            }
                             Output::Transferred => {
                                 self.status = Some(Key::DeploymentComplete);
                                 effect = Effect::Transferred(self.operation_name.clone());

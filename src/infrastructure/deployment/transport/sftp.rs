@@ -95,6 +95,14 @@ fn entry(path: String, stat: ssh2::FileStat) -> Entry {
 }
 
 impl Transport for Sftp {
+    fn initial_directory(&mut self) -> Result<String, Error> {
+        let directory = self
+            .files
+            .realpath(Path::new("."))
+            .map_err(|_| Error::Access)?;
+        crate::domain::deployment::remote_path(directory.to_str().ok_or(Error::Unsupported)?)
+    }
+
     fn list(&mut self, path: &str) -> Result<Vec<Entry>, Error> {
         let mut directory = self
             .files

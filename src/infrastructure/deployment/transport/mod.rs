@@ -37,6 +37,10 @@ pub(crate) struct Entry {
 }
 
 pub(crate) trait Transport: Send {
+    fn initial_directory(&mut self) -> Result<String, Error> {
+        Err(Error::Unsupported)
+    }
+
     fn list(&mut self, path: &str) -> Result<Vec<Entry>, Error>;
     fn stat(&mut self, path: &str) -> Result<Option<Entry>, Error>;
     fn mkdir(&mut self, path: &str) -> Result<(), Error>;

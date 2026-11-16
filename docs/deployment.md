@@ -46,8 +46,10 @@ same project. Select a server in the left list. The right editor separates **Con
 moves the server to that project and retains its relative mappings and exclusions. Choose the saved
 connection, root directory, and default server behavior in the same tab. The settings button beside
 the connection selector opens the Connections window. A separate folder dialog selects the server
-root. Cancel leaves the root unchanged and ignores late directory responses. Mappings pairs local
-and remote directories. Excluded paths lists project-relative paths. Server duplication preserves
+root. Cancel leaves the root unchanged and ignores late directory responses. For SFTP, choose
+**Autodetect** to fill the root with the initial folder reported by the server. Review the path and
+choose **Save** to apply it. If detection fails, the root stays unchanged. Mappings pairs local and
+remote directories. Excluded paths lists project-relative paths. Server duplication preserves
 mappings and exclusions without copying the default flag. Confirming duplication saves a separate
 server immediately. An unsaved source also remains available in the list. Choose one server as the
 project's default in its Connection tab. Selecting another server in the server panel changes only

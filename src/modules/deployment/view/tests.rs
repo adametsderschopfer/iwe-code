@@ -105,6 +105,47 @@ fn profile_tabs_fit_translations_share_a_baseline_and_select_each_page() {
 }
 
 #[test]
+fn sftp_root_autodetect_button_fits_all_languages_and_dispatches_its_action() {
+    use crate::domain::deployment::{Connection, Profile, Protocol};
+
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let i18n = I18n::new(language);
+        let mut state = State::default();
+        state.profile = Some(Profile {
+            connection: "remote".into(),
+            root: "/".into(),
+            ..Default::default()
+        });
+        for protocol in [Protocol::Sftp, Protocol::Ftp, Protocol::Ftps] {
+            let connections = Connections {
+                connections: vec![Connection {
+                    id: "remote".into(),
+                    protocol,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            };
+            let mut ui = iced_test::Simulator::with_size(
+                iced::Settings::default(),
+                (650., 600.),
+                settings::profiles_view(&state, &connections, &[], None, &i18n),
+            );
+            let label = i18n.text(Key::DeploymentAutodetectRoot);
+            if protocol == Protocol::Sftp {
+                assert!(ui.find(label.as_str()).unwrap().visible_bounds().is_some());
+                ui.click(label).unwrap();
+                assert!(
+                    ui.into_messages()
+                        .any(|event| matches!(event, Event::AutodetectRoot))
+                );
+            } else {
+                assert!(ui.find(label).is_err());
+            }
+        }
+    }
+}
+
+#[test]
 fn remote_files_open_on_double_click_and_show_context_actions() {
     let mut state = State::default();
     let entry = Entry {

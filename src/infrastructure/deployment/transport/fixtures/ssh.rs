@@ -145,6 +145,16 @@ impl russh_sftp::server::Handler for FilesSession {
     fn unimplemented(&self) -> StatusCode {
         StatusCode::OpUnsupported
     }
+    async fn realpath(&mut self, id: u32, path: String) -> Result<Name, StatusCode> {
+        if path != "." {
+            return Err(StatusCode::NoSuchFile);
+        }
+        Ok(Name {
+            id,
+            files: vec![File::new("/home/user", attrs(0, true))],
+        })
+    }
+
     async fn lstat(&mut self, id: u32, path: String) -> Result<Attrs, StatusCode> {
         if path == "/" {
             return Ok(Attrs {

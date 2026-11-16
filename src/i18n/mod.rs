@@ -133,6 +133,8 @@ message_keys! {
     DeploymentSave => "deployment-save",
     DeploymentDelete => "deployment-delete",
     DeploymentTest => "deployment-test",
+    DeploymentAutodetectRoot => "deployment-autodetect-root",
+    DeploymentRootDetected => "deployment-root-detected",
     DeploymentChecking => "deployment-checking",
     DeploymentKeys => "deployment-keys",
     DeploymentKeyPath => "deployment-key-path",

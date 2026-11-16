@@ -827,6 +827,59 @@ fn test_connection_does_not_require_mappings_and_result_survives_invalid_profile
 }
 
 #[test]
+fn autodetect_updates_only_the_current_server_draft() {
+    for (interruption, result, expected) in [
+        (
+            None,
+            Ok(Output::RootDetected("/home/user".into())),
+            "/home/user",
+        ),
+        (None, Err(Error::Access), "/srv"),
+        (
+            Some(Event::Input(Field::Root, "/manual".into())),
+            Ok(Output::RootDetected("/home/user".into())),
+            "/manual",
+        ),
+        (
+            Some(Event::CloseSettings(false)),
+            Ok(Output::RootDetected("/home/user".into())),
+            "/srv",
+        ),
+        (
+            Some(Event::Cancel),
+            Ok(Output::RootDetected("/home/user".into())),
+            "/srv",
+        ),
+    ] {
+        let (mut state, mut settings, mut profiles, project) = transfer_context();
+        state.profile = Some(profiles[0].clone());
+        let _ = state.update(
+            Event::AutodetectRoot,
+            &mut settings,
+            &mut profiles,
+            Some(&project),
+        );
+        assert_eq!(
+            state.current.as_ref().unwrap().operation,
+            Operation::AutodetectRoot
+        );
+        if let Some(event) = interruption {
+            let _ = state.update(event, &mut settings, &mut profiles, Some(&project));
+        }
+        let (_, effect) = state.update(
+            Event::Finished(state.request, result),
+            &mut settings,
+            &mut profiles,
+            Some(&project),
+        );
+        assert!(matches!(effect, Effect::None));
+        assert!(!state.busy);
+        assert_eq!(state.profile.as_ref().unwrap().root, expected);
+        assert_eq!(profiles[0].root, "/srv");
+    }
+}
+
+#[test]
 fn mapping_folder_browser_uses_profile_root_and_stores_relative_selection() {
     let (mut state, mut settings, mut profiles, project) = transfer_context();
     state.profile = Some(profiles[0].clone());
