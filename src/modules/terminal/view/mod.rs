@@ -25,56 +25,65 @@ use std::cell::Cell;
 pub(crate) fn view<'a>(
     terminal: &'a TerminalState,
     i18n: &'a I18n,
-    code_size: u16,
+    preferences: &crate::domain::workspace::Preferences,
     interactive: bool,
 ) -> Element<'a, Event> {
-    let header = row![
+    let mut tabs = row![
         text(i18n.text(Key::Terminal))
             .size(13)
-            .font(theme::semibold()),
-        space().width(Length::Fill),
-        icon_control(
-            i18n,
-            Icon::Minus,
-            Key::TerminalHide,
-            "terminal-hide".into(),
-            Event::Hide
-        ),
+            .font(theme::semibold())
     ]
+    .spacing(style::TAB_GAP)
     .align_y(Alignment::Center);
-    let mut tabs = row![].spacing(style::TAB_GAP).align_y(Alignment::Center);
     for tab in &terminal.tabs {
         let request = tab.request;
         let mut args = FluentArgs::new();
         args.set("number", tab.number);
         tabs = tabs.push(
-            container(
-                button(
-                    row![
-                        text(i18n.format(Key::TerminalTab, &args))
-                            .size(12)
-                            .wrapping(text::Wrapping::None),
-                        icon_control(
-                            i18n,
-                            Icon::Close,
-                            Key::TerminalCloseTab,
-                            format!("terminal-close-tab-{request}"),
-                            Event::Close(request),
+            iced::widget::mouse_area(
+                container(
+                    column![
+                        button(
+                            row![
+                                text(i18n.format(Key::TerminalTab, &args))
+                                    .size(12)
+                                    .wrapping(text::Wrapping::None),
+                                icon_control(
+                                    i18n,
+                                    Icon::Close,
+                                    Key::TerminalCloseTab,
+                                    format!("terminal-close-tab-{request}"),
+                                    Event::Close(request),
+                                ),
+                            ]
+                            .spacing(style::TAB_CONTENT_GAP)
+                            .height(Length::Fill)
+                            .align_y(Alignment::Center),
+                        )
+                        .padding(iced::Padding {
+                            left: 10.,
+                            right: 4.,
+                            top: 2.,
+                            bottom: 2.,
+                        })
+                        .height(style::TAB_BAR_HEIGHT - 2.)
+                        .style(theme::action(false))
+                        .on_press(Event::Select(request)),
+                        container(space().height(2).width(Length::Fill)).style(
+                            move |theme: &Theme| {
+                                container::Style {
+                                    background: (terminal.active == Some(request))
+                                        .then(|| theme.palette().primary.into()),
+                                    ..Default::default()
+                                }
+                            }
                         ),
                     ]
-                    .spacing(style::TAB_CONTENT_GAP)
-                    .align_y(Alignment::Center),
+                    .width(Length::Shrink),
                 )
-                .padding(iced::Padding {
-                    left: 10.,
-                    right: 4.,
-                    top: 2.,
-                    bottom: 2.,
-                })
-                .style(theme::action(terminal.active == Some(request)))
-                .on_press(Event::Select(request)),
+                .id(format!("terminal-tab-{request}")),
             )
-            .id(format!("terminal-tab-{request}")),
+            .on_middle_press(Event::Close(request)),
         );
     }
     tabs = tabs.push(icon_control(
@@ -92,16 +101,23 @@ pub(crate) fn view<'a>(
         .style(theme::scroll)
         .width(Length::Fill);
     let mut content = column![
-        container(header)
-            .padding([4, 10])
-            .height(style::HEADER_HEIGHT)
-            .width(Length::Fill),
-        container(space().height(1)).style(theme::separator),
-        container(strip)
-            .id("terminal-tab-strip")
-            .padding([4, 10])
-            .height(style::TAB_BAR_HEIGHT)
-            .width(Length::Fill),
+        container(
+            row![
+                strip,
+                icon_control(
+                    i18n,
+                    Icon::Minus,
+                    Key::TerminalHide,
+                    "terminal-hide".into(),
+                    Event::Hide
+                )
+            ]
+            .align_y(Alignment::Center)
+        )
+        .id("terminal-tab-strip")
+        .padding([0, 10])
+        .height(style::TAB_BAR_HEIGHT)
+        .width(Length::Fill),
         container(space().height(1)).style(theme::separator),
     ]
     .height(Length::Fill);
@@ -126,7 +142,9 @@ pub(crate) fn view<'a>(
                     screen: tab.parser.screen(),
                     request: tab.request,
                     revision: tab.revision,
-                    size: f32::from(code_size),
+                    size: f32::from(preferences.terminal_size),
+                    line_height: f32::from(preferences.terminal_line_height) / 100.,
+                    font: theme::selected_code_font(preferences.terminal_font),
                     interactive,
                     running: tab.running(),
                 })
@@ -164,6 +182,8 @@ struct Screen<'a> {
     request: u64,
     revision: u64,
     size: f32,
+    line_height: f32,
+    font: iced::Font,
     interactive: bool,
     running: bool,
 }
@@ -176,6 +196,9 @@ pub(crate) struct State {
     anchor: Option<(u16, u16)>,
     selection: Option<(u16, u16)>,
     dragging: bool,
+    input_start: Option<(u16, u16)>,
+    keyboard_anchor: Option<u16>,
+    keyboard_caret: Option<u16>,
     scrollback: usize,
     cache_key: Cell<Option<RenderKey>>,
     cache: canvas::Cache,
@@ -188,6 +211,8 @@ struct RenderKey {
     request: u64,
     revision: u64,
     size: u32,
+    line_height: u32,
+    font: iced::Font,
     dark: bool,
     cursor: bool,
     selection: Option<((u16, u16), (u16, u16))>,
@@ -195,10 +220,7 @@ struct RenderKey {
 
 impl Screen<'_> {
     fn cell_size(&self) -> Size {
-        Size::new(
-            self.size * style::CELL_WIDTH,
-            self.size * style::LINE_HEIGHT,
-        )
+        Size::new(self.size * style::CELL_WIDTH, self.size * self.line_height)
     }
 
     fn dimensions(&self, bounds: Rectangle) -> (u16, u16) {
@@ -322,6 +344,16 @@ impl canvas::Program<Event> for Screen<'_> {
                 text,
                 ..
             }) if state.focused && self.interactive => {
+                if crate::ui::shortcuts::zoom_delta(key, *physical_key, *modifiers).is_some() {
+                    return None;
+                }
+                if modifiers.command()
+                    && !modifiers.alt()
+                    && !modifiers.shift()
+                    && *physical_key == keyboard::key::Physical::Code(keyboard::key::Code::KeyW)
+                {
+                    return Some(Action::publish(Event::Close(self.request)).and_capture());
+                }
                 // Deployment shortcuts belong to the source area, never to a focused terminal.
                 if *modifiers == keyboard::Modifiers::COMMAND | keyboard::Modifiers::ALT
                     && matches!(
@@ -338,6 +370,155 @@ impl canvas::Program<Event> for Screen<'_> {
                 } else {
                     modifiers.control() && modifiers.shift() && !modifiers.alt()
                 };
+                if cfg!(target_os = "macos")
+                    && modifiers.logo()
+                    && !modifiers.control()
+                    && !modifiers.alt()
+                    && *physical_key == keyboard::key::Physical::Code(keyboard::key::Code::KeyA)
+                {
+                    let (row, col) = self.screen.cursor_position();
+                    state.anchor = Some(state.input_start.unwrap_or((row, 0)));
+                    let end = (0..self.screen.size().1)
+                        .rev()
+                        .find(|column| {
+                            self.screen
+                                .cell(row, *column)
+                                .is_some_and(|cell| !cell.contents().trim().is_empty())
+                        })
+                        .unwrap_or(col.saturating_sub(1));
+                    state.selection = Some((row, end));
+                    return Some(Action::request_redraw().and_capture());
+                }
+                if cfg!(target_os = "macos")
+                    && !modifiers.control()
+                    && let keyboard::Key::Named(
+                        direction @ (keyboard::key::Named::ArrowLeft
+                        | keyboard::key::Named::ArrowRight),
+                    ) = key
+                    && (modifiers.logo() || modifiers.alt() || modifiers.shift())
+                {
+                    let (row, cursor) = self.screen.cursor_position();
+                    let start = state
+                        .input_start
+                        .filter(|pos| pos.0 == row)
+                        .map_or(0, |pos| pos.1);
+                    let end = (start..self.screen.size().1)
+                        .rev()
+                        .find(|col| {
+                            self.screen
+                                .cell(row, *col)
+                                .is_some_and(|cell| !cell.contents().trim().is_empty())
+                        })
+                        .map_or(start, |col| col + 1);
+                    let right = *direction == keyboard::key::Named::ArrowRight;
+                    let current = state.keyboard_caret.unwrap_or(cursor).clamp(start, end);
+                    let mut target = if modifiers.logo() {
+                        if right { end } else { start }
+                    } else if right {
+                        (current + 1).min(end)
+                    } else {
+                        current.saturating_sub(1).max(start)
+                    };
+                    if modifiers.alt() && !modifiers.logo() {
+                        let blank = |col| {
+                            self.screen
+                                .cell(row, col)
+                                .is_none_or(|cell| cell.contents().trim().is_empty())
+                        };
+                        target = current;
+                        if right {
+                            while target < end && !blank(target) {
+                                target += 1;
+                            }
+                            while target < end && blank(target) {
+                                target += 1;
+                            }
+                        } else {
+                            while target > start && blank(target - 1) {
+                                target -= 1;
+                            }
+                            while target > start && !blank(target - 1) {
+                                target -= 1;
+                            }
+                        }
+                    }
+                    if modifiers.shift() {
+                        let anchor = *state.keyboard_anchor.get_or_insert(current);
+                        state.keyboard_caret = Some(target);
+                        state.anchor = (anchor != target).then_some((row, anchor.min(target)));
+                        state.selection = (anchor != target)
+                            .then_some((row, anchor.max(target).saturating_sub(1)));
+                        return Some(Action::request_redraw().and_capture());
+                    }
+                    state.anchor = None;
+                    state.selection = None;
+                    state.keyboard_anchor = None;
+                    state.keyboard_caret = None;
+                    let bytes = if modifiers.logo() {
+                        vec![if right { 5 } else { 1 }]
+                    } else {
+                        vec![27, if right { b'f' } else { b'b' }]
+                    };
+                    return Some(Action::publish(Event::Input(self.request, bytes)).and_capture());
+                }
+                let cut = modifiers.command()
+                    && !modifiers.alt()
+                    && *physical_key == keyboard::key::Physical::Code(keyboard::key::Code::KeyX);
+                let erase = matches!(
+                    key,
+                    keyboard::Key::Named(
+                        keyboard::key::Named::Backspace | keyboard::key::Named::Delete
+                    )
+                );
+                if self.running
+                    && (cut || erase)
+                    && let (Some(anchor), Some(end), Some(input_start)) =
+                        (state.anchor, state.selection, state.input_start)
+                {
+                    let (row, cursor) = self.screen.cursor_position();
+                    let first = anchor.min(end);
+                    let last = anchor.max(end);
+                    if first.0 == row
+                        && last.0 == row
+                        && input_start.0 == row
+                        && first.1 >= input_start.1
+                    {
+                        let cells = |from: u16, to: u16| {
+                            (from..to)
+                                .filter(|col| {
+                                    self.screen
+                                        .cell(row, *col)
+                                        .is_some_and(|cell| !cell.is_wide_continuation())
+                                })
+                                .count()
+                        };
+                        let mut bytes = Vec::new();
+                        let direction = if cursor > first.1 {
+                            b"\x1b[D"
+                        } else {
+                            b"\x1b[C"
+                        };
+                        for _ in 0..cells(cursor.min(first.1), cursor.max(first.1)) {
+                            bytes.extend_from_slice(direction);
+                        }
+                        for _ in 0..cells(first.1, last.1 + 1) {
+                            bytes.extend_from_slice(b"\x1b[3~");
+                        }
+                        let selected = self.selected(state);
+                        state.anchor = None;
+                        state.selection = None;
+                        state.keyboard_anchor = None;
+                        state.keyboard_caret = None;
+                        return Some(
+                            Action::publish(if cut {
+                                Event::Cut(self.request, selected, bytes)
+                            } else {
+                                Event::Input(self.request, bytes)
+                            })
+                            .and_capture(),
+                        );
+                    }
+                }
                 if clipboard
                     && (matches!(key, keyboard::Key::Character(c) if c.eq_ignore_ascii_case("c"))
                         || *physical_key
@@ -367,8 +548,15 @@ impl canvas::Program<Event> for Screen<'_> {
                             .flatten()
                     })
                 {
+                    if matches!(key, keyboard::Key::Named(keyboard::key::Named::Enter)) {
+                        state.input_start = None;
+                    } else if state.input_start.is_none() {
+                        state.input_start = Some(self.screen.cursor_position());
+                    }
                     state.anchor = None;
                     state.selection = None;
+                    state.keyboard_anchor = None;
+                    state.keyboard_caret = None;
                     return Some(Action::publish(Event::Input(self.request, bytes)).and_capture());
                 }
             }
@@ -389,6 +577,8 @@ impl canvas::Program<Event> for Screen<'_> {
             request: self.request,
             revision: self.revision,
             size: self.size.to_bits(),
+            line_height: self.line_height.to_bits(),
+            font: self.font,
             dark: theme.extended_palette().is_dark,
             cursor: state.focused && self.interactive && self.running,
             selection: state
@@ -466,7 +656,7 @@ impl Screen<'_> {
                     } else {
                         font::Style::Normal
                     },
-                    ..theme::code_font()
+                    ..self.font
                 };
                 frame.fill_text(canvas::Text {
                     content: cell.contents().to_owned(),

@@ -56,7 +56,8 @@ pub(super) fn view<'a>(
     ];
     let bridges = canvas::Canvas::new(Connectors {
         hunks: app.preview().folding.side_hunks(comparison),
-        row_height: app.workspace.preferences.code_size as f32 * 1.65,
+        row_height: app.workspace.preferences.code_size as f32
+            * (f32::from(app.workspace.preferences.code_line_height) / 100.),
         offset: app.preview().diff_scroll_y,
     })
     .width(BRIDGE_WIDTH)
@@ -84,7 +85,7 @@ fn pane<'a>(
     responsive(move |viewport| {
         let preview = app.preview();
         let size = app.workspace.preferences.code_size as f32;
-        let height = size * 1.65;
+        let height = size * (f32::from(app.workspace.preferences.code_line_height) / 100.);
         let gutter = if app.workspace.preferences.line_numbers {
             68.
         } else {
@@ -150,7 +151,11 @@ fn pane<'a>(
                         document.fingerprint,
                         preview.folding.revision,
                         preview.selection.revision,
-                        app.workspace.preferences.code_size,
+                        (
+                            app.workspace.preferences.code_size,
+                            app.workspace.preferences.code_line_height,
+                            app.workspace.preferences.code_font
+                        ),
                         app.workspace.preferences.line_numbers,
                         app.workspace.preferences.appearance,
                         app.i18n.text(if app.preview().remote {
@@ -173,6 +178,7 @@ fn pane<'a>(
             }),
         )
         .id(side.scroll_id())
+        .wheel_scroll_scale(theme::CODE_WHEEL_SCROLL_SCALE)
         .direction(scrollable::Direction::Both {
             vertical: code::overview::scrollbar(),
             horizontal: scrollable::Scrollbar::default(),
@@ -258,8 +264,10 @@ fn line<'a>(
         row = row.push(
             text(cell.number)
                 .size(size)
-                .font(theme::code_font())
-                .line_height(1.65)
+                .font(theme::selected_code_font(
+                    app.workspace.preferences.code_font,
+                ))
+                .line_height(f32::from(app.workspace.preferences.code_line_height) / 100.)
                 .style(theme::FAINT.text())
                 .width(46)
                 .align_x(Alignment::End),

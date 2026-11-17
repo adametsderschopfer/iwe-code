@@ -78,6 +78,7 @@ pub struct Scrollable<
     height: Length,
     direction: Direction,
     auto_scroll: bool,
+    wheel_scroll_scale: f32,
     content: Element<'a, Message, Theme, Renderer>,
     on_scroll: Option<Box<dyn Fn(Viewport) -> Message + 'a>>,
     class: Theme::Class<'a>,
@@ -107,6 +108,7 @@ where
             height: Length::Shrink,
             direction: direction.into(),
             auto_scroll: false,
+            wheel_scroll_scale: 1.0,
             content: content.into(),
             on_scroll: None,
             class: Theme::default(),
@@ -138,6 +140,12 @@ where
     pub fn direction(mut self, direction: impl Into<Direction>) -> Self {
         self.direction = direction.into();
         self.enclose()
+    }
+
+    /// Sets the movement multiplier for mouse wheel and trackpad scrolling.
+    pub fn wheel_scroll_scale(mut self, scale: f32) -> Self {
+        self.wheel_scroll_scale = scale;
+        self
     }
 
     /// Sets the [`widget::Id`] of the [`Scrollable`].
@@ -869,7 +877,6 @@ where
                                 Vector::new(y, x)
                             };
 
-                            // TODO: Configurable speed/friction (?)
                             -movement * 60.0
                         }
                         mouse::ScrollDelta::Pixels { x, y } => {
@@ -878,7 +885,7 @@ where
                     };
 
                     state.scroll(
-                        self.direction.align(delta),
+                        self.direction.align(delta * self.wheel_scroll_scale),
                         bounds,
                         content_bounds,
                     );

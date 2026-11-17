@@ -226,11 +226,30 @@ pub(crate) fn line<'a>(
     }
     let value = line_text(document, index);
     let range = selection.range(lane, row, value.len());
+    let mut spans = spans;
+    if let Some(search) = app.file_search() {
+        for hit in search
+            .results
+            .hits
+            .iter()
+            .filter(|hit| hit.found.line == document.line_info[index].number)
+        {
+            let mut color = theme::CODE_SELECTION.resolve(&app.theme());
+            color.a = 0.3;
+            spans = highlight_spans(
+                spans,
+                Some(hit.found.byte_column..hit.found.end_byte_column),
+                color,
+            );
+        }
+    }
     let highlighted = highlight_spans(spans, range, theme::CODE_SELECTION.resolve(&app.theme()));
     let content = rich_text::<(), Message, _, _>(highlighted)
-        .font(theme::code_font())
+        .font(theme::selected_code_font(
+            app.workspace.preferences.code_font,
+        ))
         .size(size)
-        .line_height(1.65)
+        .line_height(f32::from(app.workspace.preferences.code_line_height) / 100.)
         .wrapping(widget_text::Wrapping::None)
         .into();
     Element::new(Selectable {
@@ -242,6 +261,8 @@ pub(crate) fn line<'a>(
         row,
         id: app.preview().id,
         size,
+        font: theme::selected_code_font(app.workspace.preferences.code_font),
+        line_height: f32::from(app.workspace.preferences.code_line_height) / 100.,
         shortcuts: app.workspace.preferences.shortcuts.clone(),
     })
 }
@@ -300,6 +321,8 @@ struct Selectable<'a> {
     row: usize,
     id: u64,
     size: f32,
+    font: iced::Font,
+    line_height: f32,
     shortcuts: crate::domain::shortcuts::Shortcuts,
 }
 
@@ -399,8 +422,8 @@ impl Widget<Message, Theme, Renderer> for Selectable<'_> {
                 content: &self.value,
                 bounds: layout.bounds().size(),
                 size: self.size.into(),
-                line_height: text::LineHeight::Relative(1.65),
-                font: theme::code_font(),
+                line_height: text::LineHeight::Relative(self.line_height),
+                font: self.font,
                 align_x: text::Alignment::Default,
                 align_y: iced::alignment::Vertical::Top,
                 shaping: text::Shaping::Advanced,

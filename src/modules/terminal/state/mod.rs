@@ -113,6 +113,7 @@ pub(crate) enum Event {
     Paste(u64),
     Pasted(u64, Option<String>),
     Copy(String),
+    Cut(u64, String, Vec<u8>),
 }
 
 impl State {
@@ -175,6 +176,14 @@ impl State {
                 }
             }
             Event::Copy(text) => return iced::clipboard::write(text),
+            Event::Cut(request, text, bytes) => {
+                let input = self
+                    .tabs
+                    .iter_mut()
+                    .find(|tab| tab.request == request)
+                    .map_or_else(Task::none, |tab| tab.update(Event::Input(request, bytes)));
+                return Task::batch([iced::clipboard::write(text), input]);
+            }
             event => {
                 let request = match &event {
                     Event::Started(request, _)

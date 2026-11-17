@@ -59,6 +59,68 @@ fn collapse_mode_applies_to_all_tabs_new_files_and_restored_preferences() {
     );
 }
 
+#[test]
+fn opening_and_reopening_tabs_evicts_the_earliest_opened_file() {
+    let mut app = app();
+    for index in 0..20 {
+        open(&mut app, &format!("file-{index}.rs"));
+    }
+
+    let first = open(&mut app, "file-0.rs");
+    assert_eq!(app.tabs.files[0].id, first);
+    assert!(app.tabs.closed.is_empty());
+
+    let latest = open(&mut app, "file-20.rs");
+    assert_eq!(app.tabs.files.len(), 20);
+    assert_eq!(app.preview().id, latest);
+    assert_eq!(app.tabs.files[0].title, "file-1.rs");
+    assert_eq!(app.tabs.closed.last().unwrap().id, first);
+
+    let _ = app.reopen_closed_tab();
+    assert_eq!(app.tabs.files.len(), 20);
+    assert_eq!(app.preview().title, "file-0.rs");
+    assert_eq!(app.tabs.files[0].title, "file-2.rs");
+}
+
+#[test]
+fn automatic_tab_closure_preserves_unsaved_edits() {
+    let mut app = app();
+    for index in 0..20 {
+        let id = open(&mut app, &format!("file-{index}.rs"));
+        let _ = app.finish_preview(id, Ok(Document::new("saved".into(), "rs")));
+        app.preview_mut().editor.as_mut().unwrap().document.text = "draft".into();
+    }
+
+    open(&mut app, "extra.rs");
+    assert_eq!(app.preview().title, "file-19.rs");
+    assert_eq!(app.tabs.files.len(), 20);
+    assert!(app.tabs.closed.is_empty());
+
+    let saved = app.tabs.files[1].editor.as_mut().unwrap();
+    saved.document.text = saved.document.saved.clone();
+    open(&mut app, "extra.rs");
+    assert_eq!(app.preview().title, "extra.rs");
+    assert_eq!(app.tabs.files[0].title, "file-0.rs");
+    assert_eq!(app.tabs.closed.last().unwrap().title, "file-1.rs");
+}
+
+#[test]
+fn editable_file_waits_for_the_editor_during_preparation() {
+    let mut app = app();
+    let id = open(&mut app, "file.rs");
+    let _ = app.continue_preview(
+        id,
+        Preparation::Text,
+        Ok(Document::new("text".into(), "rs")),
+    );
+    assert!(app.preview().awaiting_editor());
+    assert!(app.editor_buffer().is_none());
+
+    let _ = app.finish_preview(id, Ok(Document::new("text".into(), "rs")));
+    assert!(!app.preview().awaiting_editor());
+    assert!(app.editor_buffer().is_some());
+}
+
 fn open(app: &mut App, path: &str) -> u64 {
     let _ = app.open_file(PathBuf::from("project").join(path));
     app.preview().id
@@ -530,7 +592,7 @@ async fn diff_scrolling_synchronizes_widgets_and_keeps_horizontal_offsets_indepe
         }
     }
     cache = ui.into_cache();
-    for (side, delta, expected) in [(Side::Before, -240., 240.), (Side::After, 95., 145.)] {
+    for (side, delta, expected) in [(Side::Before, -240., 180.), (Side::After, 95., 108.75)] {
         let mut ui = UserInterface::build(app.view(), size, cache, &mut renderer);
         let mut selector = iced_test::Selector::find(Id::new(side.scroll_id()));
         ui.operate(&renderer, &mut operation::black_box(&mut selector));
@@ -585,7 +647,7 @@ async fn diff_scrolling_synchronizes_widgets_and_keeps_horizontal_offsets_indepe
     ui.operate(&renderer, &mut offsets);
     assert_eq!(
         offsets.0,
-        [Some(Vector::new(25., 145.)), Some(Vector::new(75., 145.))]
+        [Some(Vector::new(25., 109.)), Some(Vector::new(75., 109.))]
     );
 }
 

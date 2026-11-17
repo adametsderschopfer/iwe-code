@@ -27,6 +27,7 @@ pub(crate) mod search_everywhere;
 pub(crate) mod shortcuts;
 pub(crate) mod spaces;
 pub(crate) mod tabs;
+pub(crate) mod text_search;
 pub(crate) mod updates;
 pub(crate) mod windows;
 
@@ -77,9 +78,23 @@ fn application(
         App::update,
         App::view_window,
     )
+    .scale_factor(|app: &App, _| f32::from(app.workspace.preferences.window_zoom) / 100.)
     .title(App::window_title)
     .subscription(|app| {
         Subscription::batch([
+            if app
+                .editor
+                .suggestions
+                .as_ref()
+                .is_some_and(|suggestions| suggestions.opened.elapsed() < theme::COMPLETION_APPEAR)
+            {
+                iced::time::every(std::time::Duration::from_millis(16))
+                    .map(|_| Message::Editor(editor::Event::CompletionFrame))
+            } else {
+                Subscription::none()
+            },
+            iced::time::every(std::time::Duration::from_millis(800))
+                .map(|_| Message::Editor(editor::Event::RefreshDiagnostics)),
             app.change_subscription(),
             app.project_change_subscription(),
             app.module_subscription(),
@@ -119,6 +134,8 @@ fn application(
         ])
     })
     .theme(|app: &App, _| app.theme())
+    .font(include_bytes!("../../assets/fonts/JetBrainsMono-Regular.ttf").as_slice())
+    .font(include_bytes!("../../assets/fonts/FiraCode-Regular.ttf").as_slice())
     .default_font(theme::font())
     .style(|_, theme| theme::application_style(theme))
 }
@@ -161,6 +178,8 @@ pub(crate) enum SettingsTab {
     #[default]
     General,
     Code,
+    Terminal,
+    LanguageServers,
     Panels,
     Modules,
     Connections,
@@ -208,6 +227,7 @@ pub(crate) struct App {
     pub project_add: Option<project_add::Draft>,
     pub line_navigation: Option<line_navigation::Dialog>,
     pub search_everywhere: search_everywhere::State,
+    pub text_search: text_search::State,
     pub external: external::State,
     pub account_username: Option<String>,
     pub disconnecting: bool,
@@ -316,6 +336,7 @@ pub(crate) enum Message {
     OpenWorkingChange(PathBuf),
     GoToLine(line_navigation::Event),
     SearchEverywhere(search_everywhere::Event),
+    TextSearch(text_search::Event),
     CodeSelection(u64, crate::ui::code::selection::Action),
     ReadFilePart(u64, tabs::PageDirection),
     OpenCommitFile(usize),
@@ -345,6 +366,14 @@ pub(crate) enum Message {
     SetAppearance(Appearance),
     Shortcut(shortcuts::Event),
     SetCodeSize(u16),
+    SetTerminalSize(u16),
+    SetLineHeight(bool, u16),
+    SetFont(bool, crate::domain::workspace::CodeFont),
+    SetWindowZoom(u16),
+    Zoom(i16),
+    SetLanguageServer(String, String),
+    CheckLanguageServers,
+    LanguageServersChecked(BTreeMap<String, String>, BTreeMap<String, bool>),
     SetLineNumbers(bool),
     CopyPath,
     OpenTabMenu(iced::Point),
@@ -417,6 +446,7 @@ impl App {
             project_add: None,
             line_navigation: None,
             search_everywhere: search_everywhere::State::default(),
+            text_search: text_search::State::default(),
             external: external::State::default(),
             account_username: None,
             disconnecting: false,
@@ -485,6 +515,9 @@ impl App {
         }
         if self.protect_editor(&message) {
             return self.flush_editor();
+        }
+        if matches!(message, Message::SelectProject(..)) {
+            self.text_search.cancel();
         }
         #[cfg(target_os = "windows")]
         if !matches!(message, Message::OpenMenuBar(..)) {
@@ -638,6 +671,7 @@ impl App {
             Message::Update(event) => return self.update_release(event),
             Message::GoToLine(event) => return self.update_line_navigation(event),
             Message::SearchEverywhere(event) => return self.update_search_everywhere(event),
+            Message::TextSearch(event) => return self.update_text_search(event),
             Message::Git(message) => return self.update_git(message),
             Message::BranchSelection(event) => return self.update_branch_selection(event),
             Message::ProjectMenu(space, path, point)
@@ -884,6 +918,12 @@ impl App {
             Message::Space(message) => return self.update_space(message),
             Message::ProjectAdd(message) => return self.update_project_add(message),
             Message::DismissDialog => {
+                if self.text_search.project.is_some() {
+                    return self.update_text_search(text_search::Event::Close(true));
+                }
+                if self.file_search().is_some() {
+                    return self.update_text_search(text_search::Event::Close(false));
+                }
                 if self.files.operations.draft.is_some() || self.files.menu.is_some() {
                     self.files.menu = None;
                     return self
@@ -1156,10 +1196,12 @@ impl App {
             Message::FilePrepared(generation, request, stage, result)
                 if generation == self.generation =>
             {
-                return self.continue_preview(request, stage, result);
+                let task = self.continue_preview(request, stage, result);
+                return Task::batch([task, self.reveal_definition()]);
             }
             Message::FileLoaded(generation, request, result) if generation == self.generation => {
-                return self.finish_preview(request, result);
+                let task = self.finish_preview(request, result);
+                return Task::batch([task, self.reveal_definition()]);
             }
             Message::SelectBranch(reference) => {
                 self.modules.git.branch_selection.selected.clear();
@@ -1372,9 +1414,78 @@ impl App {
                 self.workspace.preferences.appearance = appearance;
                 return self.save();
             }
-            Message::SetCodeSize(size) => {
-                self.workspace.preferences.code_size = size.clamp(11, 22);
+            Message::SetTerminalSize(size) => {
+                self.workspace.preferences.terminal_size = size.clamp(10, 32);
                 return self.save();
+            }
+            Message::SetLineHeight(terminal, height) => {
+                let target = if terminal {
+                    &mut self.workspace.preferences.terminal_line_height
+                } else {
+                    &mut self.workspace.preferences.code_line_height
+                };
+                *target = height.clamp(110, 220);
+                return self.save();
+            }
+            Message::SetFont(terminal, font) => {
+                let target = if terminal {
+                    &mut self.workspace.preferences.terminal_font
+                } else {
+                    &mut self.workspace.preferences.code_font
+                };
+                *target = font;
+                return self.save();
+            }
+            Message::SetWindowZoom(zoom) => {
+                self.workspace.preferences.window_zoom = zoom.clamp(75, 200);
+                return self.save();
+            }
+            Message::Zoom(delta) => {
+                let zoom = if delta == 0 {
+                    100
+                } else {
+                    (self.workspace.preferences.window_zoom as i16 + delta).clamp(75, 200) as u16
+                };
+                return self.update(Message::SetWindowZoom(zoom));
+            }
+            Message::SetCodeSize(size) => {
+                self.workspace.preferences.code_size = size.clamp(10, 32);
+                return self.save();
+            }
+            Message::SetLanguageServer(language, path) => {
+                self.editor.server_checks.remove(&language);
+                if path.trim().is_empty() {
+                    self.workspace
+                        .preferences
+                        .language_servers
+                        .remove(&language);
+                } else {
+                    self.workspace
+                        .preferences
+                        .language_servers
+                        .insert(language, path);
+                }
+                return self.save();
+            }
+            Message::CheckLanguageServers => {
+                let configured = self.workspace.preferences.language_servers.clone();
+                return Task::perform(
+                    async move {
+                        let settings = configured.clone();
+                        let checks = tokio::task::spawn_blocking(move || {
+                            crate::infrastructure::language_server::discovery::check(&settings)
+                        })
+                        .await
+                        .unwrap_or_default();
+                        (configured, checks)
+                    },
+                    |(configured, checks)| Message::LanguageServersChecked(configured, checks),
+                );
+            }
+            Message::LanguageServersChecked(configured, checks) => {
+                if configured == self.workspace.preferences.language_servers {
+                    self.editor.server_checks = checks;
+                }
             }
             Message::SetLineNumbers(value) => {
                 self.workspace.preferences.line_numbers = value;
@@ -1403,7 +1514,11 @@ impl App {
             Message::ClearCopiedCommit(request) if request == self.modules.git.copy_request => {
                 self.modules.git.copied_commit = None;
             }
-            Message::SelectTab(id) => return self.select_tab(id),
+            Message::SelectTab(id) => {
+                self.text_search.pinned = false;
+                self.text_search.project = None;
+                return self.select_tab(id);
+            }
             Message::CloseTab(id) => return self.close_tab(id),
             Message::ToggleUnchanged(id) => return self.toggle_unchanged(id),
             Message::ToggleDiffView(id) => return self.toggle_diff_view(id),

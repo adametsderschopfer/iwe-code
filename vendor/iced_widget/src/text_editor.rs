@@ -119,6 +119,7 @@ pub struct TextEditor<
     max_height: f32,
     padding: Padding,
     wrapping: Wrapping,
+    wheel_scroll_scale: f32,
     class: Theme::Class<'a>,
     key_binding: Option<Box<dyn Fn(KeyPress) -> Option<Binding<Message>> + 'a>>,
     on_edit: Option<Box<dyn Fn(Action) -> Message + 'a>>,
@@ -151,6 +152,7 @@ where
             max_height: f32::INFINITY,
             padding: Padding::new(5.0),
             wrapping: Wrapping::default(),
+            wheel_scroll_scale: 1.0,
             class: <Theme as Catalog>::default(),
             key_binding: None,
             on_edit: None,
@@ -194,6 +196,12 @@ where
     /// Sets the height of the [`TextEditor`].
     pub fn height(mut self, height: impl Into<Length>) -> Self {
         self.height = height.into();
+        self
+    }
+
+    /// Sets the movement multiplier for mouse wheel and trackpad scrolling.
+    pub fn wheel_scroll_scale(mut self, scale: f32) -> Self {
+        self.wheel_scroll_scale = scale;
         self
     }
 
@@ -297,6 +305,7 @@ where
             min_height: self.min_height,
             max_height: self.max_height,
             padding: self.padding,
+            wheel_scroll_scale: self.wheel_scroll_scale,
             wrapping: self.wrapping,
             class: self.class,
             key_binding: self.key_binding,
@@ -385,11 +394,14 @@ pub struct Content<R = crate::Renderer>(RefCell<Internal<R>>)
 where
     R: text::Renderer;
 
+type ScrollLine<Editor> = fn(&Editor) -> usize;
+
 struct Internal<R>
 where
     R: text::Renderer,
 {
     editor: R::Editor,
+    restore_scroll: Option<(usize, ScrollLine<R::Editor>)>,
 }
 
 impl<R> Content<R>
@@ -412,7 +424,43 @@ where
     pub fn with_text(text: &str) -> Self {
         Self(RefCell::new(Internal {
             editor: R::Editor::with_text(text),
+            restore_scroll: None,
         }))
+    }
+
+    /// Replaces text and restores the cursor and first visible line.
+    ///
+    /// The reader returns the editor's first visible logical line. Use this
+    /// with unwrapped text, where a logical line occupies one row.
+    pub fn replace_text_preserving_scroll(
+        &mut self,
+        text: &str,
+        read_scroll: ScrollLine<R::Editor>,
+    ) {
+        let internal = self.0.get_mut();
+        let top = internal
+            .restore_scroll
+            .map_or_else(|| read_scroll(&internal.editor), |(top, _)| top);
+        let cursor = internal.editor.cursor();
+        let mut editor = R::Editor::with_text(text);
+        let last_line = editor.line_count().saturating_sub(1);
+        let clamp = |mut position: Position| {
+            position.line = position.line.min(last_line);
+            position.column = editor.line(position.line).map_or(0, |line| {
+                let mut column = position.column.min(line.text.len());
+                while !line.text.is_char_boundary(column) {
+                    column -= 1;
+                }
+                column
+            });
+            position
+        };
+        editor.move_to(Cursor {
+            position: clamp(cursor.position),
+            selection: cursor.selection.map(clamp),
+        });
+        internal.editor = editor;
+        internal.restore_scroll = Some((top.min(last_line), read_scroll));
     }
 
     /// Performs an [`Action`] on the [`Content`].
@@ -656,14 +704,29 @@ where
             .min_height(self.min_height)
             .max_height(self.max_height);
 
-        internal.editor.update(
-            limits.shrink(self.padding).max(),
-            self.font.unwrap_or_else(|| renderer.default_font()),
-            self.text_size.unwrap_or_else(|| renderer.default_size()),
-            self.line_height,
-            self.wrapping,
-            state.highlighter.borrow_mut().deref_mut(),
-        );
+        let update = |editor: &mut Renderer::Editor| {
+            editor.update(
+                limits.shrink(self.padding).max(),
+                self.font.unwrap_or_else(|| renderer.default_font()),
+                self.text_size.unwrap_or_else(|| renderer.default_size()),
+                self.line_height,
+                self.wrapping,
+                state.highlighter.borrow_mut().deref_mut(),
+            );
+        };
+        let restore_scroll = internal.restore_scroll.take();
+        if restore_scroll.is_some() {
+            state.highlighter.borrow_mut().change_line(0);
+        }
+        update(&mut internal.editor);
+        if let Some((top, read_scroll)) = restore_scroll {
+            // Restore after layout so revealing the cursor cannot override the scroll.
+            let lines = top as i32 - read_scroll(&internal.editor) as i32;
+            if lines != 0 {
+                internal.editor.perform(Action::Scroll { lines });
+                update(&mut internal.editor);
+            }
+        }
 
         match self.height {
             Length::Fill | Length::FillPortion(_) | Length::Fixed(_) => {
@@ -775,7 +838,8 @@ where
                         return;
                     }
 
-                    let lines = lines + state.partial_scroll;
+                    let lines =
+                        lines * self.wheel_scroll_scale + state.partial_scroll;
                     state.partial_scroll = lines.fract();
 
                     shell.publish(on_edit(Action::Scroll {

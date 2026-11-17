@@ -54,10 +54,17 @@ pub(crate) struct Space {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub(crate) struct Preferences {
+    pub language_servers: std::collections::BTreeMap<String, String>,
     pub language: Option<String>,
     pub shortcuts: super::shortcuts::Shortcuts,
     pub appearance: Appearance,
     pub code_size: u16,
+    pub code_line_height: u16,
+    pub code_font: CodeFont,
+    pub terminal_size: u16,
+    pub terminal_line_height: u16,
+    pub terminal_font: CodeFont,
+    pub window_zoom: u16,
     pub show_git: bool,
     pub show_pipelines: bool,
     pub line_numbers: bool,
@@ -68,6 +75,14 @@ pub(crate) struct Preferences {
     pub disabled_modules: BTreeSet<String>,
     pub deployment_panel_width: f32,
     pub assistant_paths: std::collections::BTreeMap<super::explain::Agent, PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub(crate) enum CodeFont {
+    #[default]
+    System,
+    JetBrainsMono,
+    FiraCode,
 }
 
 impl Preferences {
@@ -99,10 +114,17 @@ pub(crate) enum DiffView {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
+            language_servers: Default::default(),
             language: None,
             shortcuts: super::shortcuts::Shortcuts::default(),
             appearance: Appearance::default(),
             code_size: 14,
+            code_line_height: 165,
+            code_font: CodeFont::default(),
+            terminal_size: 14,
+            terminal_line_height: 140,
+            terminal_font: CodeFont::default(),
+            window_zoom: 100,
             show_git: false,
             show_pipelines: false,
             line_numbers: true,
@@ -186,7 +208,12 @@ impl Workspace {
         } else {
             Preferences::DEFAULT_FILE_PANEL_WIDTH
         };
-        self.preferences.code_size = self.preferences.code_size.clamp(11, 22);
+        self.preferences.code_size = self.preferences.code_size.clamp(10, 32);
+        self.preferences.code_line_height = self.preferences.code_line_height.clamp(110, 220);
+        self.preferences.terminal_size = self.preferences.terminal_size.clamp(10, 32);
+        self.preferences.terminal_line_height =
+            self.preferences.terminal_line_height.clamp(110, 220);
+        self.preferences.window_zoom = self.preferences.window_zoom.clamp(75, 200);
         if self.preferences.show_git {
             self.preferences.show_pipelines = false;
         }

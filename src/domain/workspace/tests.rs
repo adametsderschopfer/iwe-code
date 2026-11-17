@@ -168,7 +168,7 @@ fn restored_state_recovers_invalid_selections_and_old_preferences() {
     workspace.normalize();
     assert_eq!(workspace.spaces.len(), 2);
     assert_eq!(workspace.directory(), Some(&PathBuf::from("src")));
-    assert_eq!(workspace.preferences.code_size, 22);
+    assert_eq!(workspace.preferences.code_size, 32);
     assert!(!workspace.preferences.show_git);
     assert!(!workspace.preferences.show_pipelines);
 }
@@ -331,4 +331,21 @@ fn transferring_a_project_preserves_selection_and_pin() {
     assert_eq!(workspace.selected_space, Some(1));
     assert!(workspace.spaces[1].projects[1].pinned);
     assert_eq!(workspace.spaces[0].projects[0].directory, second);
+}
+
+#[test]
+fn typography_preferences_restore_defaults_and_clamp_independently() {
+    let mut workspace: Workspace = serde_json::from_str(r#"{"preferences":{"code_size":18,"terminal_size":99,"code_line_height":5,"terminal_line_height":500,"window_zoom":400,"code_font":"JetBrainsMono"}}"#).unwrap();
+    workspace.normalize();
+    assert_eq!(workspace.preferences.code_size, 18);
+    assert_eq!(workspace.preferences.terminal_size, 32);
+    assert_eq!(workspace.preferences.code_line_height, 110);
+    assert_eq!(workspace.preferences.terminal_line_height, 220);
+    assert_eq!(workspace.preferences.window_zoom, 200);
+    assert_eq!(workspace.preferences.code_font, CodeFont::JetBrainsMono);
+    assert_eq!(workspace.preferences.terminal_font, CodeFont::System);
+    let restored: Workspace =
+        serde_json::from_str(&serde_json::to_string(&workspace).unwrap()).unwrap();
+    assert_eq!(restored.preferences.window_zoom, 200);
+    assert_eq!(restored.preferences.code_font, CodeFont::JetBrainsMono);
 }

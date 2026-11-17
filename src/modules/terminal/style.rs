@@ -47,9 +47,7 @@ pub(crate) fn color(color: vt100::Color, default: Color, theme: &Theme) -> Color
 }
 
 pub(super) const CELL_WIDTH: f32 = 0.6;
-pub(super) const LINE_HEIGHT: f32 = 1.4;
 pub(super) const PADDING: f32 = 12.;
-pub(super) const HEADER_HEIGHT: f32 = 32.;
 pub(super) const TAB_BAR_HEIGHT: f32 = 36.;
 pub(super) const TAB_GAP: f32 = 6.;
 pub(super) const TAB_CONTENT_GAP: f32 = 6.;

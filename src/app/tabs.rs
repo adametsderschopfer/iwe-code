@@ -21,6 +21,7 @@ use std::{
     sync::Arc,
 };
 
+const OPEN_FILE_LIMIT: usize = 20;
 const CLOSED_DOCUMENT_BYTES: usize = 16 * 1024 * 1024;
 const STASHED_DOCUMENT_BYTES: usize = 16 * 1024 * 1024;
 const STASHED_PROJECTS: usize = 4;
@@ -247,6 +248,40 @@ impl Preview {
             Some(Source::Revision { id, .. }) => Some(id),
             _ => self.revision.as_deref().filter(|_| !self.remote),
         }
+    }
+
+    fn editor_target(&self, document: &Document) -> Option<super::editor::Target> {
+        use super::editor::Target;
+
+        if document.page.is_some() || document.text.len() > crate::domain::editor::LIMIT {
+            return None;
+        }
+        match &self.source {
+            Some(Source::Working {
+                path,
+                compare: false,
+                ..
+            }) => Some(Target::Local(path.clone())),
+            Some(Source::Remote {
+                identity,
+                remote,
+                previous: None,
+                local_root: None,
+                ..
+            }) if self.pending_comparison.is_none() => Some(Target::Remote {
+                profile: identity.clone(),
+                path: remote.clone(),
+            }),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn awaiting_editor(&self) -> bool {
+        self.loading
+            && self
+                .document
+                .as_ref()
+                .is_some_and(|document| self.editor_target(document).is_some())
     }
 
     pub(super) fn is_open(&self) -> bool {
@@ -480,6 +515,7 @@ impl App {
             return self.select_tab(preview.id);
         }
         self.navigation = super::Navigation::Files;
+        let previous_request = self.file_request;
         let task = self.open_source(Source::Remote {
             path: path.clone(),
             remote,
@@ -489,8 +525,33 @@ impl App {
             text: Arc::new(String::new()),
             previous: None,
         });
-        self.tabs.files[self.tabs.active].pending_comparison = Some((profile, path));
+        if self.file_request != previous_request {
+            self.tabs.files[self.tabs.active].pending_comparison = Some((profile, path));
+        }
         task
+    }
+
+    pub(super) fn load_search_page(&self, id: u64, serial: u64, line: usize) -> Task<Message> {
+        let Some(source) = self
+            .preview()
+            .source
+            .clone()
+            .filter(|_| self.preview().id == id)
+        else {
+            return Task::none();
+        };
+        Task::perform(source.read_line(line), move |result| {
+            Message::TextSearch(super::text_search::Event::Page(
+                id,
+                serial,
+                result.map(|page| {
+                    page.map(|(document, history)| super::line_navigation::LoadedPage {
+                        document: Box::new(document),
+                        history,
+                    })
+                }),
+            ))
+        })
     }
 
     pub(super) fn load_line_preview(&self, id: u64, request: u64, line: usize) -> Task<Message> {
@@ -572,7 +633,6 @@ impl App {
             return Task::none();
         };
         self.navigation = super::Navigation::Files;
-        self.files.selected_path = Some(path.clone());
         self.open_source(Source::Working {
             root,
             path,
@@ -667,6 +727,16 @@ impl App {
             return self.select_tab(self.tabs.files[index].id);
         }
 
+        let index = existing.or_else(|| {
+            (self.tabs.files.len() == 1 && self.tabs.files[0].source.is_none()).then_some(0)
+        });
+        if index.is_none() && !self.make_room_for_tab() {
+            return Task::none();
+        }
+
+        if matches!(source, Source::Working { .. }) {
+            self.files.selected_path = Some(path.clone());
+        }
         self.modules.deployment.target = None;
         self.file_request += 1;
         let preview = Preview {
@@ -679,9 +749,6 @@ impl App {
             source: Some(source.clone()),
             ..Preview::default()
         };
-        let index = existing.or_else(|| {
-            (self.tabs.files.len() == 1 && self.tabs.files[0].source.is_none()).then_some(0)
-        });
         if let Some(index) = index {
             self.tabs.files[index] = preview;
             self.tabs.active = index;
@@ -884,27 +951,7 @@ impl App {
                     }
                 }
                 if document.page.is_none() && document.text.len() <= crate::domain::editor::LIMIT {
-                    let target = match &preview.source {
-                        Some(Source::Working {
-                            path,
-                            compare: false,
-                            ..
-                        }) => Some(super::editor::Target::Local(path.clone())),
-                        Some(Source::Remote {
-                            identity,
-                            remote,
-                            previous: None,
-                            local_root: None,
-                            ..
-                        }) if preview.pending_comparison.is_none() => {
-                            Some(super::editor::Target::Remote {
-                                profile: identity.clone(),
-                                path: remote.clone(),
-                            })
-                        }
-                        _ => None,
-                    };
-                    if let Some(target) = target {
+                    if let Some(target) = preview.editor_target(&document) {
                         if preview
                             .editor
                             .as_ref()
@@ -1149,14 +1196,32 @@ impl App {
         )
     }
 
-    pub(super) fn close_tab(&mut self, id: u64) -> Task<Message> {
-        self.modules.deployment.target = None;
-        self.tabs.menu = None;
-        let Some(index) = self.tabs.files.iter().position(|preview| preview.id == id) else {
-            return Task::none();
+    fn make_room_for_tab(&mut self) -> bool {
+        if self.tabs.files.len() < OPEN_FILE_LIMIT {
+            return true;
+        }
+        let Some(index) = self
+            .tabs
+            .files
+            .iter()
+            .position(|tab| tab.editor.as_ref().is_none_or(|buffer| !buffer.protected()))
+        else {
+            self.notifications
+                .error(crate::i18n::Key::FileTabLimit, None);
+            return false;
         };
-        let active = self.preview().id;
+        self.remove_tab(index);
+        self.tabs.active = if index < self.tabs.active {
+            self.tabs.active - 1
+        } else {
+            self.tabs.active.min(self.tabs.files.len() - 1)
+        };
+        true
+    }
+
+    fn remove_tab(&mut self, index: usize) {
         let closed = self.tabs.files.remove(index);
+        let id = closed.id;
         if closed.source.is_some() {
             // Bound cached documents while retaining recent closures in order.
             if self.tabs.closed.len() == 20 {
@@ -1168,6 +1233,28 @@ impl App {
         if self.changes.preview_pending == Some(id) {
             self.changes.preview_pending = None;
         }
+    }
+
+    pub(super) fn close_tab(&mut self, id: u64) -> Task<Message> {
+        self.modules.deployment.target = None;
+        self.tabs.menu = None;
+        let Some(index) = self.tabs.files.iter().position(|preview| preview.id == id) else {
+            return Task::none();
+        };
+        let active = self.preview().id;
+        if self
+            .text_search
+            .file
+            .as_ref()
+            .is_some_and(|search| search.tab == id)
+        {
+            self.text_search.file = None;
+        }
+        if active == id {
+            self.text_search.project = None;
+            self.text_search.pinned = false;
+        }
+        self.remove_tab(index);
         if self.tabs.files.is_empty() {
             self.tabs.files.push(Preview::default());
             self.tabs.active = 0;
@@ -1194,6 +1281,10 @@ impl App {
             let Some(source) = preview.source.clone() else {
                 continue;
             };
+            if !self.make_room_for_tab() {
+                self.tabs.closed.push(preview);
+                return Task::none();
+            }
             self.file_request += 1;
             preview.id = self.file_request;
             preview.loading |= preview.document.is_none() || preview.error.is_some();

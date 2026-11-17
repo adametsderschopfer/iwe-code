@@ -1,6 +1,7 @@
 //! Isolate operating-system access from the interface.
 pub(crate) mod editor;
 pub(crate) mod file_operations;
+pub(crate) mod formatter;
 
 pub(crate) mod assistant;
 pub(crate) mod auth;
@@ -10,6 +11,7 @@ pub(crate) mod external;
 pub(crate) mod graphics;
 pub(crate) mod http;
 pub(crate) mod ipc;
+pub(crate) mod language_server;
 pub(crate) mod locale;
 pub(crate) mod mcp;
 pub(crate) mod modules;
@@ -25,3 +27,5 @@ pub(crate) mod updates;
 #[cfg(target_os = "macos")]
 pub(crate) mod window_effect;
 pub(crate) mod workspace;
+
+pub(crate) mod text_search;

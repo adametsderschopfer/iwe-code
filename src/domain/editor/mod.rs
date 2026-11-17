@@ -40,14 +40,22 @@ impl Document {
         true
     }
 
-    pub(crate) fn undo(&mut self, redo: bool) {
+    pub(crate) fn undo(&mut self, redo: bool) -> bool {
+        let replacement = if redo {
+            self.redo.pop()
+        } else {
+            self.undo.pop_back()
+        };
+        let Some(replacement) = replacement else {
+            return false;
+        };
+        let previous = std::mem::replace(&mut self.text, replacement);
         if redo {
-            if let Some(text) = self.redo.pop() {
-                self.undo.push_back(std::mem::replace(&mut self.text, text));
-            }
-        } else if let Some(text) = self.undo.pop_back() {
-            self.redo.push(std::mem::replace(&mut self.text, text));
+            self.undo.push_back(previous);
+        } else {
+            self.redo.push(previous);
         }
+        true
     }
 }
 

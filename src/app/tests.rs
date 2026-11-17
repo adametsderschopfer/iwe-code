@@ -713,7 +713,12 @@ fn selecting_projects_immediately_opens_the_file_panel_without_reloading_on_repe
             .unwrap();
         assert_eq!(title.x, empty.x);
         assert!(empty.y > title.y + title.height);
-        assert!((title.center_y() - first.center_y()).abs() < 0.1);
+        let header = ui
+            .find(Id::new("file-panel-header"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        assert!((title.center_y() - header.center_y()).abs() < 0.1);
         assert_eq!(first.center_x(), second.center_x());
         assert_eq!(first.center_x(), (theme::SIDEBAR_WIDTH + 1. + panel.x) / 2.);
         if language == Language::Russian
@@ -1569,7 +1574,10 @@ async fn source_scroll_frames_cover_plain_and_comparison_views() {
             } else {
                 state.preview().scroll_y
             };
-            assert!((offset - previous - 48.).abs() < 0.1, "{name}: {offset}");
+            assert!(
+                (offset - previous - 48. * theme::CODE_WHEEL_SCROLL_SCALE).abs() < 0.1,
+                "{name}: {offset}"
+            );
             previous = offset;
             if frame >= 4 {
                 timings.push([built, drawn - built, rendered - drawn, rendered]);
@@ -1666,7 +1674,9 @@ async fn check_code_scrolling(line_count: usize) {
         }
         if delta < 1_000_000. {
             assert!(
-                (state.preview().scroll_y - previous - delta).abs() < 0.1,
+                (state.preview().scroll_y - previous - delta * theme::CODE_WHEEL_SCROLL_SCALE)
+                    .abs()
+                    < 0.1,
                 "Rebuilding visible rows must preserve the scroll offset: previous={previous}, delta={delta}, current={}",
                 state.preview().scroll_y
             );
@@ -3623,4 +3633,28 @@ fn copied_commit_feedback_ignores_old_timers_and_resets_after_two_seconds() {
     assert_eq!(app.modules.git.copied_commit.as_deref(), Some("second"));
     let _ = app.update(Message::ClearCopiedCommit(second));
     assert!(app.modules.git.copied_commit.is_none());
+}
+
+#[test]
+fn code_terminal_typography_and_window_zoom_are_independent() {
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    let _ = app.update(Message::SetCodeSize(21));
+    let _ = app.update(Message::SetTerminalSize(16));
+    let _ = app.update(Message::SetLineHeight(true, 180));
+    let _ = app.update(Message::SetFont(
+        false,
+        crate::domain::workspace::CodeFont::JetBrainsMono,
+    ));
+    let _ = app.update(Message::Zoom(10));
+    assert_eq!(app.workspace.preferences.code_size, 21);
+    assert_eq!(app.workspace.preferences.terminal_size, 16);
+    assert_eq!(app.workspace.preferences.code_line_height, 165);
+    assert_eq!(app.workspace.preferences.terminal_line_height, 180);
+    assert_eq!(
+        app.workspace.preferences.terminal_font,
+        crate::domain::workspace::CodeFont::System
+    );
+    assert_eq!(app.workspace.preferences.window_zoom, 110);
+    let _ = app.update(Message::Zoom(0));
+    assert_eq!(app.workspace.preferences.window_zoom, 100);
 }

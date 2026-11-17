@@ -2141,6 +2141,108 @@
           ".github/scripts/publish-release.sh",
           "website/nuxt.config.ts"
         ]
+      },
+      {
+        "id": "project-language-assistance",
+        "category": "added",
+        "text": {
+          "en": "Get code suggestions, diagnostics, and project definitions through local language servers.",
+          "ru": "Получайте подсказки кода, диагностику и переходы к определениям проекта через локальные языковые серверы.",
+          "es": "Obtén sugerencias de código, diagnósticos y definiciones del proyecto mediante servidores de lenguaje locales."
+        },
+        "sources": [
+          "src/app/editor/completion.rs",
+          "src/app/editor/definition.rs",
+          "src/infrastructure/language_server/mod.rs"
+        ]
+      },
+      {
+        "id": "project-aware-formatting",
+        "category": "added",
+        "text": {
+          "en": "Format documents with configured project tools or language servers using Command+Option+L on macOS.",
+          "ru": "Форматируйте документы средствами проекта или языковыми серверами через Command+Option+L в macOS.",
+          "es": "Formatea documentos con herramientas configuradas del proyecto o servidores de lenguaje mediante Command+Option+L en macOS."
+        },
+        "sources": ["src/infrastructure/formatter/mod.rs", "src/app/editor/formatting.rs"]
+      },
+      {
+        "id": "stable-editor-completion-input",
+        "category": "fixed",
+        "text": {
+          "en": "Code suggestions preserve focus and selection. Matching letter case improves completion ordering, and Tab accepts the selected suggestion.",
+          "ru": "Подсказки сохраняют фокус и выделение. Регистр букв влияет на порядок подсказок, а Tab вставляет выбранный вариант.",
+          "es": "Las sugerencias conservan el foco y la selección. Las mayúsculas influyen en el orden y Tab acepta la sugerencia seleccionada."
+        },
+        "sources": ["src/app/editor/completion.rs", "src/ui/editor/mod.rs"]
+      },
+      {
+        "id": "editor-word-line-shortcuts",
+        "category": "added",
+        "text": {
+          "en": "Duplicate code lines and use macOS word selection, word deletion, and line deletion shortcuts.",
+          "ru": "Дублируйте строки кода и используйте сочетания macOS для выделения слов, удаления слов и удаления до начала строки.",
+          "es": "Duplica líneas de código y usa atajos de macOS para seleccionar palabras y borrar palabras o partes de líneas."
+        },
+        "sources": ["src/app/editor/mod.rs", "src/ui/editor/mod.rs"]
+      },
+      {
+        "id": "file-project-text-search",
+        "category": "added",
+        "text": {
+          "en": "Search file and project text with regular expressions, folder filters, and previews. Replace matches in editable files.",
+          "ru": "Ищите текст в файлах и проектах с регулярными выражениями, фильтрами папок и предпросмотром. Заменяйте совпадения в редактируемых файлах.",
+          "es": "Busca texto con expresiones regulares, filtros de carpetas y vistas previas. Reemplaza coincidencias en archivos editables."
+        },
+        "sources": [
+          "src/app/text_search.rs",
+          "src/domain/text_search/mod.rs",
+          "src/infrastructure/text_search.rs"
+        ]
+      },
+      {
+        "id": "separate-code-terminal-typography",
+        "category": "added",
+        "text": {
+          "en": "Configure fonts, sizes, and line spacing separately for code and terminals. JetBrains Mono and Fira Code are included.",
+          "ru": "Настраивайте шрифты, размеры и межстрочные интервалы отдельно для кода и терминала. JetBrains Mono и Fira Code входят в приложение.",
+          "es": "Configura fuentes, tamaños e interlineado por separado para código y terminales. Se incluyen JetBrains Mono y Fira Code."
+        },
+        "sources": [
+          "src/domain/workspace.rs",
+          "src/ui/screens/settings.rs",
+          "assets/fonts/JetBrainsMono-Regular.ttf"
+        ]
+      },
+      {
+        "id": "grouped-settings-window-zoom",
+        "category": "changed",
+        "text": {
+          "en": "Settings use gray group headings and separate language-server controls. Command+Plus and Command+Minus adjust interface zoom on macOS.",
+          "ru": "Серые заголовки группируют настройки. Языковые серверы получили отдельный раздел. Command+Plus и Command+Minus меняют масштаб интерфейса в macOS.",
+          "es": "Los ajustes usan encabezados grises y una sección de servidores de lenguaje. Command+Plus y Command+Minus ajustan la escala en macOS."
+        },
+        "sources": ["src/ui/screens/settings.rs", "src/ui/shortcuts/mod.rs"]
+      },
+      {
+        "id": "bounded-tabs-smoother-scrolling",
+        "category": "changed",
+        "text": {
+          "en": "Keep up to 20 file tabs per project while preserving unsaved edits. Code views use slower scrolling.",
+          "ru": "Открывайте до 20 файлов в проекте с сохранением несохранённых изменений. Области кода прокручиваются медленнее.",
+          "es": "Mantén hasta 20 pestañas por proyecto conservando cambios sin guardar. Las vistas de código se desplazan más lentamente."
+        },
+        "sources": ["src/app/tabs.rs", "vendor/iced_widget/src/scrollable.rs"]
+      },
+      {
+        "id": "compact-terminal-input-controls",
+        "category": "changed",
+        "text": {
+          "en": "Terminal tabs share one header. On macOS, select, copy, cut, and navigate the current terminal input with keyboard shortcuts.",
+          "ru": "Вкладки терминала используют общую строку заголовка. В macOS сочетания клавиш управляют выделением, копированием, вырезанием и перемещением по вводу.",
+          "es": "Las pestañas del terminal comparten una cabecera. En macOS, usa atajos para seleccionar, copiar, cortar y recorrer la entrada."
+        },
+        "sources": ["src/modules/terminal/view/mod.rs", "src/modules/terminal/state/mod.rs"]
       }
     ]
   }

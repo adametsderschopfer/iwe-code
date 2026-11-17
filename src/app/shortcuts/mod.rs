@@ -28,14 +28,16 @@ pub(crate) enum Event {
 
 pub(crate) fn command_message(command: Command) -> Option<Message> {
     match command {
+        Command::GoToDefinition => Some(Message::Editor(super::editor::Event::Definition)),
+        Command::FormatCode => Some(Message::Editor(super::editor::Event::Format)),
+        Command::DuplicateLine => Some(Message::Editor(super::editor::Event::DuplicateLine)),
         Command::SaveFile => Some(Message::Editor(super::editor::Event::Save)),
         Command::GoToLine => Some(Message::GoToLine(line_navigation::Event::Open)),
         Command::GoToFile => Some(Message::SearchEverywhere(search_everywhere::Event::Open(
             search_everywhere::Scope::Files,
         ))),
-        Command::Search => Some(Message::SearchEverywhere(search_everywhere::Event::Open(
-            search_everywhere::Scope::All,
-        ))),
+        Command::Search => Some(Message::TextSearch(super::text_search::Event::Open(false))),
+        Command::FindInFiles => Some(Message::TextSearch(super::text_search::Event::Open(true))),
         Command::CloseTab => Some(Message::CloseActiveTab),
         Command::ReopenTab => Some(Message::ReopenClosedTab),
         Command::Copy | Command::SelectAll => None,
@@ -66,7 +68,8 @@ pub(super) fn key_message(
     Command::ALL
         .into_iter()
         .find(|command| {
-            shortcuts::matches(&bindings.binding(*command), key, physical_key, modifiers)
+            !bindings.conflict(*command)
+                && shortcuts::matches(&bindings.binding(*command), key, physical_key, modifiers)
         })
         .and_then(command_message)
 }
@@ -124,6 +127,9 @@ impl App {
                         }
                     }
                     return Task::none();
+                }
+                if let Some(delta) = shortcuts::zoom_delta(&key, physical_key, modifiers) {
+                    return self.update(Message::Zoom(delta));
                 }
                 if status == Status::Captured {
                     return Task::none();

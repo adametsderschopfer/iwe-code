@@ -65,6 +65,8 @@ pub(super) fn encode(
         return Some(vec![code]);
     }
     let sequence = match key {
+        Key::Named(Named::Space) if modifiers.control() => "\0",
+        Key::Named(Named::Space) => " ",
         Key::Named(Named::Enter) => "\r",
         Key::Named(Named::Backspace) => "\x7f",
         Key::Named(Named::Tab) if modifiers.shift() => "\x1b[Z",

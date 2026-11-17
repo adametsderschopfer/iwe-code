@@ -30,6 +30,12 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
     let sections = [
         (SettingsTab::General, Key::General, "general"),
         (SettingsTab::Code, Key::Code, "code"),
+        (SettingsTab::Terminal, Key::Terminal, "terminal"),
+        (
+            SettingsTab::LanguageServers,
+            Key::LanguageServers,
+            "languages",
+        ),
         (SettingsTab::Panels, Key::Panels, "panels"),
         (SettingsTab::Modules, Key::Modules, "modules"),
         (
@@ -48,6 +54,25 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
     for &(tab, key, id) in &sections {
         if matches!(tab, SettingsTab::Connections | SettingsTab::Deployment) {
             continue;
+        }
+        let group = match tab {
+            SettingsTab::General => Some(Key::SettingsAppearanceGroup),
+            SettingsTab::Code => Some(Key::SettingsEditingGroup),
+            SettingsTab::Panels => Some(Key::SettingsToolsGroup),
+            SettingsTab::Shortcuts => Some(Key::SettingsApplicationGroup),
+            _ => None,
+        };
+        if let Some(group) = group {
+            tabs = tabs.push(
+                container(text(t(group)).size(11).style(theme::MUTED.text())).padding(
+                    iced::Padding {
+                        top: 14.,
+                        right: 12.,
+                        bottom: 4.,
+                        left: 12.,
+                    },
+                ),
+            );
         }
         tabs = tabs.push(
             container(
@@ -78,10 +103,27 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
                 );
             }
             column![
+                group_heading(t(Key::SettingsAppearanceGroup)),
                 setting(
                     t(Key::Language),
                     t(Key::LanguageDescription),
                     languages.wrap().into()
+                ),
+                setting(
+                    t(Key::WindowZoom),
+                    t(Key::WindowZoomDescription),
+                    row![
+                        slider(75..=200, preferences.window_zoom, Message::SetWindowZoom)
+                            .step(5_u16)
+                            .width(180)
+                            .style(theme::font_slider),
+                        text(format!("{}%", preferences.window_zoom))
+                            .size(13)
+                            .width(48),
+                    ]
+                    .spacing(16)
+                    .align_y(Alignment::Center)
+                    .into()
                 ),
                 setting(
                     t(Key::Appearance),
@@ -107,11 +149,13 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
             .into()
         }
         SettingsTab::Code => column![
+            group_heading(t(Key::SettingsTypographyGroup)),
+            typography(app, false),
             setting(
                 t(Key::FontSize),
                 t(Key::FontSizeDescription),
                 row![
-                    slider(11..=22, preferences.code_size, Message::SetCodeSize)
+                    slider(10..=32, preferences.code_size, Message::SetCodeSize)
                         .width(180)
                         .style(theme::font_slider),
                     text(format!("{} px", preferences.code_size))
@@ -122,6 +166,7 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
                 .align_y(Alignment::Center)
                 .into()
             ),
+            group_heading(t(Key::SettingsEditingGroup)),
             setting(
                 t(Key::LineNumbers),
                 t(Key::LineNumbersDescription),
@@ -133,6 +178,27 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
         ]
         .spacing(0)
         .into(),
+        SettingsTab::Terminal => column![
+            group_heading(t(Key::SettingsTypographyGroup)),
+            typography(app, true),
+            setting(
+                t(Key::FontSize),
+                t(Key::FontSizeDescription),
+                row![
+                    slider(10..=32, preferences.terminal_size, Message::SetTerminalSize)
+                        .width(180)
+                        .style(theme::font_slider),
+                    text(format!("{} px", preferences.terminal_size))
+                        .size(13)
+                        .width(48),
+                ]
+                .spacing(16)
+                .align_y(Alignment::Center)
+                .into()
+            ),
+        ]
+        .into(),
+        SettingsTab::LanguageServers => language_servers(app),
         SettingsTab::Panels => column![
             setting(
                 t(Key::Git),
@@ -191,14 +257,34 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
                         shortcut_control(app, Command::GoToLine),
                     ),
                     setting(
+                        t(Key::GoToDefinition),
+                        t(Key::GoToDefinitionDescription),
+                        shortcut_control(app, Command::GoToDefinition),
+                    ),
+                    setting(
+                        t(Key::FormatCode),
+                        t(Key::FormatCodeDescription),
+                        shortcut_control(app, Command::FormatCode),
+                    ),
+                    setting(
+                        t(Key::DuplicateLine),
+                        t(Key::DuplicateLineDescription),
+                        shortcut_control(app, Command::DuplicateLine),
+                    ),
+                    setting(
                         t(Key::GoToFile),
                         t(Key::GoToFileDescription),
                         shortcut_control(app, Command::GoToFile),
                     ),
                     setting(
-                        t(Key::SearchEverywhere),
-                        t(Key::SearchEverywhereDescription),
+                        t(Key::FindFile),
+                        t(Key::FindFile),
                         shortcut_control(app, Command::Search),
+                    ),
+                    setting(
+                        t(Key::FindFiles),
+                        t(Key::FindFiles),
+                        shortcut_control(app, Command::FindInFiles),
                     ),
                     setting(
                         t(Key::EditorSave),
@@ -352,6 +438,127 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
     }
 }
 
+fn language_servers(app: &App) -> Element<'_, Message> {
+    let mut rows = column![
+        group_heading(app.i18n.text(Key::SettingsToolsGroup)),
+        text(app.i18n.text(Key::LanguageServersDescription))
+            .size(13)
+            .style(theme::MUTED.text()),
+        button(text(app.i18n.text(Key::LanguageServerCheck)).size(13))
+            .on_press(Message::CheckLanguageServers)
+            .style(theme::action(false))
+            .padding([8, 12])
+    ]
+    .spacing(10);
+    for (id, name) in [
+        ("python", "Python"),
+        ("go", "Go"),
+        ("typescript", "JavaScript / TypeScript"),
+        ("php", "PHP"),
+        ("rust", "Rust"),
+        ("markdown", "Markdown"),
+        ("json", "JSON"),
+        ("yaml", "YAML"),
+        ("toml", "TOML"),
+        ("shellscript", "Shell"),
+        ("html", "HTML"),
+        ("css", "CSS"),
+    ] {
+        let value = app
+            .workspace
+            .preferences
+            .language_servers
+            .get(id)
+            .map(String::as_str)
+            .unwrap_or_default();
+        let status = app.i18n.text(match app.editor.server_checks.get(id) {
+            Some(true) => Key::LanguageServerFound,
+            Some(false) => Key::LanguageServerMissing,
+            None => Key::LanguageServerAutomatic,
+        });
+        rows = rows.push(
+            container(
+                column![
+                    row![
+                        text(name).size(14).font(theme::semibold()),
+                        iced::widget::space().width(Length::Fill),
+                        text(status).size(12).style(theme::MUTED.text())
+                    ]
+                    .align_y(Alignment::Center),
+                    iced::widget::text_input(&app.i18n.text(Key::LanguageServerAutomatic), value)
+                        .on_input(move |path| Message::SetLanguageServer(id.to_owned(), path))
+                        .padding(8)
+                ]
+                .spacing(8),
+            )
+            .padding(12)
+            .width(Length::Fill)
+            .style(theme::code_surface),
+        );
+    }
+    rows.into()
+}
+
+fn group_heading<'a>(title: String) -> Element<'a, Message> {
+    container(text(title).size(12).style(theme::MUTED.text()))
+        .padding(iced::Padding {
+            top: 4.,
+            right: 0.,
+            bottom: 4.,
+            left: 0.,
+        })
+        .into()
+}
+
+fn typography(app: &App, terminal: bool) -> Element<'_, Message> {
+    use crate::domain::workspace::CodeFont;
+    let prefs = &app.workspace.preferences;
+    let (font, height) = if terminal {
+        (prefs.terminal_font, prefs.terminal_line_height)
+    } else {
+        (prefs.code_font, prefs.code_line_height)
+    };
+    let mut choices = row![].spacing(6);
+    for (choice, label) in [
+        (CodeFont::System, app.i18n.text(Key::SystemFont)),
+        (CodeFont::JetBrainsMono, "JetBrains Mono".to_owned()),
+        (CodeFont::FiraCode, "Fira Code".to_owned()),
+    ] {
+        choices = choices.push(
+            button(text(label).size(13))
+                .padding([8, 10])
+                .style(theme::action(font == choice))
+                .on_press(Message::SetFont(terminal, choice)),
+        );
+    }
+    column![
+        setting(
+            app.i18n.text(Key::FontFamily),
+            app.i18n.text(Key::FontFamilyDescription),
+            choices.wrap().into()
+        ),
+        setting(
+            app.i18n.text(Key::LineSpacing),
+            app.i18n.text(Key::LineSpacingDescription),
+            row![
+                slider(110..=220, height, move |height| Message::SetLineHeight(
+                    terminal, height
+                ))
+                .step(5_u16)
+                .width(180)
+                .style(theme::font_slider),
+                text(format!("{:.2}", f32::from(height) / 100.))
+                    .size(13)
+                    .width(48),
+            ]
+            .spacing(16)
+            .align_y(Alignment::Center)
+            .into()
+        ),
+    ]
+    .into()
+}
+
 fn shortcut_group<'a>(
     title: String,
     id: &'static str,
@@ -393,6 +600,9 @@ fn shortcut_control(app: &App, command: Command) -> Element<'_, Message> {
         );
     }
     let mut content = column![controls].spacing(8);
+    if app.workspace.preferences.shortcuts.conflict(command) {
+        content = content.push(text(app.i18n.text(Key::ShortcutConflict)).size(13));
+    }
     if recording {
         content = content.push(
             text(app.i18n.text(Key::ShortcutInstructions))
@@ -430,7 +640,7 @@ pub(crate) fn setting<'a>(
                 .align_x(iced::alignment::Horizontal::Right),
         ]
         .spacing(24)
-        .align_y(Alignment::Center)
+        .align_y(Alignment::Start)
         .padding([14, 0]),
         divider(),
     ]

@@ -61,6 +61,8 @@ fn selection_copies_cells_without_escape_sequences_or_wide_continuations() {
         request: 1,
         revision: 0,
         size: 14.,
+        line_height: 1.4,
+        font: theme::code_font(),
         interactive: true,
         running: true,
     };
@@ -107,6 +109,8 @@ async fn terminal_redraw_reuses_geometry_and_invalidates_each_visual_change() {
         request: 1,
         revision: 0,
         size: 14.,
+        line_height: 1.4,
+        font: theme::code_font(),
         interactive: true,
         running: true,
     };
@@ -122,7 +126,7 @@ async fn terminal_redraw_reuses_geometry_and_invalidates_each_visual_change() {
         );
     }
     assert_eq!(state.paints.get(), 1);
-    for change in 0..10 {
+    for change in 0..12 {
         let mut appearance = Theme::Dark;
         match change {
             0 => screen.revision += 1,
@@ -142,6 +146,8 @@ async fn terminal_redraw_reuses_geometry_and_invalidates_each_visual_change() {
                 screen.running = false;
                 state.selection = None;
             }
+            10 => screen.line_height = 1.8,
+            11 => screen.font = iced::Font::with_name("JetBrains Mono"),
             _ => unreachable!(),
         }
         let before = state.paints.get();
@@ -172,6 +178,8 @@ fn terminal_canvas_sends_keys_only_after_a_focus_click() {
         request: 42,
         revision: 0,
         size: 14.,
+        line_height: 1.4,
+        font: theme::code_font(),
         interactive: true,
         running: true,
     };
@@ -199,4 +207,33 @@ fn terminal_canvas_sends_keys_only_after_a_focus_click() {
             .iter()
             .any(|event| matches!(event, Event::Input(42, bytes) if bytes == b"y"))
     );
+}
+
+#[test]
+fn named_space_is_sent_to_the_shell() {
+    assert_eq!(
+        input::encode(&Key::Named(Named::Space), None, Modifiers::empty(), false),
+        Some(vec![b' '])
+    );
+}
+
+#[test]
+fn terminal_line_spacing_changes_grid_dimensions() {
+    let parser = vt100::Parser::new(10, 20, 0);
+    let mut screen = Screen {
+        screen: parser.screen(),
+        request: 1,
+        revision: 0,
+        size: 14.,
+        line_height: 1.4,
+        font: theme::code_font(),
+        interactive: true,
+        running: true,
+    };
+    let bounds = Rectangle::with_size(Size::new(500., 500.));
+    let (rows, columns) = screen.dimensions(bounds);
+    screen.line_height = 2.;
+    let (larger_rows, larger_columns) = screen.dimensions(bounds);
+    assert!(larger_rows < rows);
+    assert_eq!(larger_columns, columns);
 }

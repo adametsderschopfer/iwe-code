@@ -647,7 +647,8 @@ lists the defaults.
 | Group | macOS               | Windows and Linux | Action                          |
 | ----- | ------------------- | ----------------- | ------------------------------- |
 | Code  | Command + L         | Ctrl + G          | Go to a source line             |
-| Code  | Command + F         | Ctrl + F          | Open search everywhere          |
+| Code  | Command + F         | Ctrl + F          | Find text in the current file   |
+| Code  | Command + Shift + F | Ctrl + Shift + F  | Find text in project files      |
 | Code  | Shift + Command + O | Ctrl + Shift + N  | Open search with files only     |
 | Code  | Command + C         | Ctrl + C          | Copy selected source text       |
 | Code  | Command + A         | Ctrl + A          | Select all source text          |
@@ -697,24 +698,30 @@ Linux, saves immediately or retries a failed save. Shortcuts remain configurable
 keys across keyboard layouts. Undo uses Command+Z or Ctrl+Z. Add Shift for redo.
 
 The editor supports selection, cut, copy, paste, multiline syntax highlighting, and line navigation.
-Tab inserts four spaces. Line numbers follow the editor's layout and scrolling, including cursor
-navigation. The line-number preference controls their visibility. The separate save and
-saved-version toolbar is removed. The tab marks unsaved changes and shows save errors in its
-tooltip. Errors also appear in notifications. Failed saves stop automatic retries, including after
-further edits.
+See [code assistance](language-servers.md) for completion, definitions, diagnostics, and local
+language server configuration. Tab inserts four spaces. Line numbers follow the editor's layout and
+scrolling, including cursor navigation. The line-number preference controls their visibility. The
+separate save and saved-version toolbar is removed. The tab marks unsaved changes and shows save
+errors in its tooltip. Errors also appear in notifications. Failed saves stop automatic retries,
+including after further edits.
 
 Project files open without Git comparison preparation. The uncommitted-files section opens separate
 comparison tabs for the same paths. Comparison controls appear in comparison tabs, including
 explicit server comparisons. Ordinary file tabs have no comparison controls. Git revisions,
 comparison snapshots, and paged files retain the source viewer.
 
+Each project keeps up to 20 file tabs open. Opening or reopening a file at the limit closes the
+earliest opened tab that has no unsaved changes or save in progress. If every tab has changes to
+save, save one before opening another file. Editable files appear in the editor when preparation
+completes. The editor and code views use slower wheel and trackpad scrolling.
+
 Closing edited tabs, switching projects, disabling modules, installing updates, and closing the
 application flush pending edits first. Failed saves keep the buffer open for retry, discard, or
 cancel. Edits made during saving are scheduled again after completion. Local saves prepare a
 temporary file beside the destination and preserve file permissions. The editor checks disk content
 before replacement and refuses conflicting external edits. Symbolic link files must be opened
-through their original path before saving. Buffers and bounded undo history remain in memory; crash
-recovery is not provided.
+through their original path before saving. Undo and redo keep the current scroll position. Buffers
+and bounded undo history remain in memory; crash recovery is not provided.
 
 Project clicks remain active after scrolling the sidebar. Small pointer movements do not start
 reordering. Only space headers start space reordering. The path-copy highlight fits the displayed
@@ -739,3 +746,45 @@ remembers the application after a successful launch.
 
 The request identifies the object and its directory. Pipeline requests include job statuses that IWE
 has already loaded. Job requests include the pipeline ID, job status, and job URL.
+
+## Text search
+
+Command+F opens a search bar above the current text file. Windows and Linux use Ctrl+F. The bar
+supports case sensitivity, whole words, and regular expressions. Enter selects the next match.
+Shift+Enter selects the previous match. Escape closes search. Editable buffers offer replacement and
+Replace all. One undo action reverses Replace all. Search reads current buffer contents, including
+changes awaiting autosave. Large local files use a cancellable background scan and load matching
+pages on demand.
+
+Command+Shift+F searches local files in the current project. Windows and Linux use Ctrl+Shift+F.
+Choose a project-relative folder or comma-separated file masks, such as `*.rs, *.toml`. The scanner
+uses project-tree exclusions and skips symbolic links, binary files, and invalid UTF-8. Search
+limits each line to 2 MiB, each scan to 45 seconds, and results to 10,000 matches. A notice
+identifies truncated results. Narrow the folder or query to find additional matches. Select a result
+to preview surrounding lines. Enter or a double click opens the matching file. Open results in a tab
+retains the query and results during this project session. Refresh repeats the query. Results do not
+persist after application restart. Double Shift continues to open the existing file and project
+search.
+
+An empty project search shows a centered query hint. Repeating the file search shortcut preserves
+the current search.
+
+Terminal tabs share one header row. The active tab has an underline. On macOS, Command-A selects the
+current terminal input line for copying.
+
+In the terminal, Command-Left and Command-Right move to the input boundaries on macOS. Option-Left
+and Option-Right move by words. Shift extends the visible selection with these shortcuts or plain
+arrows.
+
+Closing the active file also dismisses its search panel, including when the search field has focus.
+
+### Typography and window zoom
+
+Settings separates code, terminal, and language programs. Gray group headings organize the
+navigation and controls. Code and terminal have independent font families, sizes, and line spacing.
+JetBrains Mono and Fira Code ship with the application. The system option uses the platform's
+default code font. Font changes preserve the current document and terminal session.
+
+Command+Plus and Command+Minus change interface zoom on macOS. Control provides the same shortcuts
+on Windows and Linux. Command+0 or Control+0 restores 100 percent. General settings also provide a
+zoom control. Zoom ranges from 75 to 200 percent and persists with workspace preferences.

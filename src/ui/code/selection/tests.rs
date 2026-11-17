@@ -58,6 +58,8 @@ async fn pointer_layout_waits_for_selection_and_tracks_unicode_boundaries() {
         .unwrap();
     let document = Document::plain("aé中🙂z".to_owned());
     let mut widget = Selectable {
+        font: theme::code_font(),
+        line_height: 1.65,
         shortcuts: crate::domain::shortcuts::Shortcuts::default(),
         content: rich_text::<(), Message, _, _>([span(document.text.as_str())])
             .font(theme::code_font())

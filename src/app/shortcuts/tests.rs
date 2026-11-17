@@ -322,3 +322,35 @@ fn spaced_or_interrupted_shift_presses_do_not_open_search_everywhere() {
     let _ = app.update_shortcuts(shift(settings));
     assert!(app.search_everywhere.dialog.is_none());
 }
+
+#[test]
+fn file_and_project_search_route_separately_on_russian_layout() {
+    for (modifiers, project) in [
+        (Modifiers::COMMAND, false),
+        (Modifiers::COMMAND | Modifiers::SHIFT, true),
+    ] {
+        assert!(
+            matches!(key_message(&KeyboardKey::Character("а".into()),key::Physical::Code(key::Code::KeyF),modifiers,&crate::domain::shortcuts::Shortcuts::default()),Some(Message::TextSearch(crate::app::text_search::Event::Open(value))) if value == project)
+        );
+    }
+}
+
+#[test]
+fn zoom_is_global_even_when_a_text_widget_captures_the_key() {
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    let id = window::Id::unique();
+    app.window_id = Some(id);
+    let mut event = press(
+        id,
+        "+",
+        key::Code::Equal,
+        Modifiers::COMMAND | Modifiers::SHIFT,
+    );
+    if let Event::Key(_, _, status) = &mut event {
+        *status = Status::Captured;
+    }
+    let _ = app.update_shortcuts(event);
+    assert_eq!(app.workspace.preferences.window_zoom, 110);
+    let _ = app.update_shortcuts(press(id, "0", key::Code::Digit0, Modifiers::COMMAND));
+    assert_eq!(app.workspace.preferences.window_zoom, 100);
+}

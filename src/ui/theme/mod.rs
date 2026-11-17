@@ -118,7 +118,7 @@ pub(crate) const NOTIFICATION_SETTLE_DURATION: std::time::Duration =
 pub(crate) const NOTIFICATION_PADDING: f32 = 14.0;
 pub(crate) const FILE_PANEL_TOOL_SIZE: f32 = 40.0;
 pub(crate) const FILE_PANEL_TOOL_INSET: f32 = 4.0;
-pub(crate) const FILE_PANEL_HEADER_HEIGHT: f32 = FILE_PANEL_TOOL_SIZE + FILE_PANEL_TOOL_INSET * 2.0;
+pub(crate) const FILE_PANEL_HEADER_HEIGHT: f32 = 34.0;
 pub(crate) const FILE_TABS_HEIGHT: f32 = FILE_PANEL_HEADER_HEIGHT + 1.0;
 pub(crate) const SOURCE_MIN_WIDTH: f32 = 320.0;
 pub(crate) const FILE_PANEL_RESIZE_GRAB: f32 = 5.0;
@@ -135,6 +135,7 @@ pub(crate) const HEADER_REPOSITORY_WIDTH: f32 = 220.0;
 pub(crate) const HEADER_REPOSITORY_MENU_WIDTH: f32 = 360.0;
 pub(crate) const HEADER_REPOSITORY_ROW_HEIGHT: f32 = 48.0;
 pub(crate) const HEADER_REPOSITORY_MENU_HEIGHT: f32 = 336.0;
+pub(crate) const CODE_WHEEL_SCROLL_SCALE: f32 = 0.75;
 pub(crate) const CODE_SCROLLBAR_WIDTH: f32 = 20.0;
 pub(crate) const CODE_SCROLLBAR_THUMB_WIDTH: f32 = 10.0;
 pub(crate) const CODE_CHANGE_MARK_WIDTH: f32 = 4.0;
@@ -159,6 +160,7 @@ pub(crate) const FILE_TAB_PADDING: f32 = 8.0;
 pub(crate) const FILE_TAB_CLOSE_WIDTH: f32 = 28.0;
 pub(crate) const FILE_TAB_END_GAP: f32 = 4.0;
 pub(crate) const FILE_TAB_TOOL_SIZE: f32 = 36.0;
+pub(crate) const FILE_TAB_TOOL_HEIGHT: f32 = 28.0;
 pub(crate) const FILE_TAB_TOOL_GAP: f32 = 6.0;
 pub(crate) const TAB_MENU_WIDTH: f32 = 380.0;
 pub(crate) const TAB_MENU_ROW_HEIGHT: f32 = 36.0;
@@ -208,6 +210,15 @@ pub(crate) fn code_font() -> Font {
         Font::with_name("Consolas")
     } else {
         Font::MONOSPACE
+    }
+}
+
+pub(crate) fn selected_code_font(choice: crate::domain::workspace::CodeFont) -> Font {
+    use crate::domain::workspace::CodeFont;
+    match choice {
+        CodeFont::System => code_font(),
+        CodeFont::JetBrainsMono => Font::with_name("JetBrains Mono"),
+        CodeFont::FiraCode => Font::with_name("Fira Code"),
     }
 }
 
@@ -541,6 +552,17 @@ pub(crate) fn action(selected: bool) -> impl Fn(&Theme, button::Status) -> butto
     }
 }
 
+pub(crate) fn completion_row(selected: bool) -> impl Fn(&Theme, button::Status) -> button::Style {
+    move |theme, status| {
+        let mut style = action(selected)(theme, status);
+        style.border.radius = 5.0.into();
+        if selected {
+            style.background = Some(Tone::new(0x48494b, 0xd5e4f4).resolve(theme).into());
+        }
+        style
+    }
+}
+
 pub(crate) fn fold_row(theme: &Theme, status: button::Status) -> button::Style {
     let mut style = action(false)(theme, status);
     style.background.get_or_insert(FOLD.resolve(theme).into());
@@ -714,3 +736,52 @@ pub(crate) fn success_tooltip(theme: &Theme) -> container::Style {
         ..tooltip(theme)
     }
 }
+
+/// Compact source search surfaces follow the editor rather than form dialogs.
+pub(crate) fn search_panel(theme: &Theme) -> container::Style {
+    container::Style {
+        background: Some(ELEVATED.resolve(theme).into()),
+        border: Border {
+            color: LINE.resolve(theme),
+            width: 1.,
+            radius: 0.into(),
+        },
+        ..Default::default()
+    }
+}
+pub(crate) fn search_dialog(theme: &Theme) -> container::Style {
+    container::Style {
+        border: Border {
+            radius: 8.into(),
+            ..dialog(theme).border
+        },
+        ..dialog(theme)
+    }
+}
+pub(crate) fn search_input(theme: &Theme, status: text_input::Status) -> text_input::Style {
+    text_input::Style {
+        background: Color::TRANSPARENT.into(),
+        border: Border::default(),
+        ..input(theme, status)
+    }
+}
+pub(crate) fn search_result(selected: bool) -> impl Fn(&Theme, button::Status) -> button::Style {
+    move |theme, status| {
+        let mut style = action(selected)(theme, status);
+        style.border.radius = 3.into();
+        if selected {
+            style.background = Some(CODE_SELECTION.resolve(theme).into());
+        }
+        style
+    }
+}
+
+pub(crate) fn search_preview(theme: &Theme) -> container::Style {
+    container::Style {
+        background: Some(code_background(theme).into()),
+        ..search_panel(theme)
+    }
+}
+pub(crate) const COMPLETION_ROW_HEIGHT: f32 = 32.;
+pub(crate) const COMPLETION_WIDTH: f32 = 560.;
+pub(crate) const COMPLETION_APPEAR: std::time::Duration = std::time::Duration::from_millis(120);

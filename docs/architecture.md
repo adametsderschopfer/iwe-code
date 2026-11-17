@@ -600,6 +600,14 @@ run. See [workspace behavior](workspace.md) for feature limits and provider auth
 
 ### Editable text buffers
 
+`domain/language` defines language identities, UTF-16 positions, validated edits, and Markdown fence
+projections. `infrastructure/language_server` discovers local programs and maintains bounded LSP
+transports and project sessions. `infrastructure/formatter` selects project tools and runs bounded
+standard-input formatting without rewriting source files. `app/editor` coordinates asynchronous
+language requests and rejects obsolete results. `ui/editor` renders completion, definition, and
+diagnostic surfaces. See [code assistance](language-servers.md) for supported programs and current
+limitations.
+
 `domain/editor` tracks text, saved baselines, and bounded undo history without Iced. `app/editor`
 coordinates native text actions, debounced saves, save snapshots, and failed-save decisions.
 Autosave timers carry unique revisions and ignore superseded or closed buffers. Completion tokens
@@ -624,3 +632,14 @@ The file adapter checks project boundaries and rejects symbolic links, including
 points. The adapter stages copies beside the destination and publishes them with an exclusive
 rename. The platform must support exclusive rename. Path checks validate observed filesystem state.
 They cannot isolate the project from simultaneous changes by external processes.
+
+### Source text search
+
+`domain/text_search` compiles bounded regular expressions and records source positions.
+`infrastructure/text_search` scans local files with cancellation, exclusions, and bounded results.
+`app/text_search` coordinates debounced requests, live buffers, navigation, and replacement. Request
+identifiers reject obsolete completions. Project changes cancel searches. `ui/screens/text_search`
+renders file controls, project results, and contextual previews. Editor replacements reuse document
+undo history and conflict-checked autosave. The serialized Search shortcut now opens file search.
+Double Shift retains search everywhere. A conflicting legacy assignment disables the new default and
+shows a settings warning.

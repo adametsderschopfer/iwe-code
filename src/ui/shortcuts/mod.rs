@@ -50,5 +50,22 @@ pub(crate) fn modifier(key: &Key) -> bool {
     )
 }
 
+/// Application zoom is available regardless of the focused text surface.
+pub(crate) fn zoom_delta(key: &Key, physical: key::Physical, modifiers: Modifiers) -> Option<i16> {
+    if !modifiers.command() || modifiers.alt() || (cfg!(target_os = "macos") && modifiers.control())
+    {
+        return None;
+    }
+    match (key, physical) {
+        (Key::Character(value), _) if value == "+" || value == "=" => Some(10),
+        (Key::Character(value), _) if value == "-" => Some(-10),
+        (Key::Character(value), _) if value == "0" => Some(0),
+        (_, key::Physical::Code(key::Code::Equal | key::Code::NumpadAdd)) => Some(10),
+        (_, key::Physical::Code(key::Code::Minus | key::Code::NumpadSubtract)) => Some(-10),
+        (_, key::Physical::Code(key::Code::Digit0 | key::Code::Numpad0)) => Some(0),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests;

@@ -17,3 +17,5 @@ mod tab_menu;
 mod unified;
 mod working_changes;
 pub(crate) mod workspace;
+
+pub(crate) mod text_search;

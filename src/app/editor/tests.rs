@@ -28,6 +28,385 @@ fn edit(app: &mut App, value: &str) {
 }
 
 #[test]
+fn diagnostic_responses_release_busy_state_while_editor_actions_are_blocked() {
+    for settings in [false, true] {
+        let mut app = app();
+        if settings {
+            app.navigation = crate::app::Navigation::Settings;
+        } else {
+            app.files.operations.busy = true;
+        }
+        app.editor.diagnostics_busy = true;
+        let report = diagnostics::Report {
+            generation: app.generation,
+            tab: app.preview().id,
+            text: app.editor_buffer().unwrap().document.text.clone(),
+            diagnostics: Vec::new(),
+        };
+        let _ = app.update_editor(Event::Diagnostics(report.clone()));
+        assert!(!app.editor.diagnostics_busy);
+        assert!(app.editor.diagnostics.is_some());
+
+        app.editor.diagnostics = None;
+        app.editor.diagnostics_busy = true;
+        let _ = app.update_editor(Event::Diagnostics(diagnostics::Report {
+            generation: report.generation.wrapping_add(1),
+            ..report
+        }));
+        assert!(!app.editor.diagnostics_busy);
+        assert!(app.editor.diagnostics.is_none());
+
+        app.editor.diagnostics_busy = true;
+        let _ = app.update_editor(Event::LanguagesMaintained);
+        assert!(!app.editor.diagnostics_busy);
+    }
+}
+
+#[test]
+fn language_overlays_preserve_editor_widget_state() {
+    use iced::advanced::widget::{Tree, tree};
+    fn first_stateful_leaf(tree: &mut Tree) -> &mut Tree {
+        if tree.children.is_empty() && tree.tag != tree::Tag::stateless() {
+            return tree;
+        }
+        first_stateful_leaf(tree.children.first_mut().unwrap())
+    }
+    let mut app = app();
+    app.workspace.preferences.line_numbers = false;
+    let mut tree = {
+        let view = crate::ui::editor::view(&app, app.editor_buffer().unwrap());
+        Tree::new(&view)
+    };
+    let leaf = first_stateful_leaf(&mut tree);
+    let tag = leaf.tag;
+    // Detect replacement of the allocation that owns focus and drag selection.
+    leaf.state = tree::State::new(927_u64);
+    app.editor.suggestions = Some(completion::Suggestions {
+        opened: std::time::Instant::now(),
+        revision: 0,
+        tab: app.preview().id,
+        snapshot: app.editor_buffer().unwrap().document.text.clone(),
+        cursor: text_editor::Position { line: 0, column: 0 },
+        items: vec![serde_json::json!({"label": "original"})],
+        selected: 0,
+    });
+    for visible in [true, false] {
+        if !visible {
+            app.editor.suggestions = None;
+        }
+        app.editor.diagnostics = visible.then(|| diagnostics::Report {
+            generation: app.generation,
+            tab: app.preview().id,
+            text: app.editor_buffer().unwrap().document.text.clone(),
+            diagnostics: Vec::new(),
+        });
+        let view = crate::ui::editor::view(&app, app.editor_buffer().unwrap());
+        tree.diff(&view);
+        let leaf = first_stateful_leaf(&mut tree);
+        assert_eq!(leaf.tag, tag);
+        assert_eq!(*leaf.state.downcast_ref::<u64>(), 927);
+    }
+}
+
+#[test]
+fn tab_accepts_the_selected_completion_instead_of_inserting_spaces() {
+    use iced::{
+        Event as Input,
+        keyboard::{self, Key as KeyboardKey, Modifiers, key},
+    };
+    let mut app = app();
+    let id = app.preview().id;
+    app.editor.suggestions = Some(completion::Suggestions {
+        opened: std::time::Instant::now(),
+        revision: 0,
+        tab: id,
+        snapshot: app.editor_buffer().unwrap().document.text.clone(),
+        cursor: text_editor::Position { line: 0, column: 0 },
+        items: vec![
+            serde_json::json!({"label":"first"}),
+            serde_json::json!({"label":"second"}),
+        ],
+        selected: 1,
+    });
+    let mut ui =
+        iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+    ui.click(iced::widget::Id::from(format!("text-editor-{id}")))
+        .unwrap();
+    ui.simulate([Input::Keyboard(keyboard::Event::KeyPressed {
+        key: KeyboardKey::Named(key::Named::Tab),
+        modified_key: KeyboardKey::Named(key::Named::Tab),
+        physical_key: key::Physical::Code(key::Code::Tab),
+        location: keyboard::Location::Standard,
+        modifiers: Modifiers::empty(),
+        repeat: false,
+        text: None,
+    })]);
+    let messages: Vec<_> = ui.into_messages().collect();
+    assert!(
+        messages
+            .iter()
+            .any(|message| matches!(message, Message::Editor(Event::AcceptCompletion(1))))
+    );
+    assert!(!messages.iter().any(
+        |message| matches!(message, Message::Editor(Event::Action(_, action)) if action.is_edit())
+    ));
+}
+
+#[test]
+fn duplicating_a_line_preserves_endings_and_undoes_in_one_step() {
+    for (before, after, line) in [
+        ("first\nlast", "first\nfirst\nlast", 0),
+        ("first\r\nlast", "first\r\nfirst\r\nlast", 0),
+        ("first\r\nlast", "first\r\nlast\r\nlast", 1),
+        ("слово", "слово\nслово", 0),
+        ("", "\n", 0),
+    ] {
+        let mut app = app();
+        edit(&mut app, before);
+        let id = app.preview().id;
+        app.preview_for_request(id)
+            .unwrap()
+            .editor
+            .as_mut()
+            .unwrap()
+            .content
+            .move_to(text_editor::Cursor {
+                position: text_editor::Position { line, column: 0 },
+                selection: None,
+            });
+        let _ = app.update_editor(Event::DuplicateLine);
+        assert_eq!(app.editor_buffer().unwrap().document.text, after);
+        assert_eq!(
+            app.editor_buffer().unwrap().content.cursor().position.line,
+            line + 1
+        );
+        let _ = app.update_editor(Event::Undo(id, false));
+        assert_eq!(app.editor_buffer().unwrap().document.text, before);
+    }
+}
+
+#[test]
+fn formatting_rejects_changed_text_and_undoes_in_one_step() {
+    let mut app = app();
+    edit(&mut app, "a");
+    let id = app.preview().id;
+    let report = formatting::Report {
+        generation: app.generation,
+        tab: id,
+        snapshot: "a".into(),
+        edits: Ok(vec![crate::domain::language::TextEdit {
+            range: crate::domain::language::Range {
+                start: crate::domain::language::Position {
+                    line: 0,
+                    character: 0,
+                },
+                end: crate::domain::language::Position {
+                    line: 0,
+                    character: 1,
+                },
+            },
+            new_text: "formatted".into(),
+        }]),
+    };
+    edit(&mut app, "changed");
+    let _ = app.update_editor(Event::Formatted(report.clone()));
+    assert_eq!(app.editor_buffer().unwrap().document.text, "changed");
+    edit(&mut app, "a");
+    let _ = app.update_editor(Event::Formatted(report));
+    assert_eq!(app.editor_buffer().unwrap().document.text, "formatted");
+    let _ = app.update_editor(Event::Undo(id, false));
+    assert_eq!(app.editor_buffer().unwrap().document.text, "a");
+}
+
+#[test]
+fn modified_backspace_deletes_words_and_line_prefixes() {
+    use iced::{
+        Event as Input,
+        keyboard::{self, Key as KeyboardKey, Modifiers, key},
+    };
+    let mut cases = vec![
+        (Modifiers::empty(), "alpha bet"),
+        (
+            if cfg!(target_os = "macos") {
+                Modifiers::ALT
+            } else {
+                Modifiers::CTRL
+            },
+            "alpha ",
+        ),
+    ];
+    if cfg!(target_os = "macos") {
+        cases.push((Modifiers::COMMAND, ""));
+    }
+    for (modifiers, expected) in cases {
+        let mut app = app();
+        edit(&mut app, "alpha beta");
+        let id = app.preview().id;
+        let messages = {
+            let mut ui = iced_test::Simulator::with_size(
+                iced::Settings::default(),
+                (1080., 720.),
+                app.view(),
+            );
+            ui.click(iced::widget::Id::from(format!("text-editor-{id}")))
+                .unwrap();
+            ui.simulate([Input::Keyboard(keyboard::Event::KeyPressed {
+                key: KeyboardKey::Named(key::Named::Backspace),
+                modified_key: KeyboardKey::Named(key::Named::Backspace),
+                physical_key: key::Physical::Code(key::Code::Backspace),
+                location: keyboard::Location::Standard,
+                modifiers,
+                repeat: false,
+                text: None,
+            })]);
+            ui.into_messages().collect::<Vec<_>>()
+        };
+        for message in messages {
+            let _ = app.update(message);
+        }
+        assert_eq!(
+            app.editor_buffer().unwrap().document.text,
+            expected,
+            "{modifiers:?}"
+        );
+        let _ = app.update_editor(Event::Undo(id, false));
+        assert_eq!(app.editor_buffer().unwrap().document.text, "alpha beta");
+    }
+}
+
+#[test]
+fn word_selection_uses_arrow_keys_even_with_an_empty_text_payload() {
+    use iced::{
+        Event as Input,
+        keyboard::{self, Key as KeyboardKey, Modifiers, key},
+    };
+    let mut app = app();
+    edit(&mut app, "alpha beta");
+    let id = app.preview().id;
+    let messages = {
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+        ui.click(iced::widget::Id::from(format!("text-editor-{id}")))
+            .unwrap();
+        ui.simulate([Input::Keyboard(keyboard::Event::KeyPressed {
+            key: KeyboardKey::Named(key::Named::ArrowLeft),
+            modified_key: KeyboardKey::Named(key::Named::ArrowLeft),
+            physical_key: key::Physical::Code(key::Code::ArrowLeft),
+            location: keyboard::Location::Standard,
+            modifiers: Modifiers::SHIFT
+                | if cfg!(target_os = "macos") {
+                    Modifiers::ALT
+                } else {
+                    Modifiers::CTRL
+                },
+            repeat: false,
+            text: Some("".into()),
+        })]);
+        ui.into_messages().collect::<Vec<_>>()
+    };
+    for message in messages {
+        let _ = app.update(message);
+    }
+    assert_eq!(
+        app.editor_buffer().unwrap().content.selection().as_deref(),
+        Some("beta")
+    );
+    assert_eq!(app.editor_buffer().unwrap().document.text, "alpha beta");
+}
+
+#[test]
+fn completion_popup_fits_and_insertion_is_one_undo_step() {
+    let mut app = app();
+    edit(&mut app, "person.gr");
+    let id = app.preview().id;
+    let buffer = app
+        .preview_for_request(id)
+        .unwrap()
+        .editor
+        .as_mut()
+        .unwrap();
+    buffer.content.move_to(text_editor::Cursor {
+        position: text_editor::Position { line: 0, column: 9 },
+        selection: None,
+    });
+    app.editor.suggestions = Some(completion::Suggestions {
+        opened: std::time::Instant::now() - crate::ui::theme::COMPLETION_APPEAR,
+        revision: app.editor.completion_revision,
+        tab: id,
+        snapshot: "person.gr".to_owned(),
+        cursor: text_editor::Position { line: 0, column: 9 },
+        items: vec![
+            serde_json::json!({"label": "greet", "kind": 2, "detail": "() -> str"}),
+            serde_json::json!({"label": "group", "kind": 5, "detail": "str"}),
+        ],
+        selected: 0,
+    });
+    for appearance in [
+        crate::domain::workspace::Appearance::Dark,
+        crate::domain::workspace::Appearance::Light,
+    ] {
+        app.workspace.preferences.appearance = appearance;
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+        let bounds = ui
+            .find(iced::widget::Id::from("editor-completion-popup"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        assert!(bounds.x >= 0. && bounds.x + bounds.width <= 1080.);
+        assert!(bounds.y >= 0. && bounds.y + bounds.height <= 720.);
+        if let Some(output) = std::env::var_os("IWE_RENDER_DIR") {
+            ui.snapshot(&app.theme())
+                .unwrap()
+                .matches_image(
+                    std::path::PathBuf::from(output).join(format!("completion-{appearance:?}")),
+                )
+                .unwrap();
+        }
+    }
+    let _ = app.update_editor(Event::AcceptCompletion(0));
+    assert_eq!(app.editor_buffer().unwrap().document.text, "person.greet");
+    assert_eq!(
+        app.editor_buffer()
+            .unwrap()
+            .content
+            .cursor()
+            .position
+            .column,
+        12
+    );
+    let _ = app.update_editor(Event::Undo(id, false));
+    assert_eq!(app.editor_buffer().unwrap().document.text, "person.gr");
+}
+
+#[test]
+fn code_editor_scales_wheel_and_trackpad_movement() {
+    use iced::{Event as IcedEvent, mouse, widget::Id};
+
+    let app = app();
+    let id = app.preview().id;
+    for delta in [
+        mouse::ScrollDelta::Lines { x: 0., y: -1. },
+        mouse::ScrollDelta::Pixels { x: 0., y: -16. },
+    ] {
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+        let bounds = ui
+            .find(Id::from(format!("text-editor-{id}")))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        ui.point_at(bounds.center());
+        ui.simulate([IcedEvent::Mouse(mouse::Event::WheelScrolled { delta })]);
+        assert!(ui.into_messages().any(|message| matches!(
+            message,
+            Message::Editor(Event::Action(target, text_editor::Action::Scroll { lines: 3 }))
+                if target == id
+        )));
+    }
+}
+
+#[test]
 fn local_edit_does_not_change_disk_snapshot_and_refresh_cannot_replace_draft() {
     let mut app = app();
     edit(&mut app, "draft\r\n");
@@ -369,6 +748,43 @@ fn remote_autosave_waits_for_transfer_without_reporting_a_save_failure() {
     let _ = app.update_editor(Event::Autosave(id, revision));
     // The absent test profile fails validation, proving that the deferred save was attempted.
     assert!(app.editor_buffer().unwrap().error.is_some());
+}
+
+#[test]
+fn undo_and_redo_keep_visible_code_when_the_caret_is_offscreen() {
+    let mut app = app();
+    let id = app.preview().id;
+    let original = "source line\n".repeat(200);
+    let _ = app.finish_preview(id, Ok(Document::plain(original.clone())));
+    let _ = app.update_editor(Event::Action(
+        id,
+        text_editor::Action::Edit(text_editor::Edit::Insert('X')),
+    ));
+    let top_line = |app: &App| {
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+        ui.find(iced::widget::Id::from(format!("text-editor-{id}")))
+            .unwrap();
+        app.editor_buffer()
+            .unwrap()
+            .content
+            .with_editor(|editor| editor.buffer().scroll().line)
+    };
+    assert_eq!(top_line(&app), 0);
+    let _ = app.update_editor(Event::Action(id, text_editor::Action::Scroll { lines: 80 }));
+    assert_eq!(top_line(&app), 80);
+
+    for (redo, expected) in [
+        (false, original.clone()),
+        (false, original.clone()),
+        (true, format!("X{original}")),
+    ] {
+        let _ = app.update_editor(Event::Undo(id, redo));
+        let buffer = app.editor_buffer().unwrap();
+        assert_eq!(buffer.content.text(), expected);
+        assert_eq!(buffer.content.cursor().position.line, 0);
+        assert_eq!(top_line(&app), 80);
+    }
 }
 
 #[test]

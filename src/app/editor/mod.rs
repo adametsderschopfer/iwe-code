@@ -7,6 +7,11 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 
 const AUTOSAVE_DELAY: Duration = Duration::from_millis(800);
 
+mod completion;
+mod definition;
+mod diagnostics;
+mod formatting;
+
 #[derive(Debug, Clone)]
 pub(crate) enum Target {
     Local(PathBuf),
@@ -45,6 +50,14 @@ impl Buffer {
 
 #[derive(Default)]
 pub(crate) struct State {
+    pub server_checks: std::collections::BTreeMap<String, bool>,
+    pub diagnostics: Option<diagnostics::Report>,
+    diagnostics_busy: bool,
+    pub definitions: Vec<definition::Definition>,
+    definition_target: Option<(u64, u64, definition::Definition)>,
+    completion_revision: u64,
+    pub suggestions: Option<completion::Suggestions>,
+    languages: Arc<tokio::sync::Mutex<crate::infrastructure::language_server::service::Service>>,
     pub pending: Option<Box<Message>>,
     pub saving_all: bool,
     next_token: u64,
@@ -53,8 +66,32 @@ pub(crate) struct State {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
+    DuplicateLine,
+    Format,
+    Formatted(formatting::Report),
+    CompletionFrame,
+    LanguagesMaintained,
+    DismissDefinitions,
+    RefreshDiagnostics,
+    Diagnostics(diagnostics::Report),
+    Definition,
+    Definitions(
+        u64,
+        u64,
+        String,
+        text_editor::Position,
+        Vec<definition::Definition>,
+    ),
+    OpenDefinition(usize),
+    CompleteAfter(u64, u64),
+    AcceptCompletion(usize),
+    SelectCompletion(bool),
+    DismissCompletion,
+    Complete(u64),
+    Completed(completion::Suggestions),
     Action(u64, text_editor::Action),
     Undo(u64, bool),
+    Replace(u64, String),
     Save,
     Saved(u64, Result<(), Key>),
     Autosave(u64, u64),
@@ -65,6 +102,71 @@ pub(crate) enum Event {
 }
 
 impl App {
+    fn duplicate_editor_line(&mut self) -> Task<Message> {
+        if self.editor.pending.is_some() {
+            return Task::none();
+        }
+        let Some(buffer) = self.editor_buffer() else {
+            return Task::none();
+        };
+        let cursor = buffer.content.cursor().position;
+        let source = &buffer.document.text;
+        let mut start = 0;
+        for _ in 0..cursor.line {
+            let Some(next) = source[start..].find('\n') else {
+                return Task::none();
+            };
+            start += next + 1;
+        }
+        let mut text = source.clone();
+        if let Some(length) = source[start..].find('\n') {
+            let end = start + length + 1;
+            text.insert_str(end, &source[start..end]);
+        } else {
+            let ending = if source.contains("\r\n") {
+                "\r\n"
+            } else {
+                "\n"
+            };
+            text.push_str(ending);
+            text.push_str(&source[start..]);
+        }
+        if text.len() > crate::domain::editor::LIMIT {
+            self.notifications.error(Key::EditorTooLarge, None);
+            return Task::none();
+        }
+        let id = self.preview().id;
+        self.editor.suggestions = None;
+        self.editor.completion_revision += 1;
+        let task = self.update_editor(Event::Replace(id, text));
+        if let Some(buffer) = self
+            .preview_for_request(id)
+            .and_then(|tab| tab.editor.as_mut())
+        {
+            buffer.content.move_to(text_editor::Cursor {
+                position: text_editor::Position {
+                    line: cursor.line + 1,
+                    column: cursor.column,
+                },
+                selection: None,
+            });
+        }
+        task
+    }
+
+    fn language_buffers(&self) -> Vec<(PathBuf, String)> {
+        self.tabs
+            .files
+            .iter()
+            .filter_map(|tab| {
+                let buffer = tab.editor.as_ref()?;
+                let Target::Local(path) = &buffer.target else {
+                    return None;
+                };
+                Some((path.clone(), buffer.document.text.clone()))
+            })
+            .collect()
+    }
     pub(crate) fn editor_buffer(&self) -> Option<&Buffer> {
         self.preview().editor.as_ref()
     }
@@ -294,7 +396,12 @@ impl App {
     }
 
     pub(super) fn update_editor(&mut self, event: Event) -> Task<Message> {
-        if self.files.operations.busy && !matches!(event, Event::Saved(..)) {
+        if self.files.operations.busy
+            && !matches!(
+                event,
+                Event::Saved(..) | Event::Diagnostics(_) | Event::LanguagesMaintained
+            )
+        {
             if let Event::Autosave(id, revision) = event {
                 return autosave_after(id, revision);
             }
@@ -303,6 +410,8 @@ impl App {
         if !matches!(
             event,
             Event::Saved(..)
+                | Event::Diagnostics(_)
+                | Event::LanguagesMaintained
                 | Event::Autosave(..)
                 | Event::FlushPending
                 | Event::SaveAll
@@ -319,7 +428,109 @@ impl App {
             return Task::none();
         }
         match event {
+            Event::DuplicateLine => return self.duplicate_editor_line(),
+            Event::Format => return self.request_formatting(),
+            Event::Formatted(report) => return self.apply_formatting(report),
+            Event::CompletionFrame => {}
+            Event::LanguagesMaintained => self.editor.diagnostics_busy = false,
+            Event::DismissDefinitions => self.editor.definitions.clear(),
+            Event::RefreshDiagnostics => return self.refresh_diagnostics(),
+            Event::Diagnostics(report) => {
+                self.editor.diagnostics_busy = false;
+                if report.generation == self.generation
+                    && report.tab == self.preview().id
+                    && self
+                        .editor_buffer()
+                        .is_some_and(|buffer| buffer.document.text == report.text)
+                {
+                    self.editor.diagnostics = Some(report);
+                }
+            }
+            Event::Definition => return self.request_definition(),
+            Event::OpenDefinition(index) => return self.open_definition(index),
+            Event::Definitions(generation, tab, text, cursor, definitions) => {
+                if self.generation == generation
+                    && self.preview().id == tab
+                    && self.editor_buffer().is_some_and(|buffer| {
+                        buffer.document.text == text && buffer.content.cursor().position == cursor
+                    })
+                {
+                    self.editor.definitions = definitions;
+                    if self.editor.definitions.len() == 1 {
+                        return self.open_definition(0);
+                    }
+                }
+            }
+            Event::AcceptCompletion(index) => return self.accept_completion(index),
+            Event::DismissCompletion => {
+                self.editor.completion_revision += 1;
+                self.editor.suggestions = None;
+            }
+            Event::SelectCompletion(next) => {
+                if let Some(suggestions) = &mut self.editor.suggestions {
+                    let count = suggestions.items.len();
+                    if count > 0 {
+                        suggestions.selected = if next {
+                            (suggestions.selected + 1) % count
+                        } else {
+                            (suggestions.selected + count - 1) % count
+                        };
+                        return iced::widget::operation::scroll_to(
+                            "editor-completions",
+                            iced::widget::operation::AbsoluteOffset {
+                                x: 0.,
+                                y: suggestions.selected.saturating_sub(4) as f32
+                                    * crate::ui::theme::COMPLETION_ROW_HEIGHT,
+                            },
+                        );
+                    }
+                }
+            }
+            Event::Complete(id) => return self.request_completion(id),
+            Event::CompleteAfter(id, revision) => {
+                if self.editor.completion_revision == revision {
+                    return self.request_completion(id);
+                }
+            }
+            Event::Completed(suggestions) => {
+                if self.editor.completion_revision == suggestions.revision
+                    && self.preview().id == suggestions.tab
+                    && self.editor_buffer().is_some_and(|buffer| {
+                        buffer.document.text == suggestions.snapshot
+                            && buffer.content.cursor().position == suggestions.cursor
+                    })
+                    && !suggestions.items.is_empty()
+                {
+                    self.editor.suggestions = Some(suggestions);
+                }
+            }
+            Event::Replace(id, text) if self.editor.pending.is_none() => {
+                if let Some(buffer) = self
+                    .tabs
+                    .files
+                    .iter_mut()
+                    .find(|tab| tab.id == id)
+                    .and_then(|tab| tab.editor.as_mut())
+                    && buffer.document.edit(text)
+                {
+                    buffer
+                        .content
+                        .replace_text_preserving_scroll(&buffer.document.text, |editor| {
+                            editor.buffer().scroll().line
+                        });
+                }
+                return Task::batch([
+                    self.schedule_autosave(id),
+                    if self.file_search().is_some() {
+                        self.schedule_search(false)
+                    } else {
+                        Task::none()
+                    },
+                ]);
+            }
             Event::Action(id, action) => {
+                self.editor.completion_revision += 1;
+                self.editor.suggestions = None;
                 let edited = action.is_edit();
                 if self.editor.pending.is_some()
                     || self.auth_dialog.is_some()
@@ -350,7 +561,15 @@ impl App {
                     }
                 }
                 if edited {
-                    return self.schedule_autosave(id);
+                    return Task::batch([
+                        self.schedule_completion(id),
+                        self.schedule_autosave(id),
+                        if self.file_search().is_some() {
+                            self.schedule_search(false)
+                        } else {
+                            Task::none()
+                        },
+                    ]);
                 }
             }
             Event::Undo(id, redo) if self.editor.pending.is_none() => {
@@ -360,13 +579,22 @@ impl App {
                     .iter_mut()
                     .find(|tab| tab.id == id)
                     .and_then(|tab| tab.editor.as_mut())
+                    && buffer.document.undo(redo)
                 {
-                    let cursor = buffer.content.cursor();
-                    buffer.document.undo(redo);
-                    buffer.content = text_editor::Content::with_text(&buffer.document.text);
-                    buffer.content.move_to(cursor);
+                    buffer
+                        .content
+                        .replace_text_preserving_scroll(&buffer.document.text, |editor| {
+                            editor.buffer().scroll().line
+                        });
+                    return Task::batch([
+                        self.schedule_autosave(id),
+                        if self.file_search().is_some() {
+                            self.schedule_search(false)
+                        } else {
+                            Task::none()
+                        },
+                    ]);
                 }
-                return self.schedule_autosave(id);
             }
             Event::Autosave(id, revision) => {
                 let Some(buffer) = self

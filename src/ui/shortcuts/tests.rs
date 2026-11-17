@@ -24,3 +24,52 @@ fn physical_keys_preserve_shortcuts_across_layouts_and_modifier_changes() {
         Modifiers::COMMAND
     ));
 }
+
+#[test]
+fn window_zoom_supports_shifted_plus_and_layout_independent_keys() {
+    use iced::keyboard::{
+        Key, Modifiers,
+        key::{Code, Physical},
+    };
+    let command = Modifiers::COMMAND;
+    assert_eq!(
+        super::zoom_delta(
+            &Key::Character("+".into()),
+            Physical::Code(Code::Equal),
+            command | Modifiers::SHIFT
+        ),
+        Some(10)
+    );
+    assert_eq!(
+        super::zoom_delta(
+            &Key::Character("-".into()),
+            Physical::Code(Code::Minus),
+            command
+        ),
+        Some(-10)
+    );
+    assert_eq!(
+        super::zoom_delta(
+            &Key::Character("0".into()),
+            Physical::Code(Code::Digit0),
+            command
+        ),
+        Some(0)
+    );
+    assert_eq!(
+        super::zoom_delta(
+            &Key::Character("+".into()),
+            Physical::Code(Code::Equal),
+            Modifiers::empty()
+        ),
+        None
+    );
+    assert_eq!(
+        super::zoom_delta(
+            &Key::Character("+".into()),
+            Physical::Code(Code::Equal),
+            command | Modifiers::ALT
+        ),
+        None
+    );
+}

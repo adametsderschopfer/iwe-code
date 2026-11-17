@@ -30,6 +30,7 @@ pub(crate) enum Icon {
     Rename,
     Right,
     Down,
+    Up,
     Drag,
     Changes,
     Fetch,
@@ -247,6 +248,7 @@ impl Drawing {
                 line(&[(3., 10.), (17., 10.)]);
             }
             Icon::Right => line(&[(7., 5.), (12., 10.), (7., 15.)]),
+            Icon::Up => line(&[(5., 12.), (10., 7.), (15., 12.)]),
             Icon::Down => line(&[(5., 7.), (10., 12.), (15., 7.)]),
             Icon::Drag => {
                 for y in [5., 10., 15.] {

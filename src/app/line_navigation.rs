@@ -184,9 +184,10 @@ impl App {
         Task::none()
     }
 
-    fn reveal_source_line(&mut self, line: usize) -> bool {
+    pub(super) fn reveal_source_line(&mut self, line: usize) -> bool {
         let side_by_side = self.workspace.preferences.diff_view == DiffView::SideBySide;
         let size = self.workspace.preferences.code_size as f32;
+        let line_height = f32::from(self.workspace.preferences.code_line_height) / 100.;
         let id = self.preview().id;
         let Some(preview) = self.preview_for_request(id) else {
             return false;
@@ -269,7 +270,7 @@ impl App {
         let Some(row) = row else {
             return false;
         };
-        let y = row.saturating_sub(3) as f32 * size * 1.65;
+        let y = row.saturating_sub(3) as f32 * size * line_height;
         if lane == Lane::Unified {
             preview.scroll_x = 0.;
             preview.scroll_y = y;

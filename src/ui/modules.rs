@@ -36,7 +36,7 @@ pub(crate) fn panel(app: &App, id: ModuleId) -> Element<'_, Message> {
         ModuleId::Terminal => crate::modules::terminal::view(
             &app.modules.terminal,
             &app.i18n,
-            app.workspace.preferences.code_size,
+            &app.workspace.preferences,
             app.auth_dialog.is_none()
                 && app.space_draft.is_none()
                 && app.project_add.is_none()

@@ -59,6 +59,8 @@ fn settings_window_fits_all_languages_without_the_project_sidebar() {
             for tab in [
                 super::super::SettingsTab::General,
                 super::super::SettingsTab::Code,
+                super::super::SettingsTab::Terminal,
+                super::super::SettingsTab::LanguageServers,
                 super::super::SettingsTab::Panels,
                 super::super::SettingsTab::Modules,
                 super::super::SettingsTab::Shortcuts,
@@ -95,7 +97,10 @@ fn settings_window_fits_all_languages_without_the_project_sidebar() {
                 assert!(heading.x >= navigation.x + navigation.width);
                 let first_label = match tab {
                     super::super::SettingsTab::General => Key::Language,
-                    super::super::SettingsTab::Code => Key::FontSize,
+                    super::super::SettingsTab::Code | super::super::SettingsTab::Terminal => {
+                        Key::FontFamily
+                    }
+                    super::super::SettingsTab::LanguageServers => Key::LanguageServersDescription,
                     super::super::SettingsTab::Panels => Key::Git,
                     super::super::SettingsTab::Modules => Key::ModulesDescription,
                     super::super::SettingsTab::Shortcuts => Key::GoToLine,

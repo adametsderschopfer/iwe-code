@@ -8,10 +8,12 @@ pub(crate) mod explain;
 pub(crate) mod external;
 pub(crate) mod git;
 pub(crate) mod jobs;
+pub(crate) mod language;
 pub(crate) mod modules;
 pub(crate) mod repository;
 pub(crate) mod search;
 pub(crate) mod shortcuts;
+pub(crate) mod text_search;
 pub(crate) mod update;
 pub(crate) mod workspace;
 

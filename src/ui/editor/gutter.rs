@@ -9,6 +9,8 @@ use iced::{
 pub(super) struct Gutter<'a> {
     pub content: &'a text_editor::Content,
     pub size: f32,
+    pub line_height: f32,
+    pub font: iced::Font,
 }
 
 impl<Message> canvas::Program<Message> for Gutter<'_> {
@@ -34,8 +36,8 @@ impl<Message> canvas::Program<Message> for Gutter<'_> {
                         ),
                         color: theme::MUTED.resolve(theme),
                         size: self.size.into(),
-                        line_height: iced::widget::text::LineHeight::Relative(super::LINE_HEIGHT),
-                        font: theme::code_font(),
+                        line_height: iced::widget::text::LineHeight::Relative(self.line_height),
+                        font: self.font,
                         align_x: iced::widget::text::Alignment::Right,
                         ..Default::default()
                     });

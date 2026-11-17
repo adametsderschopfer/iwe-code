@@ -128,3 +128,26 @@ fn deployment_defaults_use_shift_and_preserve_custom_assignments() {
     restored.normalize();
     assert_eq!(restored.binding(Command::DeploymentUpload), custom);
 }
+
+#[test]
+fn legacy_search_override_survives_new_project_shortcut_conflict() {
+    let custom = Command::FindInFiles.default_binding();
+    let mut shortcuts = Shortcuts(BTreeMap::from([(Command::Search, custom.clone())]));
+    shortcuts.normalize();
+    assert_eq!(shortcuts.binding(Command::Search), custom);
+    assert!(shortcuts.conflict(Command::FindInFiles));
+    let restored: Shortcuts =
+        serde_json::from_str(&serde_json::to_string(&shortcuts).unwrap()).unwrap();
+    assert!(restored.conflict(Command::FindInFiles));
+}
+
+#[test]
+fn window_zoom_shortcuts_cannot_be_assigned_to_editor_commands() {
+    let mut shortcuts = Shortcuts::default();
+    for key in ["0", "Equal", "Minus", "NumpadAdd", "NumpadSubtract"] {
+        let mut binding = Command::Copy.default_binding();
+        binding.key = key.to_owned();
+        assert!(binding.reserved());
+        assert!(shortcuts.assign(Command::Copy, binding).is_err());
+    }
+}

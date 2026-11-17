@@ -5,9 +5,13 @@ use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub(crate) enum Command {
+    DuplicateLine,
+    FormatCode,
+    GoToDefinition,
     GoToLine,
     GoToFile,
     Search,
+    FindInFiles,
     SaveFile,
     Copy,
     SelectAll,
@@ -18,10 +22,14 @@ pub(crate) enum Command {
 }
 
 impl Command {
-    pub(crate) const ALL: [Self; 10] = [
+    pub(crate) const ALL: [Self; 14] = [
+        Self::DuplicateLine,
+        Self::FormatCode,
+        Self::GoToDefinition,
         Self::GoToLine,
         Self::GoToFile,
         Self::Search,
+        Self::FindInFiles,
         Self::SaveFile,
         Self::Copy,
         Self::SelectAll,
@@ -34,11 +42,14 @@ impl Command {
     pub(crate) fn default_binding(self) -> Binding {
         Binding {
             key: match self {
+                Self::DuplicateLine => "D",
+                Self::FormatCode => "L",
+                Self::GoToDefinition => "B",
                 Self::GoToLine if cfg!(target_os = "macos") => "L",
                 Self::GoToLine => "G",
                 Self::GoToFile if cfg!(target_os = "macos") => "O",
                 Self::GoToFile => "N",
-                Self::Search => "F",
+                Self::Search | Self::FindInFiles => "F",
                 Self::Copy | Self::DeploymentCompare => "C",
                 Self::SelectAll | Self::DeploymentUpload => "A",
                 Self::SaveFile => "S",
@@ -48,10 +59,14 @@ impl Command {
             .to_owned(),
             control: !cfg!(target_os = "macos"),
             super_key: cfg!(target_os = "macos"),
-            alt: false,
+            alt: self == Self::FormatCode,
             shift: matches!(
                 self,
-                Self::GoToFile | Self::ReopenTab | Self::DeploymentCompare | Self::DeploymentUpload
+                Self::FindInFiles
+                    | Self::GoToFile
+                    | Self::ReopenTab
+                    | Self::DeploymentCompare
+                    | Self::DeploymentUpload
             ),
         }
     }
@@ -80,6 +95,15 @@ impl Binding {
     }
 
     pub(crate) fn reserved(&self) -> bool {
+        if matches!(
+            self.key.as_str(),
+            "0" | "Equal" | "Minus" | "Numpad0" | "NumpadAdd" | "NumpadSubtract"
+        ) && !self.alt
+            && self.control != cfg!(target_os = "macos")
+            && self.super_key == cfg!(target_os = "macos")
+        {
+            return true;
+        }
         if self.key == "Comma"
             && !self.alt
             && !self.shift
@@ -128,6 +152,15 @@ pub(crate) enum Rejection {
 }
 
 impl Shortcuts {
+    pub(crate) fn conflict(&self, command: Command) -> bool {
+        command == Command::FindInFiles
+            && !self.0.contains_key(&command)
+            && self
+                .0
+                .iter()
+                .any(|(other, binding)| *other != command && *binding == command.default_binding())
+    }
+
     pub(crate) fn binding(&self, command: Command) -> Binding {
         self.0
             .get(&command)
@@ -163,7 +196,9 @@ impl Shortcuts {
             let conflict = Command::ALL.into_iter().find(|command| {
                 self.0.contains_key(command)
                     && Command::ALL.into_iter().any(|other| {
-                        other != *command && self.binding(other) == self.binding(*command)
+                        other != *command
+                            && !self.conflict(other)
+                            && self.binding(other) == self.binding(*command)
                     })
             });
             let Some(command) = conflict else {

@@ -27,7 +27,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         .on_submit(Message::SearchEverywhere(Event::Selected))
         .size(14)
         .padding([10, 12])
-        .style(theme::input);
+        .style(theme::search_input);
 
     let mut results = column(Vec::new()).spacing(theme::SEARCH_ROW_SPACING);
     if dialog.query.is_empty() {
@@ -71,19 +71,28 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         }
     }
 
-    let mut footer = row(Vec::new()).spacing(6).align_y(Alignment::Center);
+    let mut tabs = row(Vec::new()).spacing(6).align_y(Alignment::Center);
     for scope in [Scope::All, Scope::Files, Scope::Projects] {
-        footer = footer.push(scope_chip(app, scope, dialog.scope));
+        tabs = tabs.push(scope_chip(app, scope, dialog.scope));
     }
-    footer = footer.push(
-        text(app.i18n.text(Key::SearchHint))
-            .width(Length::Fill)
-            .align_x(Horizontal::Right)
-            .size(11)
-            .style(theme::MUTED.text()),
+    let footer = row![].push(
+        text(format!(
+            "{} · {}",
+            app.i18n.text(Key::SearchEverywhere),
+            app.i18n.text(Key::SearchHint)
+        ))
+        .width(Length::Fill)
+        .align_x(Horizontal::Right)
+        .size(11)
+        .style(theme::MUTED.text()),
     );
 
     let content = column![
+        iced::widget::tooltip(
+            tabs,
+            text(app.i18n.text(Key::SearchEverywhereDescription)),
+            iced::widget::tooltip::Position::Bottom
+        ),
         row![icons::icon(icons::Icon::Search, theme::MUTED), input]
             .spacing(10)
             .align_y(Alignment::Center),
@@ -95,8 +104,8 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
 
     let popup = container(content)
         .width(theme::SEARCH_OVERLAY_WIDTH)
-        .padding(20)
-        .style(theme::dialog);
+        .padding(12)
+        .style(theme::search_dialog);
     let area = container(popup)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -253,7 +262,7 @@ fn row_button<'a>(
             .width(Length::Fill)
             .height(Length::Fixed(theme::SEARCH_ROW_HEIGHT))
             .padding([0, 10])
-            .style(move |theme, status| theme::action(index == selection)(theme, status))
+            .style(move |theme, status| theme::search_result(index == selection)(theme, status))
             .on_press(Message::SearchEverywhere(Event::Activate(index))),
     )
     .id(format!("search-everywhere-row-{index}"))

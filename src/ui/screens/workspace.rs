@@ -75,7 +75,7 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
             );
         }
         if app.workspace.directory().is_some() {
-            body = body.push(footer(app));
+            body = body.push(divider()).push(footer(app));
         }
         body.into()
     };
@@ -165,6 +165,7 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
     let base = super::project_add::overlay(app, base);
     let base = crate::ui::explain::overlay(app, base);
     let base = super::search_everywhere::overlay(app, base);
+    let base = super::text_search::overlay(app, base);
     let base = super::line_navigation::overlay(app, base);
     let base = crate::ui::notifications::overlay(
         &app.notifications,
@@ -1362,7 +1363,7 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
                         .align_y(Alignment::Center),
                     )
                     .on_press(Message::SelectTab(preview.id))
-                    .padding([7., theme::FILE_TAB_PADDING])
+                    .padding([4., theme::FILE_TAB_PADDING])
                     .width(Length::Fill)
                     .height(theme::FILE_TABS_HEIGHT - 2.)
                     .style(theme::file_tab_button),
@@ -1441,8 +1442,8 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
                 container(
                     button(container(icon(Icon::Down, theme::MUTED)).center(Length::Fill))
                         .width(theme::FILE_TAB_TOOL_SIZE)
-                        .height(theme::FILE_TAB_TOOL_SIZE)
-                        .padding(8)
+                        .height(theme::FILE_TAB_TOOL_HEIGHT)
+                        .padding([4, 8])
                         .style(theme::action(app.tabs.menu.is_some())),
                 )
                 .id("open-tabs"),
@@ -1467,9 +1468,9 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
                     ))
                     .center(Length::Fill),
                 )
-                .padding(8)
+                .padding([4, 8])
                 .width(theme::FILE_TAB_TOOL_SIZE)
-                .height(theme::FILE_TAB_TOOL_SIZE)
+                .height(theme::FILE_TAB_TOOL_HEIGHT)
                 .style(theme::action(split))
                 .on_press(Message::ToggleDiffView(app.preview().id)),
                 text(app.i18n.text(if split {
@@ -1498,9 +1499,9 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
                     ))
                     .center(Length::Fill),
                 )
-                .padding(8)
+                .padding([4, 8])
                 .width(theme::FILE_TAB_TOOL_SIZE)
-                .height(theme::FILE_TAB_TOOL_SIZE)
+                .height(theme::FILE_TAB_TOOL_HEIGHT)
                 .style(theme::action(collapsed))
                 .on_press(Message::ToggleUnchanged(app.preview().id)),
                 text(app.i18n.text(if collapsed {
@@ -1533,7 +1534,9 @@ fn preview(app: &App) -> Element<'_, Message> {
         .any(|preview| !preview.title.is_empty());
     let content: Element<'_, Message> = if let Some(buffer) = app.editor_buffer() {
         crate::ui::editor::view(app, buffer)
-    } else if app.preview().loading && app.preview().document.is_none() {
+    } else if app.preview().loading
+        && (app.preview().document.is_none() || app.preview().awaiting_editor())
+    {
         center_message(app, Key::Loading)
     } else if let Some(error) = app.preview().error {
         center_message(app, error_key(error))
@@ -1547,7 +1550,7 @@ fn preview(app: &App) -> Element<'_, Message> {
         } else {
             responsive(move |viewport| {
                 let size = app.workspace.preferences.code_size as f32;
-                let height = size * 1.65;
+                let height = size * (f32::from(app.workspace.preferences.code_line_height) / 100.);
                 let gutter = if document.comparison.is_some() {
                     unified::gutter_width(document, size, app.workspace.preferences.line_numbers)
                         + 8.
@@ -1649,8 +1652,12 @@ fn preview(app: &App) -> Element<'_, Message> {
                         line = line.push(
                             text(info.number)
                                 .size(size)
-                                .line_height(1.65)
-                                .font(theme::code_font())
+                                .line_height(
+                                    f32::from(app.workspace.preferences.code_line_height) / 100.,
+                                )
+                                .font(theme::selected_code_font(
+                                    app.workspace.preferences.code_font,
+                                ))
                                 .style(theme::FAINT.text())
                                 .width(46)
                                 .align_x(Alignment::End),
@@ -1666,9 +1673,14 @@ fn preview(app: &App) -> Element<'_, Message> {
                         container(
                             line.push(
                                 text(sign)
-                                    .font(theme::code_font())
+                                    .font(theme::selected_code_font(
+                                        app.workspace.preferences.code_font,
+                                    ))
                                     .size(size)
-                                    .line_height(1.65)
+                                    .line_height(
+                                        f32::from(app.workspace.preferences.code_line_height)
+                                            / 100.,
+                                    )
                                     .color(color)
                                     .width(12),
                             )
@@ -1698,8 +1710,19 @@ fn preview(app: &App) -> Element<'_, Message> {
                                 document.fingerprint,
                                 app.preview().preparation,
                                 app.preview().folding.revision,
-                                app.preview().selection.revision,
-                                app.workspace.preferences.code_size,
+                                (
+                                    app.preview().selection.revision,
+                                    app.file_search().map(|search| (
+                                        &search.query,
+                                        search.selected,
+                                        search.results.hits.len()
+                                    ))
+                                ),
+                                (
+                                    app.workspace.preferences.code_size,
+                                    app.workspace.preferences.code_line_height,
+                                    app.workspace.preferences.code_font
+                                ),
                                 app.workspace.preferences.line_numbers,
                                 app.workspace.preferences.appearance,
                                 app.i18n.text(Key::Loading),
@@ -1726,6 +1749,7 @@ fn preview(app: &App) -> Element<'_, Message> {
                     horizontal: scrollable::Scrollbar::default(),
                 })
                 .id("source-code")
+                .wheel_scroll_scale(theme::CODE_WHEEL_SCROLL_SCALE)
                 .style(if document.comparison.is_some() {
                     theme::code_scroll
                 } else {
@@ -1864,6 +1888,7 @@ fn preview(app: &App) -> Element<'_, Message> {
     } else {
         content
     };
+    let content = super::text_search::file_panel(app, content);
     let content = crate::modules::deployment::target_popup(
         &app.modules.deployment,
         &app.i18n,
@@ -1986,7 +2011,7 @@ fn vertical_toolbar<'a>(
 ) -> Element<'a, Message> {
     row![
         container(content)
-            .width(theme::FILE_PANEL_HEADER_HEIGHT - 1.)
+            .width(theme::FILE_PANEL_TOOL_SIZE + 2. * theme::FILE_PANEL_TOOL_INSET - 1.)
             .height(Length::Fill)
             .padding(iced::Padding {
                 right: theme::FILE_PANEL_TOOL_INSET - 1.,
