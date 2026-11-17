@@ -290,7 +290,8 @@ fn confirmed_install_exits_with_blocked_workers_and_restarts_the_verified_payloa
     let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
     let mut archive = tar::Builder::new(encoder);
     let payload = payload_root(platform().unwrap());
-    let script = b"#!/bin/sh\nprintf new > \"$IWE_TEST_RESTARTED\"\n";
+    // Publish the restart marker only after the subprocess finishes writing it.
+    let script = b"#!/bin/sh\nprintf new > \"$IWE_TEST_RESTARTED.tmp\" && mv \"$IWE_TEST_RESTARTED.tmp\" \"$IWE_TEST_RESTARTED\"\n";
     let path = if cfg!(target_os = "macos") {
         format!("{payload}/Contents/MacOS/iwe")
     } else {

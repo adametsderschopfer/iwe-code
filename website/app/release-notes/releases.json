@@ -2253,6 +2253,16 @@
           "es": "Los planes locales y los paquetes de instalación generados quedan fuera del control de versiones."
         },
         "sources": [".gitignore"]
+      },
+      {
+        "id": "atomic-update-test-restart-marker",
+        "category": "maintenance",
+        "text": {
+          "en": "Update tests wait for a complete restart marker before checking the installed application.",
+          "ru": "Тесты обновления дожидаются полной записи подтверждения перезапуска перед проверкой установленного приложения.",
+          "es": "Las pruebas de actualización esperan la escritura completa de la confirmación del reinicio antes de comprobar la aplicación."
+        },
+        "sources": ["src/infrastructure/updates/install/tests.rs"]
       }
     ]
   }
