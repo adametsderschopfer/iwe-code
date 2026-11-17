@@ -27,6 +27,16 @@ class WorkflowStructureTests(unittest.TestCase):
                 self.assertIn("ref: ${{ needs.prepare.outputs.sha }}", jobs[name])
         self.assertIn("needs: [prepare, publish]", jobs["website_build"])
         self.assertIn("needs: website_build", jobs["website_deploy"])
+        # Skipped Windows packaging must not suppress the macOS release website.
+        for name, prerequisites in {
+            "website_build": ("prepare", "publish"),
+            "website_deploy": ("website_build",),
+        }.items():
+            with self.subTest(website_job=name):
+                self.assertIn("!cancelled()", jobs[name])
+                for prerequisite in prerequisites:
+                    self.assertIn(f"needs.{prerequisite}.result == 'success'", jobs[name])
+                self.assertNotIn("always()", jobs[name])
         self.assertNotIn("gh workflow run", source)
         self.assertNotIn("github.ref_type == 'tag'", source)
 

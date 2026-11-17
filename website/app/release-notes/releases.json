@@ -2123,10 +2123,10 @@
   },
   {
     "version": "1.5.0",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
+    "status": "released",
+    "publishedAt": "2026-11-17T08:48:09Z",
+    "tags": ["macos-v1.5.0"],
+    "source": "8903df81c376ba597bca2e523285e5a85042a23b",
     "items": [
       {
         "id": "macos-only-release-packages",
@@ -2272,6 +2272,20 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "publish-site-after-macos-release",
+        "category": "maintenance",
+        "text": {
+          "en": "Publish the website after macOS releases even when Windows packaging is skipped.",
+          "ru": "Сайт публикуется после выпусков macOS, даже если упаковка Windows пропущена.",
+          "es": "El sitio se publica después de los lanzamientos de macOS aunque se omita el empaquetado de Windows."
+        },
+        "sources": [
+          ".github/workflows/bump-version.yml",
+          ".github/scripts/tests/test_workflow_structure.py"
+        ]
+      }
+    ]
   }
 ]

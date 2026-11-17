@@ -96,6 +96,9 @@ Website deployment receives pages and id-token write permissions. The workflow c
 prepared commit explicitly because the initiating event references main. The built-in token pushes
 the version commit without triggering another Code Checks run.
 
+Website jobs explicitly require successful publication even when the release skips Windows
+packaging.
+
 The first version workflow job waits for the Code Checks run of the dispatched commit. Preparation
 stops when those checks fail, get cancelled, or stay absent for 45 minutes. New version preparation
 also stops if main advances before checkout. A build or packaging failure stops before publication.

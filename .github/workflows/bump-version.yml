@@ -297,6 +297,8 @@ jobs:
   website_build:
     name: Build website
     needs: [prepare, publish]
+    if: >-
+      ${{ !cancelled() && needs.prepare.result == 'success' && needs.publish.result == 'success' }}
     defaults:
       run:
         working-directory: website
@@ -329,6 +331,7 @@ jobs:
   website_deploy:
     name: Publish GitHub Pages
     needs: website_build
+    if: ${{ !cancelled() && needs.website_build.result == 'success' }}
     runs-on: ubuntu-24.04
     permissions:
       pages: write
