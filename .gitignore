@@ -4,3 +4,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Local packaging output and planning artifacts.
+/dist/
+/.zcode/

@@ -2243,6 +2243,16 @@
           "es": "Las pestañas del terminal comparten una cabecera. En macOS, usa atajos para seleccionar, copiar, cortar y recorrer la entrada."
         },
         "sources": ["src/modules/terminal/view/mod.rs", "src/modules/terminal/state/mod.rs"]
+      },
+      {
+        "id": "exclude-local-generated-artifacts",
+        "category": "maintenance",
+        "text": {
+          "en": "Keep local planning files and generated installation packages outside version control.",
+          "ru": "Локальные планы и созданные установочные пакеты исключены из контроля версий.",
+          "es": "Los planes locales y los paquetes de instalación generados quedan fuera del control de versiones."
+        },
+        "sources": [".gitignore"]
       }
     ]
   }
