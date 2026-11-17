@@ -11,9 +11,10 @@ GitHub Actions uses three workflows with English names.
 - **Build and Publish Website** manually generates the website from main, uploads an artifact, and
   publishes GitHub Pages.
 
-Checks cover macOS, Windows, and Linux. Unit tests and release builds cover six architecture
-targets. Integration discovery runs once per operating system. Formatting and dependency security
-run on Linux.
+Application builds and platform checks run only on macOS by default. The release builds and unit
+tests use both macOS architectures. Set the repository variable `IWE_MACOS_ONLY` to `false` to
+restore Windows and Linux builds, tests, and packaging. Shared checks and website jobs run on Linux
+runners.
 
 The application has no root integration test targets. CI reports their absence explicitly. Adjacent
 tests cover local Git repositories, persistence, previews, provider responses, translated layouts,
@@ -107,19 +108,20 @@ prepared commit. The workflow never moves an existing tag.
 Start releases through Release New Version on main. Choose patch, minor, or major. Tag pushes do not
 start separate workflows. Retry failed jobs within the original run after transient build or
 deployment errors. Website failures leave the published application release available. The website
-download page lists only the packages the latest published release carries; the six established
-packages stay mandatory, and packages added later appear once a release ships them. Release build
-jobs validate tag syntax, release notes, and package version. They build the prepared commit.
-Installer installation checks remain part of Windows packaging. All six builds and both Windows
-installer jobs must succeed before publication.
+download page lists the latest release with complete downloads for each platform. Release builds
+validate the tag, release notes, and package version. They build the prepared commit. Installer
+installation checks run when Windows packaging is enabled. All enabled builds and installers must
+succeed before publication.
 
-The publication job signs one update manifest. It verifies eleven installation packages and six
-update archives, then adds SHA256SUMS. GitHub CLI uploads the files to a draft. GitHub creates the
-tag on the prepared commit when it publishes that release. Configure `IWE_UPDATE_SIGNING_KEY` before
-publishing. See [application updates](updates.md#release-signing) for key handling. The version
-workflow and publication job can write to the repository. Build jobs have read-only access. Existing
-releases are not overwritten. If uploading fails, inspect the remaining draft before retrying
-publication. Main pushes cancel superseded branch checks. Manual version runs serialize their work.
+The publication job signs one update manifest. It verifies the installation packages and update
+archives for the enabled targets, then adds SHA256SUMS. macOS-only releases use
+`macos-vMAJOR.MINOR.PATCH`. Releases for all targets use `vMAJOR.MINOR.PATCH`. GitHub CLI uploads
+the files to a draft. GitHub creates the tag on the prepared commit when it publishes that release.
+Configure `IWE_UPDATE_SIGNING_KEY` before publishing. See
+[application updates](updates.md#release-signing) for key handling. The version workflow and
+publication job can write to the repository. Build jobs have read-only access. Existing releases are
+not overwritten. If uploading fails, inspect the remaining draft before retrying publication. Main
+pushes cancel superseded branch checks. Manual version runs serialize their work.
 
 Set repository variables IWE_GITHUB_CLIENT_ID and IWE_GITLAB_CLIENT_ID to embed public OAuth Client
 IDs in release builds. These values are public identifiers, not secrets. Missing values leave

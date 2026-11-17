@@ -11,12 +11,15 @@ import tempfile
 
 
 def main():
-    match = re.fullmatch(r"v([0-9]+\.[0-9]+\.[0-9]+)", os.environ["RELEASE_TAG"])
+    match = re.fullmatch(r"(macos-)?v([0-9]+\.[0-9]+\.[0-9]+)", os.environ["RELEASE_TAG"])
     if not match:
-        raise ValueError("Update manifests require a tag in the form vMAJOR.MINOR.PATCH")
-    version = match.group(1)
+        raise ValueError("Update manifests require a tag in the form vMAJOR.MINOR.PATCH or macos-vMAJOR.MINOR.PATCH")
+    version = match.group(2)
     assets = []
-    for platform in ("macos-arm64", "macos-x64", "windows-x64", "windows-x86", "linux-x64", "linux-x86"):
+    platforms = ["macos-arm64", "macos-x64"]
+    if not match.group(1):
+        platforms.extend(["windows-x64", "windows-x86", "linux-x64", "linux-x86"])
+    for platform in platforms:
         name = f"iwe-{version}-{platform}-update.tar.gz"
         path = Path("dist") / name
         if not 0 < path.stat().st_size <= 512 * 1024 * 1024:

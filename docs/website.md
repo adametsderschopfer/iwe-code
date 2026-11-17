@@ -227,9 +227,9 @@ publication.
 
 ## Current download version
 
-Nuxt loads the latest published stable GitHub release when loading its build configuration. The
-download section uses its version and verified asset URLs for all six supported targets. Missing
-packages or API failures stop the build before deployment. GH_TOKEN authenticates build-time API
+Nuxt reads published stable GitHub releases at build time. Each download card shows its platform's
+latest version with complete packages. During the pause, Windows and Linux cards link to their last
+published downloads. GitHub API failures stop the build. GH_TOKEN authenticates build-time API
 requests in Actions. It never enters public runtime configuration. Local builds can use the public
 API without a token. The website remains static. Each website build refreshes the release data. If
 authored notes for that version are absent, the release link opens the GitHub release.

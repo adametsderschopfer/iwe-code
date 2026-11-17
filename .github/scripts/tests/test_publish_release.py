@@ -62,8 +62,8 @@ class PublishReleaseTests(unittest.TestCase):
     def git(self, *args):
         return subprocess.check_output(["git", *args], cwd=self.repo, text=True).strip()
 
-    def publish(self):
-        env = dict(os.environ, RELEASE_TAG=TAG, GH_ARGS=str(self.calls),
+    def publish(self, tag=TAG):
+        env = dict(os.environ, RELEASE_TAG=tag, GH_ARGS=str(self.calls),
                    PATH=f"{self.root}{os.pathsep}{os.environ['PATH']}")
         return subprocess.run(["bash", str(SCRIPTS / "publish-release.sh")],
                               cwd=self.repo, env=env, capture_output=True, text=True)
@@ -80,6 +80,17 @@ class PublishReleaseTests(unittest.TestCase):
         )
         self.assertNotIn("--verify-tag", args)
         self.assertEqual(self.git("ls-remote", "--tags", "origin"), "")
+
+    def test_macos_release_publishes_only_macos_packages(self):
+        result = self.publish(f"macos-{TAG}")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = self.calls.read_text().splitlines()
+        self.assertEqual(args[:3], ["release", "create", f"macos-{TAG}"])
+        published = {name for name in self.files if "macos" in name or name.startswith("updates.")}
+        self.assertEqual(
+            set(args[3:args.index("--target")]),
+            {f"dist/{name}" for name in [*published, "SHA256SUMS"]},
+        )
 
     def test_missing_package_stops_before_publication(self):
         (self.repo / "dist" / f"iwe-code-{VERSION}-windows-x86-setup.exe").unlink()

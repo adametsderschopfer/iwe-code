@@ -25,9 +25,11 @@ export function publicReleaseNotes(publications: Record<string, string>) {
     .filter((release) => release.items.length > 0 && release.status !== 'development')
     .flatMap((release): ReleaseNote[] => {
       if (release.status !== 'prepared' || release.version === 'unreleased') return [release]
-      const tag = `v${release.version}`
-      const publishedAt = publications[tag]
-      return publishedAt ? [{ ...release, status: 'released', publishedAt, tags: [tag] }] : []
+      const tags = [`v${release.version}`, `macos-v${release.version}`].filter(
+        (tag) => publications[tag],
+      )
+      const publishedAt = tags.map((tag) => publications[tag]!).sort()[0]
+      return publishedAt ? [{ ...release, status: 'released', publishedAt, tags }] : []
     })
     .sort((left, right) => {
       if (left.version === 'unreleased') return -1

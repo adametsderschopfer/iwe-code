@@ -11,6 +11,7 @@ import {
 withDefaults(defineProps<{ messages: Messages; locale?: Locale }>(), { locale: 'en' })
 const release = useRuntimeConfig().public.downloadRelease
 const downloads = release.downloads as Record<string, string>
+const versions = release.versions as Partial<Record<DesktopSystem, string>>
 const version = release.version
 const platforms = [
   {
@@ -52,7 +53,6 @@ const detected = shallowRef<DetectedPlatform>({ system: undefined, architecture:
 const orderedPlatforms = computed(() =>
   detected.value.system === 'windows' ? [platforms[1], platforms[0], platforms[2]] : platforms,
 )
-// The download page lists only the packages the latest release carries.
 function availableFiles(platform: (typeof platforms)[number]) {
   return platform.files.filter((file) => Boolean(downloads[file.slug]))
 }
@@ -128,7 +128,12 @@ onMounted(async () => {
             ><SiteIcon name="check" />{{ messages.download.detected }}</span
           >
         </div>
-        <h3>{{ platform.name }}</h3>
+        <h3>
+          {{ platform.name }}
+          <span v-if="versions[platform.id]" class="platform-version">
+            • {{ versions[platform.id] }}</span
+          >
+        </h3>
         <p>{{ messages.download[platform.description] }}</p>
         <div class="platform-downloads">
           <a
@@ -235,6 +240,9 @@ onMounted(async () => {
   margin: 25px 0 7px;
   font-size: 20px;
   font-weight: 550;
+}
+.platform-version {
+  font-weight: 400;
 }
 .platform p {
   color: var(--muted);

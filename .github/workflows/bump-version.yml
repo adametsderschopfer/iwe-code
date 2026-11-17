@@ -106,6 +106,8 @@ jobs:
         run: npm exec prettier -- --write app/release-notes/releases.json
       - name: Save version
         id: version_commit
+        env:
+          IWE_MACOS_ONLY: ${{ vars.IWE_MACOS_ONLY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -118,7 +120,9 @@ jobs:
             git push origin HEAD:main
           fi
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          prefix=macos-
+          if [[ "$IWE_MACOS_ONLY" == false ]]; then prefix=; fi
+          echo "tag=${prefix}v$version" >> "$GITHUB_OUTPUT"
 
   plan:
     name: Validate version and select platforms
@@ -199,6 +203,7 @@ jobs:
   windows_package:
     name: Windows installer (${{ matrix.platform }})
     needs: [prepare, build]
+    if: startsWith(needs.prepare.outputs.tag, 'v')
     runs-on: windows-2022
     environment: windows-signing
     permissions:
@@ -260,6 +265,10 @@ jobs:
   publish:
     name: Publish release
     needs: [prepare, build, windows_package]
+    if: >-
+      ${{ !cancelled() && needs.prepare.result == 'success' && needs.build.result == 'success' &&
+      ((startsWith(needs.prepare.outputs.tag, 'macos-') && needs.windows_package.result == 'skipped') ||
+       (startsWith(needs.prepare.outputs.tag, 'v') && needs.windows_package.result == 'success')) }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write

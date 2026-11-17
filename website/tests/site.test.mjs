@@ -265,10 +265,15 @@ for (const { language, route } of locales) {
         )
       }
       const tags = links.filter((link) => link.href?.includes('/releases/tag/'))
-      assert.deepEqual(
-        tags.map((link) => decodeURIComponent(link.href.split('/releases/tag/')[1])),
-        publishedFromPrepared ? [`v${version}`] : release.tags,
+      const publishedTags = tags.map((link) =>
+        decodeURIComponent(link.href.split('/releases/tag/')[1]),
       )
+      if (publishedFromPrepared) {
+        assert.ok(publishedTags.length > 0)
+        assert.ok(publishedTags.every((tag) => [`v${version}`, `macos-v${version}`].includes(tag)))
+      } else {
+        assert.deepEqual(publishedTags, release.tags)
+      }
       for (const link of links) {
         const url = new URL(link.href, new URL(`${baseURL}${path}`, localOrigin))
         if (url.origin === localOrigin) staticTarget(url)

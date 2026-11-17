@@ -75,7 +75,7 @@ released record with items. A missing release note stops release jobs before bui
 publication script supplies the authored English body with `gh release create --notes-file`. Each
 body links to the version's English, Russian, and Spanish website pages.
 
-Publish the release only after packages for all six targets are available. Follow
+Publish the release only after packages for all enabled targets are available. Follow
 [the CI guide](../ci.md#publish-a-version).
 
 Follow [website instructions](../website.md) for formatting, lint, type checks, and route

@@ -34,13 +34,13 @@ updater accepts HTTPS redirects only to GitHub API, release, and asset hosts. It
 provider credentials. Metadata reads have size limits and a 45-second combined deadline. Downloads
 have a five-minute deadline and a 512 MiB maximum.
 
-Each new release includes six update archives, `updates.json`, and its Ed25519 signature
-`updates.sig`. Historical platform releases contain two update archives. The embedded public key
-verifies the manifest before version or package data becomes trusted. The signed manifest identifies
-each package's version, platform, byte size, and SHA-256 digest. The updater verifies package bytes
-before extraction and repeats verification immediately before installation. Archives may contain
-only regular files and directories beneath the expected application root. Extraction rejects links,
-path traversal, duplicate paths, excess entries, and oversized expanded content.
+Each new release includes update archives for its enabled targets, `updates.json`, and its Ed25519
+signature `updates.sig`. Historical platform releases contain two update archives. The embedded
+public key verifies the manifest before version or package data becomes trusted. The signed manifest
+identifies each package's version, platform, byte size, and SHA-256 digest. The updater verifies
+package bytes before extraction and repeats verification immediately before installation. Archives
+may contain only regular files and directories beneath the expected application root. Extraction
+rejects links, path traversal, duplicate paths, excess entries, and oversized expanded content.
 
 ## Installation and recovery
 
@@ -71,7 +71,7 @@ versions, it prefers a historical platform release over a shared release. Drafts
 unrelated tags, and other operating systems do not qualify. List responses have a 4 MiB limit per
 page and share the 45-second metadata deadline.
 
-The publication job signs the shared manifest after all six targets pass their CI prerequisites.
+The publication job signs the shared manifest after the enabled targets pass their CI prerequisites.
 Only the publication step receives the repository secret `IWE_UPDATE_SIGNING_KEY`. That secret
 contains an Ed25519 private key in PEM format. Keep its backup outside the repository.
 `assets/update-public-key.bin` contains the matching 32-byte public key. The signing script rejects
@@ -80,7 +80,7 @@ prevents publication. Unsigned updates are never accepted.
 
 The signing script requires Python 3.11 or newer and OpenSSL with Ed25519 support. Run
 `.github/scripts/sign-updates.py` with `RELEASE_TAG` and `IWE_UPDATE_SIGNING_KEY` after generating
-all six update archives. Never print the private key or place it in command arguments.
+all update archives for the release. Never print the private key or place it in command arguments.
 
 ## Verification
 
@@ -90,5 +90,5 @@ actions, duplicate requests, pending workspace saves, and failed handoffs. A sub
 macOS and Linux verifies signed extraction, process exit, replacement, and restarting the new
 executable. That test deliberately blocks a background worker to detect shutdown hangs. Its signing
 key belongs only to the fixture. Automated tests never replace the installed application or contact
-GitHub. Platform CI compiles and tests all six targets. A live update between signed releases still
-requires installed application testing.
+GitHub. Platform CI compiles and tests the enabled targets. A live update between signed releases
+still requires installed application testing.

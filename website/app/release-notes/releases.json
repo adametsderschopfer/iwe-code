@@ -2127,6 +2127,21 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "macos-only-release-packages",
+        "category": "changed",
+        "text": {
+          "en": "Publish new packages for Apple Silicon and Intel Macs while retaining existing Windows and Linux downloads.",
+          "ru": "Новые пакеты выходят для Mac с Apple Silicon и Intel. Прежние загрузки Windows и Linux остаются доступны.",
+          "es": "Los nuevos paquetes se publican para Mac con Apple Silicon e Intel. Se conservan las descargas de Windows y Linux."
+        },
+        "sources": [
+          ".github/scripts/release-plan.py",
+          ".github/scripts/publish-release.sh",
+          "website/nuxt.config.ts"
+        ]
+      }
+    ]
   }
 ]

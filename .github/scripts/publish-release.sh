@@ -1,20 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "Use a stable release tag in the form vMAJOR.MINOR.PATCH." >&2
+if [[ ! "$RELEASE_TAG" =~ ^(macos-)?v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Use a stable release tag in the form vMAJOR.MINOR.PATCH or macos-vMAJOR.MINOR.PATCH." >&2
   exit 1
 fi
-version=${RELEASE_TAG#v}
+version=${RELEASE_TAG#macos-}
+version=${version#v}
 assets=(
   "dist/iwe-code-$version-macos-arm64.dmg" "dist/iwe-code-$version-macos-x64.dmg"
-  "dist/iwe-code-$version-windows-x64.zip" "dist/iwe-code-$version-windows-x86.zip"
-  "dist/iwe-code-$version-windows-x64-setup.exe" "dist/iwe-code-$version-windows-x86-setup.exe"
-  "dist/iwe-code-$version-linux-x64.tar.gz" "dist/iwe-code-$version-linux-x86.tar.gz"
-  "dist/iwe-code-$version-linux-x64.deb" "dist/iwe-code-$version-linux-x86.deb"
-  "dist/iwe-code-$version-linux-x64.AppImage"
 )
-for platform in macos-arm64 macos-x64 windows-x64 windows-x86 linux-x64 linux-x86; do
+platforms=(macos-arm64 macos-x64)
+if [[ "$RELEASE_TAG" == v* ]]; then
+  assets+=(
+    "dist/iwe-code-$version-windows-x64.zip" "dist/iwe-code-$version-windows-x86.zip"
+    "dist/iwe-code-$version-windows-x64-setup.exe" "dist/iwe-code-$version-windows-x86-setup.exe"
+    "dist/iwe-code-$version-linux-x64.tar.gz" "dist/iwe-code-$version-linux-x86.tar.gz"
+    "dist/iwe-code-$version-linux-x64.deb" "dist/iwe-code-$version-linux-x86.deb"
+    "dist/iwe-code-$version-linux-x64.AppImage"
+  )
+  platforms+=(windows-x64 windows-x86 linux-x64 linux-x86)
+fi
+for platform in "${platforms[@]}"; do
   assets+=("dist/iwe-$version-$platform-update.tar.gz")
 done
 for asset in "${assets[@]}"; do
@@ -22,7 +29,7 @@ for asset in "${assets[@]}"; do
 done
 (
   cd dist
-  sha256sum -- iwe-* > SHA256SUMS
+  sha256sum -- "${assets[@]#dist/}" > SHA256SUMS
 )
 python3 .github/scripts/release-notes.py --version "$version" --output dist/release-notes.md
 test -s dist/updates.json

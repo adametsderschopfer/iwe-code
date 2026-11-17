@@ -26,51 +26,53 @@ interface GitHubRelease {
   assets: { name: string; browser_download_url: string; size: number }[]
 }
 
-const release = (await (await fetchReleases('/latest')).json()) as GitHubRelease
-if (release.draft || release.prerelease || !/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(release.tag_name)) {
-  throw new Error('The latest GitHub release must be a published stable version')
-}
+const stableTag = /^(?:(macos|windows|linux)-)?v([0-9]+\.[0-9]+\.[0-9]+)$/
 const publications: Record<string, string> = {}
+const releases: { record: GitHubRelease; version: string; family?: string }[] = []
 for (let page = 1; ; page++) {
   const response = await fetchReleases(`?per_page=100&page=${page}`)
   const records = (await response.json()) as GitHubRelease[]
   for (const record of records) {
-    if (
-      !record.draft &&
-      !record.prerelease &&
-      record.published_at &&
-      /^v[0-9]+\.[0-9]+\.[0-9]+$/.test(record.tag_name)
-    ) {
+    const match = stableTag.exec(record.tag_name)
+    if (match && !record.draft && !record.prerelease && record.published_at) {
       publications[record.tag_name] = record.published_at
+      releases.push({ record, version: match[2]!, family: match[1] })
     }
   }
   if (!response.headers.get('link')?.includes('rel="next"')) break
 }
-const releaseNotes = publicReleaseNotes(publications)
-const version = release.tag_name.slice(1)
+releases.sort((left, right) => right.version.localeCompare(left.version, 'en', { numeric: true }))
+const latest = releases[0]
+if (!latest) throw new Error('No published stable GitHub release found')
+
+const required = {
+  macos: ['macos-arm64.dmg', 'macos-x64.dmg'],
+  windows: ['windows-x64-setup.exe', 'windows-x86-setup.exe'],
+  linux: ['linux-x64.tar.gz', 'linux-x86.tar.gz'],
+}
 const downloads: Record<string, string> = {}
-// The six established packages must exist in every published release.
-for (const suffix of [
-  'macos-arm64.dmg',
-  'macos-x64.dmg',
-  'windows-x64-setup.exe',
-  'windows-x86-setup.exe',
-  'linux-x64.tar.gz',
-  'linux-x86.tar.gz',
-]) {
-  const asset = release.assets.find((item) => item.name === `iwe-code-${version}-${suffix}`)
-  if (!asset || asset.size <= 0) {
-    throw new Error(`The latest release is missing the download package: ${suffix}`)
-  }
-  downloads[suffix] = asset.browser_download_url
-}
-// Packages added later stay optional until a release ships them.
-for (const suffix of ['linux-x64.deb', 'linux-x86.deb', 'linux-x64.AppImage']) {
-  const asset = release.assets.find((item) => item.name === `iwe-code-${version}-${suffix}`)
-  if (asset && asset.size > 0) {
-    downloads[suffix] = asset.browser_download_url
+const versions: Record<string, string> = {}
+for (const [family, suffixes] of Object.entries(required)) {
+  const optional =
+    family === 'linux' ? ['linux-x64.deb', 'linux-x86.deb', 'linux-x64.AppImage'] : []
+  for (const { record, version, family: channel } of releases) {
+    if (channel && channel !== family) continue
+    const files = Object.fromEntries(
+      [...suffixes, ...optional].flatMap((suffix) => {
+        const asset = record.assets.find(
+          (item) => item.size > 0 && item.name === `iwe-code-${version}-${suffix}`,
+        )
+        return asset ? [[suffix, asset.browser_download_url]] : []
+      }),
+    )
+    if (!suffixes.every((suffix) => files[suffix])) continue
+    Object.assign(downloads, files)
+    versions[family] = version
+    break
   }
 }
+const releaseNotes = publicReleaseNotes(publications)
+const version = latest.version
 
 export default defineNuxtConfig({
   runtimeConfig: {
@@ -78,9 +80,10 @@ export default defineNuxtConfig({
       releasePublications: publications,
       downloadRelease: {
         version,
-        url: release.html_url,
+        url: latest.record.html_url,
         hasNotes: releaseNotes.some((record) => record.version === version),
         downloads,
+        versions,
       },
     },
   },
