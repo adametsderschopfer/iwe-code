@@ -2122,7 +2122,7 @@
     ]
   },
   {
-    "version": "unreleased",
+    "version": "1.5.0",
     "status": "prepared",
     "publishedAt": null,
     "tags": [],
@@ -2265,5 +2265,13 @@
         "sources": ["src/infrastructure/updates/install/tests.rs"]
       }
     ]
+  },
+  {
+    "version": "unreleased",
+    "status": "prepared",
+    "publishedAt": null,
+    "tags": [],
+    "source": null,
+    "items": []
   }
 ]
