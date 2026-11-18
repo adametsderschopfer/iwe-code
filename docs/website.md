@@ -63,9 +63,10 @@ screenshots when the illustrated interface changes.
 The landing page presents IWE Code as a native code editor and project workspace. The introduction
 and workflow cover local editing, autosave, project organization, and Git review. Six feature cards
 cover editing, spaces, Git, the terminal, pipelines, and deployment. Deployment has no separate
-promotional section. The gallery starts with the editor and places deployment last. The workspace
-section explains optional modules. All text appears in English, Russian, and Spanish. The gallery
-shows the current interface with fictional sample data.
+promotional section. The gallery starts with the editor and follows with project search, Git
+history, file comparison, and editor settings. The workspace section explains optional modules. All
+text appears in English, Russian, and Spanish. The gallery shows the current interface with
+fictional sample data.
 
 `app::tests::render_website_screenshots_when_requested` renders the five website views from
 fictional English fixtures. Set `IWE_RENDER_DIR` to a new temporary directory and run that exact
@@ -75,10 +76,8 @@ before replacing website assets. This rendering target does not read project fil
 providers, or authenticate accounts. Respect explicit user restrictions on compiling or running
 tests before invoking it.
 
-The captures show the editable workspace, Git history, comparison, pipelines, and deployment
-settings. Deployment settings use a fictional Staging server and an invalid example hostname. The
-gallery preserves each complete screenshot at every viewport width. Its buttons scroll horizontally
-on small screens.
+The screenshot fixture disables the pipelines and deployment modules. The gallery preserves each
+complete screenshot at every viewport width. Its buttons scroll horizontally on small screens.
 
 All website bitmap images use lossless WebP, including the product icon. Generated-page tests reject
 other bitmap formats in the published files.
@@ -101,12 +100,25 @@ identification. Without reliable architecture hints, macOS prioritizes Apple Sil
 available. Mobile devices keep all desktop downloads available without a detected-system badge. ARM
 devices without a matching package receive a compatibility note. Detection never starts a download.
 
-Selected sections appear once when they enter the viewport. The reveal uses CSS transitions and
-`IntersectionObserver`. The website honors reduced-motion preferences and reveals keyboard-focused
-content immediately. Content remains visible without JavaScript or observer support. The image
-reveal clips its image, while the observed container remains unclipped. Browser regression tests
-cover scrolling, navigation links, reduced motion, keyboard focus, and screenshot selection in all
-three languages.
+Selected sections appear once when they enter the viewport. Feature cards and workflow steps appear
+in sequence. The comparison screenshot opens from the center toward both edges. The workspace
+diagram reveals its connection and rows in order. `IntersectionObserver` starts these effects.
+
+The gallery fades in and grows to full size as you scroll. On desktop, its frame also tilts forward
+into place. Browsers without CSS scroll timelines use a one-time entrance. The website honors
+reduced-motion preferences and immediately reveals keyboard-focused content. Content remains
+available without JavaScript or observer support. Browser tests cover scroll progress, section
+entrances, reduced motion, keyboard focus, and screenshot selection in all three languages.
+
+## Roadmap
+
+The landing page previews two planned features and one highlight from the latest published release.
+The full roadmap lives at `/roadmap/`, `/ru/roadmap/`, and `/es/roadmap/`. It lists all planned
+features and sorts published releases by date. Each release links to its full notes. The roadmap
+shows up to three highlights per release and prioritizes new features.
+
+Update the planned features in the three translation catalogs. The roadmap assigns no release dates
+to planned features and excludes unpublished versions from the release history.
 
 ## Documentation section
 

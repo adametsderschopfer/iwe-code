@@ -3213,10 +3213,13 @@ async fn history_hash_click_copies_the_full_identifier_without_selecting_the_com
 
 #[test]
 fn render_website_screenshots_when_requested() {
-    use crate::domain::{
-        changes::{FileChange, FileStatus, Worktree},
-        jobs::{Details, Job, Stage},
-        repository::{Branch, ReferenceKind, Remote},
+    use crate::{
+        domain::{
+            changes::{FileChange, FileStatus, Worktree},
+            repository::{Branch, ReferenceKind, Remote},
+            text_search::{Options, compile, matches},
+        },
+        infrastructure::text_search::Hit,
     };
     use std::collections::BTreeMap;
     let Some(output) = std::env::var_os("IWE_RENDER_DIR").map(PathBuf::from) else {
@@ -3234,6 +3237,10 @@ fn render_website_screenshots_when_requested() {
     app.workspace.spaces[0].projects[0].name = "Northstar".into();
     app.workspace.spaces[0].projects[1].name = "Design system".into();
     app.workspace.select_project(0, 0);
+    app.workspace
+        .preferences
+        .disabled_modules
+        .extend([ModuleId::Pipelines, ModuleId::Deployment].map(|module| module.key().to_owned()));
     app.project_directory = Some(root.clone());
     app.navigation = Navigation::Files;
     let subjects = [
@@ -3287,7 +3294,6 @@ fn render_website_screenshots_when_requested() {
         .into();
     }
     crate::domain::repository::project::assign_graph(&mut repositories.commits, Vec::new());
-    let first_hash = repositories.commits[0].commit.id.clone();
     let first = &mut repositories.repositories[0];
     first.root = frontend.clone();
     first.head = "feature/workspace".into();
@@ -3386,13 +3392,14 @@ fn render_website_screenshots_when_requested() {
     app.expanded
         .extend([root.clone(), frontend.clone(), src.clone()]);
     let before = r#"import { useState } from 'react';
-import { ActivityList } from './components/ActivityList';
-import { ProjectCard } from './components/ProjectCard';
+import { ActivityList, ProjectCard } from './components';
 
 const sections = ['Overview', 'Projects', 'Activity'];
 
 export function App() {
-  const [selected, setSelected] = useState('Overview');
+  const [selected, select] = useState(
+    'Overview'
+  );
   const projects = [
     { name: 'Website', status: 'Ready', changes: 3 },
     { name: 'Design system', status: 'In progress', changes: 2 },
@@ -3401,13 +3408,13 @@ export function App() {
   return (
     <main className="workspace">
       <header className="workspace-header">
-        <h1>Your workspace</h1>
+        <h1>Workspace</h1>
         <p>Keep your projects and their history together.</p>
       </header>
 
       <nav aria-label="Workspace sections">
         {sections.map((section) => (
-          <button key={section} onClick={() => setSelected(section)}>
+          <button key={section} onClick={() => select(section)}>
             {section}
           </button>
         ))}
@@ -3424,20 +3431,17 @@ export function App() {
 }
 "#;
     let after = before
-        .replace("useState('Overview')", "useState('Projects')")
-        .replace("Your workspace", "Your projects, together")
+        .replace("'Overview'\n", "'Projects'\n")
+        .replace("<h1>Workspace</h1>", "<h1>Projects</h1>")
         .replace("limit={5}", "limit={10}");
+    let dashboard = "import { ActivityList } from './components';\n\nexport function Dashboard() {\n  return <ActivityList limit={10} />;\n}\n";
     for (path, content, extension) in [
         (
             root.join("README.md"),
             "# Northstar\n\nA clear workspace for projects and their history.\n",
             "md",
         ),
-        (
-            src.join("Dashboard.tsx"),
-            "export function Dashboard() {\n  return <section>Project activity</section>;\n}\n",
-            "tsx",
-        ),
+        (src.join("Dashboard.tsx"), dashboard, "tsx"),
         (src.join("App.tsx"), before, "tsx"),
     ] {
         let _ = app.open_file(path);
@@ -3476,9 +3480,37 @@ export function App() {
             .unwrap();
     };
     app.workspace.preferences.show_git = false;
-    app.workspace.preferences.show_pipelines = false;
     app.sync_panels();
     capture(&app, "workspace-en", (1440., 1000.));
+
+    use super::text_search::Event;
+    let _ = app.update_text_search(Event::Open(true));
+    let search = app.text_search.project.as_mut().unwrap();
+    search.query = "ActivityList".into();
+    search.mask = "*.tsx".into();
+    search.busy = false;
+    let pattern = compile(&search.query, &Options::default()).unwrap();
+    for (name, text) in [("App.tsx", before), ("Dashboard.tsx", dashboard)] {
+        let path = src.join(name);
+        search
+            .results
+            .hits
+            .extend(matches(text, &pattern, 20).into_iter().map(|found| Hit {
+                path: path.clone(),
+                found,
+            }));
+    }
+    search.selected = 1;
+    let line = search.results.hits[search.selected].found.line;
+    search.preview = before
+        .lines()
+        .skip(line.saturating_sub(5))
+        .take(9)
+        .collect::<Vec<_>>()
+        .join("\n");
+    capture(&app, "search-en", (1440., 920.));
+    app.text_search.project = None;
+
     app.workspace.preferences.show_git = true;
     app.panes = pane_grid::State::new(Panel::Module(crate::modules::ModuleId::Git)).0;
     capture(&app, "history-en", (1440., 920.));
@@ -3498,108 +3530,10 @@ export function App() {
     );
     app.preview_mut().editor = None;
     capture(&app, "comparison-en", (1440., 920.));
-    app.modules.pipelines.pipelines = PipelineState::Ready(
-        subjects
-            .iter()
-            .take(6)
-            .enumerate()
-            .map(|(index, title)| Pipeline {
-                id: 1042 - index as u64,
-                number: Some(1042 - index as u64),
-                title: (*title).into(),
-                branch: if index < 2 {
-                    "feature/workspace"
-                } else {
-                    "main"
-                }
-                .into(),
-                commit: Some(first_hash.clone()),
-                status: if index == 0 { "in_progress" } else { "success" }.into(),
-                date: format!("2026-11-09T{:02}:20:00Z", 18 - index),
-                url: format!(
-                    "https://github.com/example/northstar/actions/runs/{}",
-                    1042 - index
-                ),
-            })
-            .collect(),
-    );
-    if let PipelineState::Ready(runs) = &app.modules.pipelines.pipelines {
-        for (index, run) in runs.iter().enumerate() {
-            let entry = jobs::overview::Entry {
-                details: Some(Details {
-                    stages: vec![Stage {
-                        name: None,
-                        provider_status: None,
-                        jobs: ["Format", "Lint", "Types", "Tests", "Build"]
-                            .iter()
-                            .enumerate()
-                            .map(|(job, name)| Job {
-                                id: job as u64 + 1,
-                                name: (*name).into(),
-                                status: if index == 0 && job == 4 {
-                                    "in_progress"
-                                } else {
-                                    "success"
-                                }
-                                .into(),
-                                url: run.url.clone(),
-                                actions: Vec::new(),
-                            })
-                            .collect(),
-                    }],
-                    cancelable: false,
-                }),
-                ..Default::default()
-            };
-            app.modules
-                .pipelines
-                .jobs
-                .overview
-                .entries
-                .insert(run.id, entry);
-        }
-    }
-    app.workspace.preferences.show_pipelines = true;
-    app.panes = pane_grid::State::new(Panel::Module(crate::modules::ModuleId::Pipelines)).0;
-    capture(&app, "pipelines-en", (1080., 720.));
 
-    // Render settings with fictional metadata, without accessing a server or credentials.
-    use crate::domain::deployment::{Authentication, Connection, Mapping, Profile};
-    let connection = Connection {
-        id: "northstar-staging".into(),
-        name: "Northstar staging".into(),
-        host: "staging.example.invalid".into(),
-        port: 22,
-        username: "deploy".into(),
-        authentication: Authentication::Agent,
-        ..Default::default()
-    };
-    let profile = Profile {
-        id: "staging".into(),
-        name: "Staging".into(),
-        project: root,
-        connection: connection.id.clone(),
-        root: "/srv/northstar".into(),
-        mappings: vec![Mapping {
-            local: "frontend".into(),
-            remote: "www".into(),
-        }],
-        excluded: vec!["frontend/node_modules".into()],
-        default: true,
-    };
-    app.workspace.deployment.connections.push(connection);
-    app.workspace.spaces[0].deployments.push(profile.clone());
-    app.modules.deployment.profile = Some(profile);
-    let _ = app.open_deployment_settings(false);
-    let mut ui = iced_test::Simulator::with_size(
-        ui_settings(),
-        (1200., 800.),
-        app.view_window(app.windows.deployment.unwrap()),
-    );
-    ui.snapshot(&Theme::Dark)
-        .unwrap()
-        .matches_image(output.join("deployment-en"))
-        .unwrap();
+    app.navigation = Navigation::Settings;
+    app.settings_tab = SettingsTab::Code;
+    capture(&app, "settings-en", (1440., 920.));
 }
 
 #[test]

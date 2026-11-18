@@ -23,16 +23,16 @@
   "preview": {
     "label": "Explorar el espacio de trabajo",
     "workspace": "Editor",
+    "search": "Búsqueda en el proyecto",
     "history": "Historial de Git",
     "comparison": "Cambios",
-    "pipelines": "Ejecuciones",
+    "settings": "Ajustes del editor",
     "caption": "IWE Code con datos de ejemplo.",
     "altWorkspace": "Editor de IWE Code con resaltado de sintaxis, números de línea, pestañas de archivos y árbol del proyecto.",
+    "altSearch": "Búsqueda en el proyecto con líneas coincidentes, rutas de archivos y una vista previa del resultado seleccionado.",
     "altHistory": "Historial de Git en IWE Code con ramas y commits.",
     "altComparison": "IWE Code muestra las versiones anterior y actual de un archivo en paralelo y resalta las líneas modificadas.",
-    "altPipelines": "Lista de ejecuciones en IWE Code con el estado de cada tarea.",
-    "deployment": "Despliegue",
-    "altDeployment": "Configuración de despliegue de IWE Code con servidor Staging, conexión guardada y carpeta raíz del servidor."
+    "altSettings": "Ajustes de IWE Code para el tamaño de letra, el interlineado y los números de línea."
   },
   "features": {
     "title": "Tus herramientas.\nEn un mismo espacio.",
@@ -103,6 +103,37 @@
     "projectLabel": "Proyectos",
     "codeLabel": "Código fuente",
     "historyLabel": "Historial de Git"
+  },
+  "roadmap": {
+    "nav": "Hoja de ruta",
+    "title": "Qué viene después",
+    "description": "Consulta qué funciones ya están disponibles y cuáles queremos añadir a IWE Code.",
+    "shipped": "Disponible",
+    "planned": "Propuesta",
+    "recent": "Último lanzamiento",
+    "full": "Ver la hoja de ruta",
+    "tracks": {
+      "certification": {
+        "title": "Distribución",
+        "next": "Certificación para macOS y Windows",
+        "detail": "Prepararemos compilaciones firmadas y completaremos las verificaciones de cada plataforma para distribuir IWE Code."
+      },
+      "docker": {
+        "title": "Docker",
+        "next": "Gestionar servicios de Docker",
+        "detail": "Inicia y detén los servicios del proyecto. Consulta su estado desde IWE Code."
+      },
+      "pipelines": {
+        "title": "Pipelines",
+        "next": "Mejorar la beta de pipelines",
+        "detail": "Facilitaremos el seguimiento de ejecuciones y tareas, el diagnóstico de fallos y los reintentos."
+      },
+      "launch": {
+        "title": "Ejecución",
+        "next": "Configuraciones de ejecución",
+        "detail": "Guarda los comandos y argumentos de ejecución de cada proyecto. Reutilízalos desde IWE Code."
+      }
+    }
   },
   "download": {
     "title": "Un espacio más claro\nempieza aquí.",

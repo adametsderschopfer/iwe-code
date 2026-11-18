@@ -26,6 +26,39 @@ async function imageIsExposed(image: Locator) {
   })
 }
 
+test('gallery tilt, opacity, and progress track the scroll position', async ({ page }) => {
+  await openWebsite(page)
+  const stage = page.locator('.preview-stage')
+  const progress = () =>
+    page.locator('.landing').evaluate((element) => {
+      const transform = getComputedStyle(element, '::before').transform
+      return new DOMMatrixReadOnly(transform).m11
+    })
+  const tilt = () =>
+    stage.evaluate((element) => {
+      const transform = getComputedStyle(element).transform
+      return Math.abs(new DOMMatrixReadOnly(transform).m23)
+    })
+  await expect.poll(progress).toBe(0)
+  await expect.poll(tilt).toBeGreaterThan(0)
+  const initialOpacity = Number(
+    await stage.evaluate((element) => getComputedStyle(element).opacity),
+  )
+  expect(initialOpacity).toBeLessThan(0.65)
+
+  await page.mouse.wheel(0, Math.round((await stage.boundingBox())!.y - 80))
+  await expect.poll(tilt).toBeLessThan(0.001)
+  await expect(stage).toHaveCSS('opacity', '1')
+  await expect.poll(progress).toBeGreaterThan(0)
+
+  await page.mouse.wheel(0, -100_000)
+  await expect.poll(progress).toBe(0)
+  await expect.poll(tilt).toBeGreaterThan(0)
+  await expect
+    .poll(async () => Number(await stage.evaluate((element) => getComputedStyle(element).opacity)))
+    .toBeCloseTo(initialOpacity)
+})
+
 test('wipe image becomes exposed after wheel scrolling from below the fold', async ({ page }) => {
   await openWebsite(page)
   const wipe = page.locator('.reveal-wipe')
@@ -37,6 +70,26 @@ test('wipe image becomes exposed after wheel scrolling from below the fold', asy
 
   await expect(wipe).toHaveAttribute('data-reveal-state', 'visible')
   await expect.poll(() => imageIsExposed(image)).toBe(true)
+})
+
+test('the workspace diagram draws its connection and reveals the rows on mobile', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 800 })
+  await openWebsite(page)
+  const diagram = page.locator('.local-diagram')
+  const connection = diagram.locator('.diagram-connection')
+  const lastRow = diagram.locator('.diagram-row').last()
+  await expect(diagram).toHaveAttribute('data-reveal-state', 'pending')
+  await expect(connection).toHaveCSS('transform', 'matrix(1, 0, 0, 0, 0, 0)')
+  await expect(lastRow).toHaveCSS('opacity', '0')
+
+  await wheelTo(page, diagram)
+
+  await expect(diagram).toHaveAttribute('data-reveal-state', 'visible')
+  await expect(connection).toHaveCSS('transform', 'none')
+  await expect(lastRow).toHaveCSS('opacity', '1')
+  await expect(page.locator('.preview-stage')).toHaveCSS('animation-name', /^preview-fade/)
 })
 
 test('Workflow anchor reveals the comparison without manual intervention', async ({ page }) => {
@@ -72,9 +125,22 @@ test('reduced motion keeps all content visible without scrolling', async ({ page
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await openWebsite(page)
   await expect(page.locator('.scroll-reveal[data-reveal-state="pending"]')).toHaveCount(0)
+  await expect(page.locator('.preview-stage')).toHaveCSS('animation-name', 'none')
+  await expect(page.locator('.local-diagram .diagram-row').last()).toHaveCSS('opacity', '1')
   const wipe = page.locator('.reveal-wipe')
   await wheelTo(page, wipe)
   await expect.poll(() => imageIsExposed(wipe.locator('img'))).toBe(true)
+})
+
+test('changing to reduced motion reveals pending content immediately', async ({ page }) => {
+  await openWebsite(page)
+  const diagram = page.locator('.local-diagram')
+  await expect(diagram).toHaveAttribute('data-reveal-state', 'pending')
+
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+
+  await expect(page.locator('.scroll-reveal[data-reveal-state="pending"]')).toHaveCount(0)
+  await expect(diagram.locator('.diagram-row').last()).toHaveCSS('opacity', '1')
 })
 
 test('keyboard navigation exposes a pending download card immediately', async ({ page }) => {

@@ -41,7 +41,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <div>
+  <div class="landing">
     <SiteHeader :messages="messages" :locale="locale" />
     <main id="main" class="shell">
       <section class="hero" aria-labelledby="hero-title">
@@ -60,18 +60,18 @@ useSeoMeta({
           </div>
         </div>
         <p class="platform-note">{{ messages.hero.platforms }}</p>
-        <ScrollReveal><ProductShowcase :messages="messages" /></ScrollReveal>
+        <ProductShowcase :messages="messages" />
       </section>
 
       <FeatureSection :messages="messages" />
 
       <section id="workflow" class="workflow section-space" aria-labelledby="workflow-title">
-        <div class="workflow-copy">
+        <ScrollReveal class="workflow-copy">
           <h2 id="workflow-title" class="section-title preserve-lines">
             {{ messages.workflow.title }}
           </h2>
           <p class="section-description">{{ messages.workflow.description }}</p>
-        </div>
+        </ScrollReveal>
         <div class="workflow-content">
           <ScrollReveal as="figure" class="comparison-figure" variant="wipe">
             <img
@@ -84,16 +84,21 @@ useSeoMeta({
             <figcaption>{{ messages.workflow.caption }}</figcaption>
           </ScrollReveal>
           <div class="workflow-points">
-            <article v-for="item in messages.workflow.items" :key="item.title">
+            <ScrollReveal
+              v-for="(item, index) in messages.workflow.items"
+              :key="item.title"
+              as="article"
+              :delay="index * 60"
+            >
               <h3>{{ item.title }}</h3>
               <p>{{ item.description }}</p>
-            </article>
+            </ScrollReveal>
           </div>
         </div>
       </section>
 
       <section class="local-section section-space" aria-labelledby="local-title">
-        <div class="local-copy">
+        <ScrollReveal class="local-copy">
           <h2 id="local-title" class="section-title preserve-lines">{{ messages.local.title }}</h2>
           <p class="section-description">{{ messages.local.description }}</p>
           <ul class="local-points">
@@ -101,8 +106,8 @@ useSeoMeta({
               <SiteIcon name="check" />{{ point }}
             </li>
           </ul>
-        </div>
-        <ScrollReveal class="local-diagram">
+        </ScrollReveal>
+        <ScrollReveal class="local-diagram" variant="scene">
           <div class="diagram-computer">
             <SiteIcon name="computer" /><span>{{ messages.local.folderLabel }}</span
             ><span class="local-indicator" />
@@ -130,6 +135,7 @@ useSeoMeta({
         </ScrollReveal>
       </section>
 
+      <RoadmapSection :messages="messages" :locale="locale" preview />
       <DownloadSection :messages="messages" :locale="locale" />
 
       <section class="faq section-space" aria-labelledby="faq-title">
@@ -147,6 +153,30 @@ useSeoMeta({
 </template>
 
 <style scoped>
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .landing::before {
+      content: '';
+      position: fixed;
+      inset: 0 0 auto;
+      z-index: 20;
+      height: 2px;
+      background: var(--accent);
+      pointer-events: none;
+      transform-origin: left;
+      animation: reading-progress auto linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+}
+@keyframes reading-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
 .hero {
   padding-top: 80px;
 }
@@ -314,7 +344,7 @@ useSeoMeta({
 .diagram-connection {
   width: 1px;
   height: 32px;
-  background: var(--line-strong);
+  background: var(--accent);
   margin: auto;
 }
 .diagram-workspace {
@@ -359,6 +389,40 @@ useSeoMeta({
   color: var(--quiet);
   max-width: 270px;
   margin: 22px auto 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .local-diagram[data-reveal-state='visible']
+    :is(.diagram-computer, .diagram-workspace, .diagram-row) {
+    transition:
+      opacity var(--duration-reveal) var(--ease-out) var(--diagram-delay, 0ms),
+      transform var(--duration-reveal) var(--ease-out) var(--diagram-delay, 0ms);
+  }
+  .local-diagram[data-reveal-state='pending']
+    :is(.diagram-computer, .diagram-workspace, .diagram-row) {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  .diagram-connection {
+    transform-origin: top;
+  }
+  .local-diagram[data-reveal-state='pending'] .diagram-connection {
+    transform: scaleY(0);
+  }
+  .local-diagram[data-reveal-state='visible'] .diagram-connection {
+    transition: transform 320ms var(--ease-in-out) 80ms;
+  }
+  .diagram-workspace {
+    --diagram-delay: 230ms;
+  }
+  .diagram-row:nth-of-type(2) {
+    --diagram-delay: 320ms;
+  }
+  .diagram-row:nth-of-type(3) {
+    --diagram-delay: 380ms;
+  }
+  .diagram-row:nth-of-type(4) {
+    --diagram-delay: 440ms;
+  }
 }
 .faq {
   display: grid;

@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { docsPath, languages, localizedPath, repository, type Locale, type Messages } from '~/i18n'
+import {
+  docsPath,
+  languages,
+  localizedPath,
+  repository,
+  roadmapPath,
+  type Locale,
+  type Messages,
+} from '~/i18n'
 
 const props = withDefaults(
   defineProps<{
     messages: Messages
     locale: Locale
-    section?: 'home' | 'docs' | 'license'
+    section?: 'home' | 'docs' | 'license' | 'roadmap'
   }>(),
   { section: 'home' },
 )
@@ -32,6 +40,12 @@ const homeHref = computed(() => `${base}${props.locale === 'en' ? '' : `${props.
       <a :href="section === 'home' ? '#workflow' : `${homeHref}#workflow`">{{
         messages.nav.workflow
       }}</a>
+      <NuxtLink
+        :to="roadmapPath(locale)"
+        :aria-current="section === 'roadmap' ? 'page' : undefined"
+      >
+        {{ messages.roadmap.nav }}
+      </NuxtLink>
       <NuxtLink :to="docsPath(locale)" :aria-current="section === 'docs' ? 'page' : undefined">{{
         messages.docs.label
       }}</NuxtLink>

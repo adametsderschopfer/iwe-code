@@ -108,6 +108,7 @@ export default defineNuxtConfig({
           `${locale}/docs/release-notes/`,
           ...releaseNotes.map((release) => `${locale}/docs/release-notes/${release.version}/`),
           `${locale}/license/`,
+          `${locale}/roadmap/`,
         ]),
       ],
       failOnError: true,

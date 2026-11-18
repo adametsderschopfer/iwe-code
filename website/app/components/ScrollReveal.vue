@@ -5,7 +5,7 @@ const {
   delay = 0,
 } = defineProps<{
   as?: keyof HTMLElementTagNameMap
-  variant?: 'rise' | 'wipe'
+  variant?: 'rise' | 'wipe' | 'scene'
   delay?: number
 }>()
 
@@ -21,10 +21,10 @@ function reveal() {
 }
 
 function updatePreference() {
-  if (preference?.matches) reveal()
+  if (preference?.matches) revealImmediately()
 }
 
-function revealOnFocus() {
+function revealImmediately() {
   immediate.value = true
   reveal()
 }
@@ -59,8 +59,8 @@ onBeforeUnmount(() => {
     class="scroll-reveal"
     :class="[`reveal-${variant}`, { 'reveal-immediate': immediate }]"
     :data-reveal-state="pending ? 'pending' : 'visible'"
-    :style="{ transitionDelay: pending ? '0ms' : `${delay}ms` }"
-    @focusin="revealOnFocus"
+    :style="{ '--reveal-delay': `${delay}ms` }"
+    @focusin="revealImmediately"
   >
     <slot />
   </component>
@@ -71,19 +71,25 @@ onBeforeUnmount(() => {
   opacity: 1;
   transform: translateY(0);
   transition:
-    opacity var(--duration-reveal) var(--ease-out),
-    transform var(--duration-reveal) var(--ease-out);
+    opacity var(--duration-reveal) var(--ease-out) var(--reveal-delay),
+    transform var(--duration-reveal) var(--ease-out) var(--reveal-delay);
 }
 .reveal-rise[data-reveal-state='pending'] {
   opacity: 0;
   transform: translateY(var(--distance-reveal));
+  transition: none;
 }
 .reveal-wipe :deep(img) {
-  clip-path: inset(0 0 0 0);
-  transition: clip-path var(--duration-reveal) var(--ease-in-out);
+  clip-path: inset(0);
+  transform: none;
+  transition:
+    clip-path var(--duration-reveal) var(--ease-in-out) var(--reveal-delay),
+    transform var(--duration-reveal) var(--ease-out) var(--reveal-delay);
 }
 .reveal-wipe[data-reveal-state='pending'] :deep(img) {
-  clip-path: inset(0 0 100% 0);
+  clip-path: inset(0 50% 0 50%);
+  transform: translateY(3%) scale(0.97);
+  transition: none;
 }
 .reveal-immediate,
 .reveal-immediate :deep(img) {
@@ -98,6 +104,7 @@ onBeforeUnmount(() => {
   }
   .scroll-reveal :deep(img) {
     clip-path: none;
+    transform: none;
     transition: none;
   }
 }

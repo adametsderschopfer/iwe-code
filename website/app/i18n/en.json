@@ -23,16 +23,16 @@
   "preview": {
     "label": "Explore the workspace",
     "workspace": "Editor",
+    "search": "Project search",
     "history": "Git history",
     "comparison": "Changes",
-    "pipelines": "Pipelines",
+    "settings": "Editor settings",
     "caption": "IWE Code with sample data.",
     "altWorkspace": "IWE Code editor with syntax highlighting, line numbers, file tabs, and a project tree.",
+    "altSearch": "Project search in IWE Code with matching lines, file paths, and a preview of the selected result.",
     "altHistory": "IWE Code Git history with branches and commits.",
     "altComparison": "IWE Code shows previous and current source files side by side with changed lines highlighted.",
-    "altPipelines": "IWE Code pipeline list with the status of individual jobs.",
-    "deployment": "Deployment",
-    "altDeployment": "IWE Code deployment settings with a Staging server, a saved connection, and a server root folder."
+    "altSettings": "IWE Code settings for font size, line spacing, and line numbers."
   },
   "features": {
     "title": "The tools you need.\nIn the same workspace.",
@@ -103,6 +103,37 @@
     "projectLabel": "Projects",
     "codeLabel": "Source files",
     "historyLabel": "Git history"
+  },
+  "roadmap": {
+    "nav": "Roadmap",
+    "title": "What’s next",
+    "description": "See what’s available and what we’d like to add to IWE Code.",
+    "shipped": "Released",
+    "planned": "Proposed",
+    "recent": "Recently released",
+    "full": "View the full roadmap",
+    "tracks": {
+      "certification": {
+        "title": "Distribution",
+        "next": "Certification for macOS and Windows",
+        "detail": "Prepare signed builds and complete the platform checks for distributing IWE Code."
+      },
+      "docker": {
+        "title": "Docker",
+        "next": "Manage Docker services",
+        "detail": "Start and stop project services and check their status from IWE Code."
+      },
+      "pipelines": {
+        "title": "Pipelines",
+        "next": "Refine the pipelines beta",
+        "detail": "Make it easier to follow runs and jobs, understand failures, and retry jobs."
+      },
+      "launch": {
+        "title": "Run",
+        "next": "Run configurations",
+        "detail": "Save run commands and arguments for each project and reuse them from IWE Code."
+      }
+    }
   },
   "download": {
     "title": "A clearer workspace\nstarts here.",

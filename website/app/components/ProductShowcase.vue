@@ -13,6 +13,13 @@ const tabs = computed(() => [
     height: 2000,
   },
   {
+    id: 'search',
+    title: messages.preview.search,
+    alt: messages.preview.altSearch,
+    width: 2880,
+    height: 1840,
+  },
+  {
     id: 'history',
     title: messages.preview.history,
     alt: messages.preview.altHistory,
@@ -27,18 +34,11 @@ const tabs = computed(() => [
     height: 1840,
   },
   {
-    id: 'pipelines',
-    title: messages.preview.pipelines,
-    alt: messages.preview.altPipelines,
-    width: 2160,
-    height: 1440,
-  },
-  {
-    id: 'deployment',
-    title: messages.preview.deployment,
-    alt: messages.preview.altDeployment,
-    width: 2400,
-    height: 1600,
+    id: 'settings',
+    title: messages.preview.settings,
+    alt: messages.preview.altSettings,
+    width: 2880,
+    height: 1840,
   },
 ])
 </script>
@@ -60,18 +60,20 @@ const tabs = computed(() => [
       </div>
       <span class="preview-product">IWE Code</span>
     </div>
-    <div id="product-preview" class="preview-image">
-      <template v-for="tab in tabs" :key="tab.id">
-        <img
-          v-show="selected === tab.id"
-          :src="`${base}images/${tab.id}-en.webp`"
-          :alt="tab.alt"
-          :width="tab.width"
-          :height="tab.height"
-          :loading="tab.id === 'workspace' ? 'eager' : 'lazy'"
-          :fetchpriority="tab.id === 'workspace' ? 'high' : 'auto'"
-        />
-      </template>
+    <div class="preview-stage">
+      <ScrollReveal id="product-preview" class="preview-image">
+        <template v-for="tab in tabs" :key="tab.id">
+          <img
+            v-show="selected === tab.id"
+            :src="`${base}images/${tab.id}-en.webp`"
+            :alt="tab.alt"
+            :width="tab.width"
+            :height="tab.height"
+            :loading="tab.id === 'workspace' ? 'eager' : 'lazy'"
+            :fetchpriority="tab.id === 'workspace' ? 'high' : 'auto'"
+          />
+        </template>
+      </ScrollReveal>
     </div>
     <figcaption>{{ messages.preview.caption }}</figcaption>
   </figure>
@@ -79,7 +81,7 @@ const tabs = computed(() => [
 
 <style scoped>
 .showcase {
-  margin: 70px 0 0;
+  margin: clamp(94px, 10vw, 152px) 0 0;
   position: relative;
 }
 .showcase-toolbar {
@@ -132,15 +134,59 @@ const tabs = computed(() => [
   object-fit: contain;
   object-position: center;
 }
-figcaption {
+.showcase figcaption {
   text-align: center;
   margin-top: 20px;
   font-size: 12px;
   color: var(--muted);
 }
+@media (prefers-reduced-motion: no-preference) {
+  .preview-image.reveal-rise {
+    transform: none;
+  }
+  .preview-image.reveal-rise[data-reveal-state='pending'] {
+    transform: translateY(6%) scale(0.92);
+  }
+  @starting-style {
+    .preview-image.reveal-rise[data-reveal-state='visible'] {
+      opacity: 0;
+      transform: translateY(6%) scale(0.92);
+    }
+  }
+}
+@supports ((animation-timeline: view()) and (animation-range: entry)) {
+  @media (prefers-reduced-motion: no-preference) {
+    .preview-stage {
+      transform-origin: center top;
+      animation: preview-settle auto linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 80%;
+    }
+    .preview-image.reveal-rise[data-reveal-state] {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+    @media (max-width: 650px) {
+      .preview-stage {
+        animation-name: preview-fade;
+      }
+    }
+  }
+}
+@keyframes preview-settle {
+  from {
+    opacity: 0.18;
+    transform: perspective(1400px) translate3d(0, 6%, -240px) rotateX(26deg) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1400px) translate3d(0, 0, 0) rotateX(0) scale(1);
+  }
+}
 @media (max-width: 650px) {
   .showcase {
-    margin-top: 44px;
+    margin-top: 68px;
   }
   .preview-options {
     width: 100%;
@@ -152,6 +198,16 @@ figcaption {
   }
   .preview-product {
     display: none;
+  }
+}
+@keyframes preview-fade {
+  from {
+    opacity: 0.28;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 </style>

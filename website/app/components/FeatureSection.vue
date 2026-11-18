@@ -46,8 +46,24 @@ defineProps<{ messages: Messages }>()
   margin-top: 56px;
 }
 .feature {
+  position: relative;
   padding-top: 24px;
-  border-top: 1px solid var(--line-strong);
+}
+.feature::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), var(--line-strong) 56%);
+  transform-origin: left;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .feature[data-reveal-state='pending']::before {
+    transform: scaleX(0);
+  }
+  .feature[data-reveal-state='visible']::before {
+    transition: transform var(--duration-reveal) var(--ease-out) var(--reveal-delay);
+  }
 }
 .feature > svg {
   color: var(--accent);

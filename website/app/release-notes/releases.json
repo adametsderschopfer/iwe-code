@@ -2395,6 +2395,19 @@
           "es": "La barra inferior confirma la copia de la ruta del archivo o del proyecto."
         },
         "sources": ["src/ui/screens/workspace.rs", "src/app/mod.rs"]
+      },
+      {
+        "id": "website-roadmap-and-gallery",
+        "category": "changed",
+        "text": {
+          "en": "The website adds a roadmap and updates the screenshots of editing, search, and settings.",
+          "ru": "На сайте появилась дорожная карта и обновились снимки редактора, поиска и настроек.",
+          "es": "El sitio añade una hoja de ruta y actualiza las capturas de edición, búsqueda y ajustes."
+        },
+        "sources": [
+          "website/app/components/RoadmapPage.vue",
+          "website/app/components/ProductShowcase.vue"
+        ]
       }
     ]
   }

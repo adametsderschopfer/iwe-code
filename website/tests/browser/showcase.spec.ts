@@ -50,6 +50,30 @@ test('download cards align on desktop and fit their content on mobile', async ({
 })
 
 for (const language of ['', 'ru/', 'es/']) {
+  test(`roadmap preview, history, and release links work in ${language || 'en'}`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto(`./${language}`)
+    const preview = page.locator('#roadmap')
+    await expect(preview.locator('.roadmap-tag-topic')).toHaveCount(2)
+    await expect(preview.locator('.roadmap-tag-release')).toHaveCount(1)
+    await preview.locator('.roadmap-link').click()
+    await expect(page).toHaveURL(/\/roadmap\/$/)
+    const roadmap = page.locator('#roadmap')
+    await expect(roadmap.locator('.roadmap-tag-topic')).toHaveCount(4)
+    const releases = roadmap.locator('.roadmap-tag-release')
+    await expect.poll(() => releases.count()).toBeGreaterThan(1)
+    await expect(roadmap.locator('a[href$="/release-notes/unreleased/"]')).toHaveCount(0)
+    const release = roadmap.getByRole('link', { name: 'macOS 1.5.0', exact: true })
+    await expect(release).toHaveAttribute(
+      'href',
+      new URL('../docs/release-notes/1.5.0/', page.url()).pathname,
+    )
+    await release.click()
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('1.5.0')
+  })
+
   for (const width of [390, 1280]) {
     test(`screenshot gallery stays complete and usable: ${language || 'en'} at ${width}px`, async ({
       page,
@@ -58,12 +82,15 @@ for (const language of ['', 'ru/', 'es/']) {
       await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.goto(`./${language}`)
       const buttons = page.locator('.preview-options button')
-      await expect(buttons).toHaveCount(5)
-      for (const button of await buttons.all()) {
+      const screenshots = ['workspace', 'search', 'history', 'comparison', 'settings']
+      await expect(buttons).toHaveCount(screenshots.length)
+      for (const [index, screenshot] of screenshots.entries()) {
+        const button = buttons.nth(index)
         await button.click()
         await expect(button).toHaveAttribute('aria-pressed', 'true')
         const image = page.locator('#product-preview img:visible')
         await expect(image).toHaveCount(1)
+        await expect(image).toHaveAttribute('src', new RegExp(`/images/${screenshot}-en\\.webp$`))
         await expect(image).toHaveCSS('object-fit', 'contain')
         await expect
           .poll(() =>
