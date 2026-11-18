@@ -123,7 +123,6 @@ fn settings_tabs_switch_sections_without_changing_preferences() {
         for (tab, id, key) in [
             (SettingsTab::General, "general", Key::LanguageDescription),
             (SettingsTab::Code, "code", Key::FontSizeDescription),
-            (SettingsTab::Panels, "panels", Key::GitDescription),
             (SettingsTab::Modules, "modules", Key::ModulesDescription),
             (
                 SettingsTab::Shortcuts,
@@ -2236,7 +2235,7 @@ fn commit_titles_follow_the_graph_in_each_row() {
 }
 
 #[test]
-fn sidebar_navigation_fits_and_routes_in_every_screen_and_language() {
+fn workspace_navigation_fits_and_routes_in_every_screen_and_language() {
     for language in [Language::English, Language::Russian, Language::Spanish] {
         let app = application(Rc::new(I18n::new(language)));
         let (mut state, _) = app.boot();
@@ -2250,26 +2249,29 @@ fn sidebar_navigation_fits_and_routes_in_every_screen_and_language() {
                 Navigation::Settings,
             ] {
                 state.navigation = current;
-                let navigation = vec![("nav-settings", Navigation::Settings)];
-                for (id, expected) in navigation {
-                    let mut ui = iced_test::Simulator::with_size(ui_settings(), size, state.view());
-                    let bounds = ui
-                        .click(iced::widget::Id::new(id))
+                let mut ui = iced_test::Simulator::with_size(ui_settings(), size, state.view());
+                let settings = iced::widget::Id::new("nav-settings");
+                if current == Navigation::Settings {
+                    assert!(ui.find(settings).is_err());
+                } else {
+                    let refresh = ui
+                        .find(iced::widget::Id::new("window-header-action"))
                         .unwrap()
                         .visible_bounds()
                         .unwrap();
-                    assert!(bounds.x >= 0. && bounds.x + bounds.width <= theme::SIDEBAR_WIDTH);
+                    let bounds = ui.click(settings).unwrap().visible_bounds().unwrap();
+                    assert!(refresh.x + refresh.width < bounds.x);
+                    assert!((refresh.center_y() - bounds.center_y()).abs() < 0.5);
                     assert!(
-                        bounds.y >= theme::SIDEBAR_TOP_INSET
-                            && bounds.y + bounds.height <= size.height
+                        bounds.y >= 0.
+                            && bounds.y + bounds.height <= theme::WORKSPACE_HEADER_HEIGHT
                     );
-                    let messages: Vec<_> = ui
-                        .into_messages()
-                        .map(crate::app::modules::host_message)
-                        .collect();
-                    assert!(
-                        matches!(messages.as_slice(), [Message::Navigate(target)] if *target == expected)
-                    );
+                    assert!(bounds.x + bounds.width <= size.width);
+                    let messages: Vec<_> = ui.into_messages().collect();
+                    assert!(matches!(
+                        messages.as_slice(),
+                        [Message::Navigate(Navigation::Settings)]
+                    ));
                 }
                 let mut ui = iced_test::Simulator::with_size(ui_settings(), size, state.view());
                 assert!(ui.find(iced::widget::Id::new("nav-projects")).is_err());
@@ -2316,8 +2318,8 @@ fn welcome_and_settings_fit_supported_window_sizes_in_every_language() {
                     .unwrap();
                 assert_eq!(header.x, 0.);
                 assert_eq!(header.y, 0.);
-                assert_eq!(header.width, theme::SIDEBAR_WIDTH);
-                assert_eq!(header.height, theme::SIDEBAR_TOP_INSET);
+                assert_eq!(header.width, theme::SIDEBAR_WIDTH + 1.);
+                assert_eq!(header.height, theme::WORKSPACE_HEADER_HEIGHT);
             }
         }
     }
@@ -2368,7 +2370,10 @@ fn header_moves_the_window_without_capturing_action_buttons() {
                         [Message::Navigate(Navigation::Projects)]
                     ));
                 } else {
-                    assert!(matches!(messages.as_slice(), [Message::Refresh]));
+                    assert!(matches!(
+                        messages.as_slice(),
+                        [Message::RefreshGitRepositories]
+                    ));
                 }
             }
         }
@@ -2992,6 +2997,7 @@ fn empty_spaces_text_aligns_with_the_spaces_heading_in_all_languages() {
             .visible_bounds()
             .unwrap();
         assert_eq!(heading.x, empty.x);
+        assert!(heading.y > theme::WORKSPACE_HEADER_HEIGHT);
         assert!(empty.y > heading.y + heading.height);
     }
 }

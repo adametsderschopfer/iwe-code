@@ -5,7 +5,6 @@ git-update-done = Branch updated
 git-push-done = Branch pushed
 git-rename-done = Branch renamed
 git-delete-done = Branch deleted
-git-description = Show branches, commits, and changed files.
 git-missing = Install Git to view repository history.
 git-fetch-all = Fetch all remotes
 git-new-branch = New branch

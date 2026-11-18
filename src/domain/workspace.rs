@@ -70,6 +70,7 @@ pub(crate) struct Preferences {
     pub line_numbers: bool,
     pub restore_project_tabs: bool,
     pub show_spaces_sidebar: bool,
+    pub spaces_sidebar_width: f32,
     pub collapse_unchanged: bool,
     pub diff_view: DiffView,
     pub file_panels: Vec<FilePanel>,
@@ -88,6 +89,21 @@ pub(crate) enum CodeFont {
 }
 
 impl Preferences {
+    pub(crate) const DEFAULT_SPACES_SIDEBAR_WIDTH: f32 = 264.;
+    pub(crate) const MIN_SPACES_SIDEBAR_WIDTH: f32 = 200.;
+    pub(crate) const MAX_SPACES_SIDEBAR_WIDTH: f32 = 420.;
+
+    pub(crate) fn clamp_spaces_sidebar_width(width: f32) -> f32 {
+        if width.is_finite() {
+            width.clamp(
+                Self::MIN_SPACES_SIDEBAR_WIDTH,
+                Self::MAX_SPACES_SIDEBAR_WIDTH,
+            )
+        } else {
+            Self::DEFAULT_SPACES_SIDEBAR_WIDTH
+        }
+    }
+
     pub(crate) const DEFAULT_FILE_PANEL_WIDTH: f32 = 280.;
     pub(crate) const MIN_FILE_PANEL_WIDTH: f32 = 180.;
     pub(crate) const MAX_FILE_PANEL_WIDTH: f32 = 640.;
@@ -132,6 +148,7 @@ impl Default for Preferences {
             line_numbers: true,
             restore_project_tabs: true,
             show_spaces_sidebar: true,
+            spaces_sidebar_width: Self::DEFAULT_SPACES_SIDEBAR_WIDTH,
             collapse_unchanged: false,
             diff_view: DiffView::default(),
             file_panels: vec![FilePanel::Project, FilePanel::Changes],
@@ -219,6 +236,8 @@ impl Workspace {
             }
         }
         self.preferences.file_panels = panels;
+        self.preferences.spaces_sidebar_width =
+            Preferences::clamp_spaces_sidebar_width(self.preferences.spaces_sidebar_width);
         self.preferences.file_panel_width = if self.preferences.file_panel_width.is_finite() {
             self.preferences.file_panel_width.clamp(
                 Preferences::MIN_FILE_PANEL_WIDTH,

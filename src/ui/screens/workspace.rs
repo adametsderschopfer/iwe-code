@@ -27,6 +27,8 @@ const EXTERNAL_ZONE_HEIGHT: f32 = 220.;
 const EXTERNAL_ZONE_WIDTH: f32 = 320.;
 
 pub(crate) fn view(app: &App) -> Element<'_, Message> {
+    let sidebar_width =
+        app.workspace.preferences.spaces_sidebar_width * app.spaces_sidebar_progress();
     let content: Element<'_, Message> = if app.navigation == Navigation::Settings {
         settings::view(app)
     } else {
@@ -80,46 +82,74 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
         body.into()
     };
     let main = column![content].height(Length::Fill).width(Length::Fill);
-    let mut workspace = column![header(app)];
+    let mut workspace = Column::new();
     if !app.external_zone_modules(Placement::Top).is_empty() {
-        workspace = workspace.push(divider()).push(
-            container(external_module_panel::zone_panel(app, Placement::Top))
-                .height(EXTERNAL_ZONE_HEIGHT)
-                .width(Length::Fill)
-                .clip(true),
-        );
+        workspace = workspace
+            .push(
+                container(external_module_panel::zone_panel(app, Placement::Top))
+                    .height(EXTERNAL_ZONE_HEIGHT)
+                    .width(Length::Fill)
+                    .clip(true),
+            )
+            .push(divider());
     }
-    workspace = workspace.push(divider()).push(main);
+    workspace = workspace.push(main);
     let mut center = row![workspace.width(Length::Fill)];
-    if !app.external_zone_modules(Placement::Left).is_empty() {
-        let top = if cfg!(target_os = "macos") && !app.workspace.preferences.show_spaces_sidebar {
-            theme::SIDEBAR_TOP_INSET
-        } else {
-            0.
-        };
+    let has_left_zone = !app.external_zone_modules(Placement::Left).is_empty();
+    if has_left_zone {
         center = row![
             container(external_module_panel::zone_panel(app, Placement::Left))
                 .width(EXTERNAL_ZONE_WIDTH)
                 .height(Length::Fill)
-                .padding(iced::Padding::default().top(top))
                 .clip(true),
             vertical_divider(),
             center,
         ]
         .width(Length::Fill);
     }
-    let spaces: Element<'_, Message> = if app.workspace.preferences.show_spaces_sidebar {
+    let spaces: Element<'_, Message> = if sidebar_width > 0. {
         row![
-            column![sidebar_header(), sidebar(app)]
-                .width(theme::SIDEBAR_WIDTH)
-                .height(Length::Fill),
+            // Keep the sidebar's layout at its saved width while its visible edge moves.
+            scrollable(
+                container(sidebar(app)).width(app.workspace.preferences.spaces_sidebar_width)
+            )
+            .id("spaces-slide-viewport")
+            .direction(scrollable::Direction::Horizontal(
+                scrollable::Scrollbar::hidden()
+            ))
+            .anchor_right()
+            .wheel_scroll_scale(0.)
+            .width(sidebar_width)
+            .height(Length::Fill),
             vertical_divider(),
         ]
         .into()
     } else {
         space().width(0).into()
     };
-    let base = container(row![spaces, center.height(Length::Fill)])
+    let body = resize::horizontal(
+        row![spaces, center.height(Length::Fill)]
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into(),
+        app.can_resize_spaces_sidebar().then_some(sidebar_width),
+        sidebar_width,
+        crate::domain::workspace::Preferences::MIN_SPACES_SIDEBAR_WIDTH
+            ..=crate::domain::workspace::Preferences::MAX_SPACES_SIDEBAR_WIDTH,
+        Message::ResizeSpacesSidebar,
+    );
+    let sidebar_separator = if sidebar_width > 0. { 1. } else { 0. };
+    let left_zone_span = if has_left_zone {
+        EXTERNAL_ZONE_WIDTH + 1.
+    } else {
+        0.
+    };
+    let header = container(row![
+        header_controls(app, sidebar_width + sidebar_separator + left_zone_span),
+        header(app),
+    ])
+    .style(theme::surface);
+    let base = container(column![header, divider(), body])
         .width(Length::Fill)
         .height(Length::Fill)
         .style(theme::surface)
@@ -189,12 +219,16 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
         let base = super::menu_bar::overlay(app, base);
         crate::ui::window_chrome::overlay(app, base)
     };
+    let base = if app.navigation == Navigation::Settings {
+        settings::shortcut_recording_overlay(app, base)
+    } else {
+        base
+    };
     crate::ui::editor::overlay(app, super::file_menu::dialog(app, base))
 }
 
 fn header(app: &App) -> Element<'_, Message> {
     let is_settings = app.navigation == Navigation::Settings;
-    let show_spaces = app.workspace.preferences.show_spaces_sidebar;
     let selected_space = app
         .workspace
         .selected_space
@@ -209,31 +243,23 @@ fn header(app: &App) -> Element<'_, Message> {
     } else {
         app.i18n.text(Key::Workspace)
     };
-    let mut heading = row![
-        container(icon_button(
-            app,
-            Icon::Sidebar,
-            if show_spaces {
-                Key::HideSpacesSidebar
-            } else {
-                Key::ShowSpacesSidebar
-            },
-            Message::ToggleSpacesSidebar,
-            show_spaces,
-        ))
-        .id("toggle-spaces-sidebar"),
+    let mut title_row = Row::new().spacing(10).align_y(Alignment::Center);
+    if !is_settings {
+        title_row = title_row
+            .push(container(icon(Icon::Folder, theme::MUTED)).id("workspace-heading-folder"));
+    }
+    let title = title_row.push(
         container(
             text(title)
                 .size(18)
                 .wrapping(text::Wrapping::None)
-                .font(theme::semibold())
+                .font(theme::semibold()),
         )
         .id("workspace-heading")
         .clip(true)
         .width(Length::Fill),
-    ]
-    .spacing(12)
-    .align_y(Alignment::Center);
+    );
+    let mut heading = row![title].spacing(12).align_y(Alignment::Center);
     #[cfg(target_os = "windows")]
     {
         heading = Row::with_children([super::menu_bar::header_prefix(app)])
@@ -260,29 +286,47 @@ fn header(app: &App) -> Element<'_, Message> {
             false,
         )
     } else {
-        icon_button(app, Icon::Refresh, Key::Refresh, Message::Refresh, false)
+        icon_button(
+            app,
+            Icon::Refresh,
+            Key::RefreshGitRepositories,
+            Message::RefreshGitRepositories,
+            false,
+        )
     };
     heading = heading.push(container(action).id("window-header-action"));
+    if !is_settings {
+        heading = heading.push(
+            container(icon_button(
+                app,
+                Icon::Settings,
+                Key::Settings,
+                Message::Navigate(Navigation::Settings),
+                false,
+            ))
+            .id("nav-settings"),
+        );
+    }
     #[cfg(target_os = "windows")]
     {
         heading = heading.push(space().width(3. * theme::WINDOW_CONTROL_WIDTH));
     }
 
-    let left_inset = if cfg!(target_os = "macos")
-        && !show_spaces
-        && app.external_zone_modules(Placement::Left).is_empty()
-    {
-        theme::MACOS_WINDOW_CONTROLS_WIDTH
-    } else {
-        24.
-    };
+    let right_inset =
+        if !cfg!(target_os = "windows") && !is_settings && app.module_enabled(ModuleId::Deployment)
+        {
+            theme::FILE_PANEL_TOOL_INSET
+        } else {
+            24.
+        };
     mouse_area(
         container(heading)
-            .height(56)
+            .center_y(theme::WORKSPACE_HEADER_HEIGHT)
             .width(Length::Fill)
             .padding(iced::Padding {
-                left: left_inset,
-                ..[8, 24].into()
+                left: 16.,
+                right: right_inset,
+                ..iced::Padding::ZERO
             })
             .style(theme::surface),
     )
@@ -291,13 +335,41 @@ fn header(app: &App) -> Element<'_, Message> {
     .into()
 }
 
-fn sidebar_header() -> Element<'static, Message> {
-    mouse_area(
+fn header_controls(app: &App, panel_span: f32) -> Element<'_, Message> {
+    let show_spaces = app.workspace.preferences.show_spaces_sidebar;
+    let inset = if cfg!(target_os = "macos") {
+        theme::MACOS_WINDOW_CONTROLS_WIDTH * 100. / f32::from(app.workspace.preferences.window_zoom)
+    } else {
+        theme::FILE_PANEL_TOOL_INSET
+    };
+    let minimum = inset + theme::WORKSPACE_HEADER_BUTTON_SIZE + 8.;
+    let controls = row![
+        container(icon_button(
+            app,
+            Icon::Sidebar,
+            if show_spaces {
+                Key::HideSpacesSidebar
+            } else {
+                Key::ShowSpacesSidebar
+            },
+            Message::ToggleSpacesSidebar,
+            show_spaces,
+        ))
+        .id("toggle-spaces-sidebar"),
+        space().width(Length::Fill),
         container(space())
+            .id("workspace-header-separator")
+            .width(1)
+            .height(22)
+            .style(theme::separator),
+    ]
+    .align_y(Alignment::Center);
+    mouse_area(
+        container(controls)
             .id("window-header-drag-area")
-            .width(theme::SIDEBAR_WIDTH)
-            .height(theme::SIDEBAR_TOP_INSET)
-            .style(theme::sidebar),
+            .width(panel_span.max(minimum))
+            .center_y(theme::WORKSPACE_HEADER_HEIGHT)
+            .padding(iced::Padding::ZERO.left(inset)),
     )
     .on_press(Message::DragWindow)
     .on_double_click(Message::ToggleWindowMaximized)
@@ -347,33 +419,36 @@ fn panel_buttons(app: &App) -> Column<'_, Message> {
 
 fn footer(app: &App) -> Element<'_, Message> {
     let path = app
-        .preview()
-        .path
-        .as_ref()
-        .or(app.workspace.directory())
+        .footer_path()
         .map(|path| path.to_string_lossy().into_owned())
         .unwrap_or_else(|| app.i18n.text(Key::LocalWorkspace));
-    let mut content = row![
-        container(tooltip::view(
-            container(
-                button(
-                    text(short_path(&path, 100))
-                        .size(12)
-                        .style(theme::FAINT.text())
-                        .wrapping(text::Wrapping::None)
-                )
-                .on_press(Message::CopyPath)
-                .padding([4, 8])
-                .style(theme::action(false))
+    let mut path_row = row![tooltip::view(
+        container(
+            button(
+                text(short_path(&path, 100))
+                    .size(12)
+                    .style(theme::FAINT.text())
+                    .wrapping(text::Wrapping::None)
             )
-            .id("footer-path")
-            .clip(true),
-            text(format!("{}\n{}", path, app.i18n.text(Key::CopyPath))).size(12),
-            tooltip::Position::Top
-        ))
-        .width(Length::Fill)
-    ]
-    .spacing(16);
+            .on_press(Message::CopyPath)
+            .padding([4, 8])
+            .style(theme::action(false))
+        )
+        .id("footer-path")
+        .clip(true),
+        text(format!("{}\n{}", path, app.i18n.text(Key::CopyPath))).size(12),
+        tooltip::Position::Top
+    )]
+    .spacing(8)
+    .align_y(Alignment::Center);
+    if app.footer_path_was_copied() {
+        path_row = path_row.push(
+            text(app.i18n.text(Key::PathCopied))
+                .size(12)
+                .style(theme::GREEN.text()),
+        );
+    }
+    let mut content = row![container(path_row).width(Length::Fill)].spacing(16);
     if let Some(activity) = git::activity(app) {
         content = content.push(activity);
     }
@@ -394,8 +469,9 @@ fn sidebar(app: &App) -> Element<'_, Message> {
             row![
                 container(
                     text(app.i18n.text(Key::Spaces))
-                        .size(13)
-                        .style(theme::FAINT.text())
+                        .size(14)
+                        .font(theme::semibold())
+                        .style(theme::MUTED.text())
                 )
                 .id("spaces-heading")
                 .width(Length::Fill),
@@ -606,23 +682,7 @@ fn sidebar(app: &App) -> Element<'_, Message> {
             );
         }
     }
-    let mut tools = Column::new().spacing(4);
-    if let Some(update) = crate::ui::updates::sidebar(app) {
-        tools = tools.push(container(update).padding(1));
-    }
-    tools = tools.push(
-        container(navigation_button(
-            app,
-            Icon::Settings,
-            Key::Settings,
-            Some(Message::Navigate(Navigation::Settings)),
-            app.navigation == Navigation::Settings,
-            "nav-settings",
-        ))
-        .padding(1)
-        .style(theme::settings_section),
-    );
-    container(column![
+    let mut sidebar = column![
         navigation,
         space().height(8),
         scrollable(body)
@@ -630,19 +690,23 @@ fn sidebar(app: &App) -> Element<'_, Message> {
             .spacing(theme::SIDEBAR_SCROLL_GAP)
             .style(theme::scroll)
             .height(Length::Fill),
-        space().height(16),
-        tools,
-    ])
-    .width(theme::SIDEBAR_WIDTH)
-    .height(Length::Fill)
-    .padding(iced::Padding {
-        top: 0.,
-        right: 12.,
-        bottom: 12.,
-        left: 12.,
-    })
-    .style(theme::sidebar)
-    .into()
+    ];
+    if let Some(update) = crate::ui::updates::sidebar(app) {
+        sidebar = sidebar
+            .push(space().height(16))
+            .push(container(update).padding(1));
+    }
+    container(sidebar)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding(iced::Padding {
+            top: 8.,
+            right: 12.,
+            bottom: 12.,
+            left: 12.,
+        })
+        .style(theme::sidebar)
+        .into()
 }
 
 fn deployment_content(app: &App, width: f32) -> Element<'_, Message> {
@@ -2013,7 +2077,7 @@ pub(super) fn icon_button<'a>(
                 symbol,
                 if active { theme::TEXT } else { theme::MUTED },
             ))
-            .center(32),
+            .center(theme::WORKSPACE_HEADER_BUTTON_SIZE - 8.),
         )
         .on_press(message)
         .padding(4)

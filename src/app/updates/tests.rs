@@ -91,23 +91,21 @@ fn update_actions_are_visible_in_all_languages_and_do_not_close_the_window_when_
             .unwrap()
             .visible_bounds()
             .unwrap();
-        let settings = ui
-            .find(app.i18n.text(crate::i18n::Key::Settings))
-            .unwrap()
-            .visible_bounds()
-            .unwrap();
-        assert_eq!(update.x, settings.x);
         let update_row = ui
             .find(Id::new("sidebar-update"))
             .unwrap()
             .visible_bounds()
             .unwrap();
-        let settings_row = ui
+        let settings = ui
             .find(Id::new("nav-settings"))
             .unwrap()
             .visible_bounds()
             .unwrap();
-        assert_eq!(update_row.height, settings_row.height);
+        assert!(
+            update.x >= update_row.x && update.x + update.width <= update_row.x + update_row.width
+        );
+        assert!(update_row.x + update_row.width <= app.workspace.preferences.spaces_sidebar_width);
+        assert!(settings.y + settings.height <= crate::ui::theme::WORKSPACE_HEADER_HEIGHT);
         ui.click(Id::new("sidebar-update")).unwrap();
         let messages: Vec<_> = ui.into_messages().collect();
         assert!(matches!(

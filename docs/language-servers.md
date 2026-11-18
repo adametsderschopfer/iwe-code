@@ -74,9 +74,11 @@ unexpected empty output. Normal editor autosave can write an accepted formatting
 ## Language programs
 
 Language servers install separately from IWE. The application installer does not bundle language
-servers or their runtimes. Settings, Language servers provides executable paths and an installation
-check. An empty path enables automatic discovery. The check confirms executable discovery. It does
-not validate server startup, runtime dependencies, or project configuration.
+servers or their runtimes. In Settings, Language servers lists the default executable for each
+language. Use **Detect** to search for it or check the selected executable. Use **Choose path** to
+select a local executable. **Automatic** clears a custom path. **Install guide** opens the server
+maintainer's instructions or download page. Detection checks the file location. Startup also
+requires the server's runtime and project dependencies.
 
 | Documents                        | Program                       | Default arguments |
 | -------------------------------- | ----------------------------- | ----------------- |
@@ -93,11 +95,12 @@ not validate server startup, runtime dependencies, or project configuration.
 | HTML                             | `vscode-html-language-server` | `--stdio`         |
 | CSS                              | `vscode-css-language-server`  | `--stdio`         |
 
-Automatic discovery searches PATH first. It then searches the application data directory under
-`iwe/language-servers/node_modules/.bin` and `iwe/language-servers/bin`. It also searches
-`.cargo/bin` and `go/bin` under the home directory. Custom executable paths use the arguments listed
-above. They do not accept shell commands. Each server requires its own runtime and project
-dependencies. Go and Rust servers need compatible language toolchains.
+Automatic discovery searches PATH first. On macOS it also searches the standard Homebrew folders. It
+then searches the application data directory under `iwe/language-servers/node_modules/.bin` and
+`iwe/language-servers/bin`. It also searches `.cargo/bin` and `go/bin` under the home directory.
+Custom executable paths use the arguments listed above. They do not accept shell commands. Each
+server requires its own runtime and project dependencies. Go and Rust servers need compatible
+language toolchains.
 
 ## Configuration files and Markdown
 

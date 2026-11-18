@@ -483,16 +483,20 @@ in `assets/`. The `png` crate decodes the embedded window icon without filesyste
 The window opens at 1440 × 920 pixels. Its minimum size is 1080 × 720 pixels. It preserves native
 window controls on macOS and Linux. Windows uses application-drawn caption controls.
 
-On macOS, content extends into the native title bar. The sidebar reserves 32 pixels above its
-heading for native window controls. The main header remains 56 pixels high, including in settings.
-Drag either header's empty area to move the window. Double-click its empty area to maximize or
-restore the window. On macOS, the app updates the window frame over 240 milliseconds and redraws
-between updates. The app changes the frame immediately when Reduce Motion is enabled. Linux keeps
-its native title bar.
+On macOS, content extends into the native title bar. A single 56-pixel header spans the workspace. A
+horizontal divider separates the header from the sidebar and workspace panes. Drag the header's
+empty area to move the window. Double-click its empty area to maximize or restore the window. On
+macOS, the app updates the window frame over 240 milliseconds and redraws between updates. The app
+changes the frame immediately when Reduce Motion is enabled. Linux keeps its native title bar.
 
-The workspace header toggles the spaces sidebar. The saved preference changes its width without
-replacing the workspace panes. When the sidebar is hidden, the layout keeps macOS window controls
-clear of workspace buttons.
+The workspace header toggles the spaces sidebar. Its content keeps the saved width and slides behind
+a shrinking viewport. The sidebar uses the shared resize handle and saves its width on release. On
+macOS, the native window controls align with the center of each window header. The sidebar toggle
+stays beside those controls as the sidebar opens and closes. Settings and deployment windows use a
+40-pixel header on macOS and Windows.
+
+A short divider marks the boundary between the header controls and the workspace title. The
+workspace title starts with a folder icon. Settings sits to the right of Refresh.
 
 Windows disables the native title bar and places minimize, maximize, restore, and close controls in
 the application header. `ui/window_chrome.rs` keeps these controls above dialogs and provides edge

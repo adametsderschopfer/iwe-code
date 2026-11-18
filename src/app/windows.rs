@@ -116,6 +116,38 @@ pub(super) fn fade_for_exit(id: window::Id) -> Task<Message> {
 }
 
 impl App {
+    pub(super) fn spaces_sidebar_subscription(&self) -> iced::Subscription<Message> {
+        if self.spaces_sidebar_transition.is_some() {
+            iced::time::every(std::time::Duration::from_millis(8)).map(Message::SpacesSidebarFrame)
+        } else {
+            iced::Subscription::none()
+        }
+    }
+
+    pub(crate) fn spaces_sidebar_progress(&self) -> f32 {
+        self.spaces_sidebar_progress_at(std::time::Instant::now())
+    }
+
+    pub(super) fn spaces_sidebar_progress_at(&self, now: std::time::Instant) -> f32 {
+        let target = if self.workspace.preferences.show_spaces_sidebar {
+            1.
+        } else {
+            0.
+        };
+        let Some((start, from)) = self.spaces_sidebar_transition else {
+            return target;
+        };
+        let time = (now.saturating_duration_since(start).as_secs_f32()
+            / theme::SPACES_SIDEBAR_TRANSITION.as_secs_f32())
+        .min(1.);
+        let eased = time * time * (3. - 2. * time);
+        from + (target - from) * eased
+    }
+
+    pub(crate) fn can_resize_spaces_sidebar(&self) -> bool {
+        self.workspace.preferences.show_spaces_sidebar && self.spaces_sidebar_transition.is_none()
+    }
+
     pub(super) fn open_settings(&mut self) -> Task<Message> {
         if let Some(id) = self.windows.settings {
             return window::minimize::<Message>(id, false).chain(window::gain_focus(id));
@@ -155,7 +187,10 @@ impl App {
     pub(super) fn window_opened(&mut self, id: window::Id) -> Task<Message> {
         if self.windows.is_secondary(id) {
             #[cfg(target_os = "macos")]
-            return window::run(id, window_effect::configure_resize).discard();
+            return Task::batch([
+                window::run(id, window_effect::configure_resize).discard(),
+                self.align_window_controls(id),
+            ]);
             #[cfg(not(target_os = "macos"))]
             return Task::none();
         }
@@ -169,9 +204,39 @@ impl App {
         #[cfg(target_os = "macos")]
         let maximized = Task::batch([
             window::run(id, window_effect::configure_resize).discard(),
+            self.align_window_controls(id),
             maximized,
         ]);
         maximized
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(super) fn align_window_controls(&self, id: window::Id) -> Task<Message> {
+        let height = if self.windows.is_secondary(id) {
+            theme::SETTINGS_HEADER_HEIGHT
+        } else {
+            theme::WORKSPACE_HEADER_HEIGHT
+        };
+        let center = f64::from(height) * f64::from(self.workspace.preferences.window_zoom) / 200.;
+        window::run(id, move |window| {
+            window_effect::align_controls(window, center)
+        })
+        .discard()
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(super) fn align_open_window_controls(&self) -> Task<Message> {
+        Task::batch(
+            [
+                self.window_id,
+                self.windows.settings,
+                self.windows.deployment,
+                self.windows.connections,
+            ]
+            .into_iter()
+            .flatten()
+            .map(|id| self.align_window_controls(id)),
+        )
     }
 
     #[cfg(target_os = "macos")]
@@ -238,6 +303,7 @@ impl App {
             }
             Event::Closed(id) if self.windows.settings == Some(id) => {
                 self.windows.settings = None;
+                self.window_zoom_preview = None;
                 self.shortcuts = super::shortcuts::State::default();
             }
             Event::Closed(id) if self.windows.is_deployment(id) => {
@@ -347,14 +413,19 @@ impl App {
                 .style(theme::separator);
             column![header, border, content].height(Length::Fill).into()
         };
-        #[cfg(target_os = "windows")]
-        let content = crate::ui::window_chrome::settings_overlay(self, content, id);
         let content = container(content)
             .width(Length::Fill)
             .height(Length::Fill)
             .id("settings-window-frame")
             .style(theme::secondary_window)
             .into();
+        let content = if self.windows.settings == Some(id) {
+            screens::settings::shortcut_recording_overlay(self, content)
+        } else {
+            content
+        };
+        #[cfg(target_os = "windows")]
+        let content = crate::ui::window_chrome::settings_overlay(self, content, id);
         // Quit decisions must remain reachable when a secondary window covers the workspace.
         crate::ui::editor::overlay(self, content)
     }

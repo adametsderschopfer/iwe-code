@@ -6,6 +6,319 @@ use crate::{
 use std::rc::Rc;
 
 #[test]
+fn language_server_actions_fit_in_each_language_and_target_their_row() {
+    use crate::domain::language::Language as DocumentLanguage;
+
+    for locale in [Language::English, Language::Russian, Language::Spanish] {
+        let mut app = App::new(Rc::new(I18n::new(locale)));
+        let id = window::Id::unique();
+        app.windows.settings = Some(id);
+        app.settings_tab = super::super::SettingsTab::LanguageServers;
+        app.workspace
+            .preferences
+            .language_servers
+            .insert("python".into(), "/tools/pyright-langserver".into());
+        let size = settings_settings().min_size.unwrap();
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), size, app.view_window(id));
+        for control in ["detect", "path", "install", "automatic"] {
+            let bounds = ui
+                .click(iced::widget::Id::from(format!(
+                    "language-server-{control}-python"
+                )))
+                .unwrap()
+                .visible_bounds()
+                .unwrap();
+            assert!(bounds.x + bounds.width <= size.width && bounds.width > 24.);
+        }
+        let messages: Vec<_> = ui.into_messages().collect();
+        assert!(matches!(messages.as_slice(), [
+            Message::DetectLanguageServer(DocumentLanguage::Python),
+            Message::ChooseLanguageServer(DocumentLanguage::Python),
+            Message::OpenUrl(url),
+            Message::ResetLanguageServer(DocumentLanguage::Python),
+        ] if url == "https://microsoft.github.io/pyright/#/installation"));
+    }
+}
+
+#[tokio::test]
+async fn language_server_detection_and_paths_stay_scoped_to_the_chosen_language() {
+    use crate::domain::language::Language as DocumentLanguage;
+    use iced::futures::StreamExt;
+    use iced_test::runtime::{Action, task};
+
+    let file = tempfile::NamedTempFile::new().unwrap();
+    let path = file.path().to_path_buf();
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    let _ = app.update(Message::LanguageServerChosen(
+        DocumentLanguage::Python,
+        Some(path.clone()),
+    ));
+    assert_eq!(
+        app.workspace.preferences.language_servers["python"],
+        path.to_str().unwrap()
+    );
+    let mut result =
+        task::into_stream(app.update(Message::DetectLanguageServer(DocumentLanguage::Python)))
+            .unwrap();
+    let Some(Action::Output(
+        message @ Message::LanguageServerDetected(DocumentLanguage::Python, _, true),
+    )) = result.next().await
+    else {
+        panic!("Expected detection to find the selected path");
+    };
+    let _ = app.update(message.clone());
+    assert_eq!(app.editor.server_checks.get("python"), Some(&true));
+    let _ = app.update(Message::ResetLanguageServer(DocumentLanguage::Python));
+    let _ = app.update(message);
+    assert!(
+        !app.workspace
+            .preferences
+            .language_servers
+            .contains_key("python")
+    );
+    assert!(app.editor.server_checks.is_empty());
+}
+
+#[test]
+fn window_zoom_slider_previews_during_drag_and_applies_on_release() {
+    use iced::{Event, Point, keyboard, mouse};
+
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    let id = window::Id::unique();
+    app.windows.settings = Some(id);
+    let mut ui = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        settings_settings().min_size.unwrap(),
+        app.view_window(id),
+    );
+    let slider = ui
+        .find(iced::widget::Id::new("settings-window-zoom"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    ui.point_at(slider.center());
+    ui.simulate([
+        Event::Keyboard(keyboard::Event::ModifiersChanged(keyboard::Modifiers::CTRL)),
+        Event::Mouse(mouse::Event::WheelScrolled {
+            delta: mouse::ScrollDelta::Lines { x: 0., y: 1. },
+        }),
+        Event::Keyboard(keyboard::Event::ModifiersChanged(
+            keyboard::Modifiers::empty(),
+        )),
+    ]);
+    let end = Point::new(slider.x + slider.width * 0.75, slider.center_y());
+    ui.simulate([Event::Mouse(mouse::Event::ButtonPressed(
+        mouse::Button::Left,
+    ))]);
+    ui.point_at(end);
+    ui.simulate([
+        Event::Mouse(mouse::Event::CursorMoved { position: end }),
+        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+    ]);
+    let messages: Vec<_> = ui.into_messages().collect();
+    assert!(matches!(
+        messages.as_slice(),
+        [
+            Message::PreviewWindowZoom(_),
+            Message::PreviewWindowZoom(_),
+            Message::ApplyWindowZoom
+        ]
+    ));
+    for message in messages.into_iter().take(2) {
+        let _ = app.update(message);
+        assert_eq!(app.workspace.preferences.window_zoom, 100);
+        assert!(!app.saving);
+    }
+    let preview = app.window_zoom_preview();
+    assert!(preview > 100);
+    let _ = app.update(Message::ApplyWindowZoom);
+    assert_eq!(app.workspace.preferences.window_zoom, preview);
+    assert!(app.saving);
+}
+
+#[test]
+fn code_and_terminal_each_offer_a_font_family_select() {
+    use crate::domain::workspace::CodeFont;
+
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    let id = window::Id::unique();
+    app.windows.settings = Some(id);
+    for (tab, terminal) in [
+        (super::super::SettingsTab::Code, false),
+        (super::super::SettingsTab::Terminal, true),
+    ] {
+        app.settings_tab = tab;
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            settings_settings().min_size.unwrap(),
+            app.view_window(id),
+        );
+        assert!(
+            ui.find(iced::widget::Id::new("settings-tab-panels"))
+                .is_err()
+        );
+        let dropdown = ui
+            .click(iced::widget::Id::new("settings-font-family-select"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        let fira = iced::Point::new(dropdown.center_x(), dropdown.y + dropdown.height * 3.5);
+        ui.point_at(fira);
+        ui.simulate([iced::Event::Mouse(iced::mouse::Event::CursorMoved {
+            position: fira,
+        })]);
+        ui.simulate(iced_test::simulator::click());
+        assert!(matches!(ui.into_messages().collect::<Vec<_>>().as_slice(),
+            [Message::SetFont(target, CodeFont::FiraCode)] if *target == terminal));
+    }
+}
+
+#[test]
+fn dragging_the_spaces_divider_saves_the_width_on_release() {
+    use iced::{Event, Point, mouse};
+
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.loaded = true;
+    let width = app.workspace.preferences.spaces_sidebar_width;
+    let mut ui = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        main_settings().min_size.unwrap(),
+        app.view(),
+    );
+    let edge = Point::new(width + 1., 160.);
+    let end = Point::new(edge.x + 56., edge.y);
+    ui.point_at(edge);
+    ui.simulate([Event::Mouse(mouse::Event::ButtonPressed(
+        mouse::Button::Left,
+    ))]);
+    ui.point_at(end);
+    ui.simulate([
+        Event::Mouse(mouse::Event::CursorMoved { position: end }),
+        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+    ]);
+    let messages = ui.into_messages().collect::<Vec<_>>();
+    assert!(matches!(
+        messages.as_slice(),
+        [
+            Message::ResizeSpacesSidebar(_, false),
+            Message::ResizeSpacesSidebar(_, true)
+        ]
+    ));
+    for message in messages {
+        let _ = app.update(message);
+    }
+    assert!(app.saving);
+    assert_eq!(app.workspace.preferences.spaces_sidebar_width, width + 56.);
+    let saved = serde_json::to_value(&app.workspace).unwrap();
+    let mut restored: crate::domain::workspace::Workspace = serde_json::from_value(saved).unwrap();
+    restored.normalize();
+    assert_eq!(restored.preferences.spaces_sidebar_width, width + 56.);
+}
+
+#[test]
+fn spaces_sidebar_moves_between_widths_without_changing_the_saved_width() {
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    let start = std::time::Instant::now();
+    let duration = theme::SPACES_SIDEBAR_TRANSITION;
+    app.workspace.preferences.spaces_sidebar_width = 320.;
+    app.workspace.preferences.show_spaces_sidebar = false;
+    app.spaces_sidebar_transition = Some((start, 1.));
+    assert_eq!(app.spaces_sidebar_progress_at(start), 1.);
+    let halfway = app.spaces_sidebar_progress_at(start + duration / 2);
+    assert!((0.45..0.55).contains(&halfway));
+    assert!(!app.can_resize_spaces_sidebar());
+
+    app.workspace.preferences.show_spaces_sidebar = true;
+    let restart = start + duration / 2;
+    app.spaces_sidebar_transition = Some((restart, halfway));
+    assert_eq!(app.spaces_sidebar_progress_at(restart), halfway);
+    let _ = app.update(Message::SpacesSidebarFrame(restart + duration));
+    assert_eq!(app.spaces_sidebar_progress_at(restart + duration), 1.);
+    assert!(app.can_resize_spaces_sidebar());
+    assert_eq!(app.workspace.preferences.spaces_sidebar_width, 320.);
+}
+
+#[test]
+fn spaces_sidebar_slides_at_full_content_width() {
+    use iced_test::selector::Target;
+
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.workspace.preferences.spaces_sidebar_width = 320.;
+    let viewport = |app: &App| {
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            main_settings().min_size.unwrap(),
+            app.view(),
+        );
+        ui.find(iced::widget::Id::new("spaces-slide-viewport"))
+            .unwrap()
+    };
+    let Target::Scrollable {
+        content_bounds: open,
+        ..
+    } = viewport(&app)
+    else {
+        panic!("Expected a sidebar viewport");
+    };
+    app.workspace.preferences.show_spaces_sidebar = false;
+    app.spaces_sidebar_transition = Some((
+        std::time::Instant::now() + std::time::Duration::from_secs(2),
+        0.5,
+    ));
+    let Target::Scrollable {
+        bounds,
+        content_bounds,
+        translation,
+        ..
+    } = viewport(&app)
+    else {
+        panic!("Expected a sidebar viewport during the transition");
+    };
+    assert_eq!(content_bounds.size(), open.size());
+    assert_eq!(bounds.width, open.width / 2.);
+    assert_eq!(translation.x, open.width - bounds.width);
+}
+
+#[cfg(not(target_os = "windows"))]
+#[test]
+fn workspace_header_separates_window_controls_from_the_project_title() {
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.loaded = true;
+    app.workspace
+        .create_space("Work".into(), vec![std::path::PathBuf::from("project")]);
+    app.workspace.select_project(0, 0);
+    let mut ui = iced_test::Simulator::with_size(
+        iced::Settings {
+            default_font: theme::font(),
+            ..Default::default()
+        },
+        main_settings().min_size.unwrap(),
+        app.view(),
+    );
+    let mut bounds = |id| {
+        ui.find(iced::widget::Id::new(id))
+            .unwrap()
+            .visible_bounds()
+            .unwrap()
+    };
+    let toggle = bounds("toggle-spaces-sidebar");
+    let separator = bounds("workspace-header-separator");
+    let folder = bounds("workspace-heading-folder");
+    let title = bounds("workspace-heading");
+    let files = bounds("file-panel-project");
+    assert!(toggle.x + toggle.width <= separator.x);
+    assert!((separator.x + separator.width + theme::FILE_PANEL_TOOL_INSET - files.x).abs() < 0.5);
+    assert!(separator.x + separator.width < folder.x);
+    assert!(folder.x + folder.width < title.x);
+    assert!((toggle.center_y() - folder.center_y()).abs() < 0.5);
+    assert!((folder.center_y() - title.center_y()).abs() < 0.5);
+    assert!(
+        (bounds("nav-settings").center_x() - bounds("deployment-toggle").center_x()).abs() < 0.5
+    );
+}
+
+#[test]
 fn workspace_header_hides_and_restores_the_spaces_sidebar() {
     for language in [Language::English, Language::Russian, Language::Spanish] {
         let mut app = App::new(Rc::new(I18n::new(language)));
@@ -38,9 +351,11 @@ fn workspace_header_hides_and_restores_the_spaces_sidebar() {
                     .unwrap()
                     .width,
             );
-            if !shown && cfg!(target_os = "macos") {
+            if cfg!(target_os = "macos") {
                 let button = ui.find(toggle.clone()).unwrap().visible_bounds().unwrap();
-                assert!(button.x >= theme::MACOS_WINDOW_CONTROLS_WIDTH);
+                assert_eq!(button.x, theme::MACOS_WINDOW_CONTROLS_WIDTH);
+                assert!((button.center_y() - theme::WORKSPACE_HEADER_HEIGHT / 2.).abs() < 0.5);
+                assert_eq!(button.height, 40.);
             }
             ui.click(toggle.clone()).unwrap();
             let messages: Vec<_> = ui
@@ -118,7 +433,6 @@ fn settings_window_fits_all_languages_without_the_project_sidebar() {
                 super::super::SettingsTab::Code,
                 super::super::SettingsTab::Terminal,
                 super::super::SettingsTab::LanguageServers,
-                super::super::SettingsTab::Panels,
                 super::super::SettingsTab::Modules,
                 super::super::SettingsTab::Shortcuts,
                 super::super::SettingsTab::About,
@@ -158,7 +472,6 @@ fn settings_window_fits_all_languages_without_the_project_sidebar() {
                         Key::FontFamily
                     }
                     super::super::SettingsTab::LanguageServers => Key::LanguageServersDescription,
-                    super::super::SettingsTab::Panels => Key::Git,
                     super::super::SettingsTab::Modules => Key::ModulesDescription,
                     super::super::SettingsTab::Shortcuts => Key::GoToLine,
                     super::super::SettingsTab::About => Key::AppTitle,
@@ -197,7 +510,7 @@ fn settings_window_fits_all_languages_without_the_project_sidebar() {
                         .unwrap();
                 }
                 let mut previous = None;
-                for name in ["general", "code", "panels", "shortcuts", "about"] {
+                for name in ["general", "code", "modules", "shortcuts", "about"] {
                     let bounds = ui
                         .find(iced::widget::Id::from(format!("settings-tab-{name}")))
                         .unwrap()

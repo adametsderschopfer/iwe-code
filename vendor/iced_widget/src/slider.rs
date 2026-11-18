@@ -91,6 +91,7 @@ where
     default: Option<T>,
     on_change: Box<dyn Fn(T) -> Message + 'a>,
     on_release: Option<Message>,
+    scroll_with_wheel: bool,
     width: Length,
     height: f32,
     class: Theme::Class<'a>,
@@ -138,6 +139,7 @@ where
             shift_step: None,
             on_change: Box::new(on_change),
             on_release: None,
+            scroll_with_wheel: true,
             width: Length::Fill,
             height: Self::DEFAULT_HEIGHT,
             class: Theme::default(),
@@ -154,13 +156,19 @@ where
     }
 
     /// Sets the release message of the [`Slider`].
-    /// This is called when the mouse is released from the slider.
+    /// This is called when a drag ends or a discrete keyboard adjustment completes.
     ///
     /// Typically, the user's interaction with the slider is finished when this message is produced.
     /// This is useful if you need to spawn a long-running task from the slider's result, where
     /// the default on_change message could create too many events.
     pub fn on_release(mut self, on_release: Message) -> Self {
         self.on_release = Some(on_release);
+        self
+    }
+
+    /// Enables or disables changing the value with the mouse wheel.
+    pub fn scroll_with_wheel(mut self, enabled: bool) -> Self {
+        self.scroll_with_wheel = enabled;
         self
     }
 
@@ -321,7 +329,7 @@ where
                 T::from_f64(new_value)
             };
 
-            let change = |new_value: T| {
+            let mut change = |new_value: T| {
                 if (self.value.into() - new_value.into()).abs() > f64::EPSILON {
                     shell.publish((self.on_change)(new_value));
 
@@ -373,7 +381,8 @@ where
                     }
                 }
                 Event::Mouse(mouse::Event::WheelScrolled { delta })
-                    if state.keyboard_modifiers.control() =>
+                    if self.scroll_with_wheel
+                        && state.keyboard_modifiers.control() =>
                 {
                     if cursor.is_over(layout.bounds()) {
                         let delta = match delta {
@@ -394,18 +403,29 @@ where
                     key, ..
                 }) => {
                     if cursor.is_over(layout.bounds()) {
-                        match key {
+                        let value = match key {
                             Key::Named(key::Named::ArrowUp) => {
-                                let _ = increment(current_value).map(change);
-                                shell.capture_event();
+                                increment(current_value)
                             }
                             Key::Named(key::Named::ArrowDown) => {
-                                let _ = decrement(current_value).map(change);
-                                shell.capture_event();
+                                decrement(current_value)
                             }
-                            _ => (),
+                            _ => None,
+                        };
+                        if let Some(value) = value {
+                            change(value);
+                            if !state.is_dragging
+                                && let Some(on_release) =
+                                    self.on_release.clone()
+                            {
+                                shell.publish(on_release);
+                            }
+                            shell.capture_event();
                         }
                     }
+                }
+                Event::Window(window::Event::Unfocused) => {
+                    state.is_dragging = false
                 }
                 Event::Keyboard(keyboard::Event::ModifiersChanged(
                     modifiers,

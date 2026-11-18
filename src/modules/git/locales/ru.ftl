@@ -5,7 +5,6 @@ git-update-done = Ветка обновлена
 git-push-done = Ветка отправлена
 git-rename-done = Ветка переименована
 git-delete-done = Ветка удалена
-git-description = Показывать ветки, коммиты и изменённые файлы.
 git-missing = Установите Git для просмотра истории репозитория.
 git-fetch-all = Получить все ветки
 git-new-branch = Создать ветку

@@ -3,10 +3,10 @@
 use objc2::{MainThreadMarker, rc::Retained, runtime::AnyObject};
 use objc2_app_kit::{
     NSAnimatablePropertyContainer, NSAnimationContext, NSApplication, NSView,
-    NSViewLayerContentsPlacement, NSViewLayerContentsRedrawPolicy, NSWindow, NSWindowStyleMask,
-    NSWorkspace,
+    NSViewLayerContentsPlacement, NSViewLayerContentsRedrawPolicy, NSWindow, NSWindowButton,
+    NSWindowStyleMask, NSWorkspace,
 };
-use objc2_foundation::{NSArray, NSObjectNSKeyValueCoding, NSRect, ns_string};
+use objc2_foundation::{NSArray, NSObjectNSKeyValueCoding, NSPoint, NSRect, ns_string};
 use objc2_quartz_core::CALayer;
 use raw_window_handle::RawWindowHandle;
 use std::time::{Duration, Instant};
@@ -203,6 +203,76 @@ pub(crate) fn configure_resize(window: &dyn iced::window::Window) {
     if let Some(layer) = content.layer() {
         anchor_renderer_layers(&layer);
     }
+}
+
+pub(crate) fn align_controls(window: &dyn iced::window::Window, center: f64) {
+    let Some((window, content)) = native_window(window) else {
+        return;
+    };
+    if window.styleMask().contains(NSWindowStyleMask::FullScreen) {
+        return;
+    }
+    let buttons = [
+        NSWindowButton::CloseButton,
+        NSWindowButton::MiniaturizeButton,
+        NSWindowButton::ZoomButton,
+    ]
+    .map(|kind| window.standardWindowButton(kind));
+    let [Some(close), Some(minimize), Some(zoom)] = buttons else {
+        return;
+    };
+    let Some(bar) = parent_view(&close) else {
+        return;
+    };
+    let Some(container) = parent_view(&bar) else {
+        return;
+    };
+    if bar.isFlipped()
+        || container.isFlipped()
+        || [&minimize, &zoom]
+            .iter()
+            .any(|button| parent_view(button).is_none_or(|parent| !std::ptr::eq(&*parent, &*bar)))
+    {
+        return;
+    }
+
+    let bounds = content.bounds();
+    let y = if content.isFlipped() {
+        bounds.origin.y + center
+    } else {
+        bounds.origin.y + bounds.size.height - center
+    };
+    let target = content.convertPoint_toView(NSPoint::new(bounds.origin.x, y), None);
+    let buttons = [close, minimize, zoom];
+    let half_height = buttons
+        .iter()
+        .map(|button| button.frame().size.height / 2.)
+        .fold(0_f64, f64::max);
+    let target_y = bar.convertPoint_fromView(target, None).y;
+    let extension = (bar.bounds().origin.y + half_height - target_y).max(0.);
+    if extension > 0. {
+        // Keep the entire button inside the title bar's hit-test area.
+        let mut frame = container.frame();
+        let mut bar_frame = bar.frame();
+        frame.origin.y -= extension;
+        frame.size.height += extension;
+        bar_frame.size.height += extension;
+        container.setFrame(frame);
+        bar.setFrame(bar_frame);
+    }
+
+    let target_y = bar.convertPoint_fromView(target, None).y;
+    for button in buttons {
+        let frame = button.frame();
+        let y = target_y - frame.size.height / 2.;
+        if y != frame.origin.y {
+            button.setFrameOrigin(NSPoint::new(frame.origin.x, y));
+        }
+    }
+}
+
+fn parent_view(view: &NSView) -> Option<Retained<NSView>> {
+    view.valueForKey(ns_string!("superview"))?.downcast().ok()
 }
 
 fn anchor_renderer_layers(layer: &CALayer) {

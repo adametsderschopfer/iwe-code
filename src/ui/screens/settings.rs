@@ -1,6 +1,6 @@
 use super::workspace::divider;
 use crate::{
-    app::{App, Message, Panel, SettingsTab},
+    app::{App, Message, SettingsTab},
     domain::{shortcuts::Command, workspace::Appearance},
     i18n::{Key, Language},
     ui::theme,
@@ -11,12 +11,12 @@ use iced::{
 };
 
 #[derive(Clone, PartialEq, Eq)]
-struct LanguageOption {
-    language: Language,
+struct SelectOption<T> {
+    value: T,
     label: String,
 }
 
-impl std::fmt::Display for LanguageOption {
+impl<T> std::fmt::Display for SelectOption<T> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(&self.label)
     }
@@ -48,7 +48,6 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
             Key::LanguageServers,
             "languages",
         ),
-        (SettingsTab::Panels, Key::Panels, "panels"),
         (SettingsTab::Modules, Key::Modules, "modules"),
         (
             SettingsTab::Connections,
@@ -70,7 +69,7 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
         let group = match tab {
             SettingsTab::General => Some(Key::SettingsAppearanceGroup),
             SettingsTab::Code => Some(Key::SettingsEditingGroup),
-            SettingsTab::Panels => Some(Key::SettingsToolsGroup),
+            SettingsTab::Modules => Some(Key::SettingsToolsGroup),
             SettingsTab::Shortcuts => Some(Key::SettingsApplicationGroup),
             _ => None,
         };
@@ -104,13 +103,13 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
                 (Language::Russian, Key::LanguageRussian),
                 (Language::Spanish, Key::LanguageSpanish),
             ]
-            .map(|(language, key)| LanguageOption {
-                language,
+            .map(|(value, key)| SelectOption {
+                value,
                 label: t(key),
             });
             let selected = languages
                 .iter()
-                .find(|option| option.language == app.i18n.language())
+                .find(|option| option.value == app.i18n.language())
                 .cloned();
             column![
                 group_heading(t(Key::SettingsAppearanceGroup)),
@@ -119,7 +118,7 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
                     t(Key::LanguageDescription),
                     container(
                         pick_list(languages, selected, |option| Message::SetLanguage(
-                            option.language
+                            option.value
                         ))
                         .text_size(13)
                         .padding([8, 12])
@@ -134,11 +133,20 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
                     t(Key::WindowZoom),
                     t(Key::WindowZoomDescription),
                     row![
-                        slider(75..=200, preferences.window_zoom, Message::SetWindowZoom)
+                        container(
+                            slider(
+                                75..=200,
+                                app.window_zoom_preview(),
+                                Message::PreviewWindowZoom
+                            )
+                            .on_release(Message::ApplyWindowZoom)
+                            .scroll_with_wheel(false)
                             .step(5_u16)
                             .width(180)
-                            .style(theme::font_slider),
-                        text(format!("{}%", preferences.window_zoom))
+                            .style(theme::font_slider)
+                        )
+                        .id("settings-window-zoom"),
+                        text(format!("{}%", app.window_zoom_preview()))
                             .size(13)
                             .width(48),
                     ]
@@ -228,33 +236,6 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
         ]
         .into(),
         SettingsTab::LanguageServers => language_servers(app),
-        SettingsTab::Panels => column![
-            setting(
-                t(Key::Git),
-                t(Key::GitDescription),
-                toggler(preferences.show_git)
-                    .style(theme::toggle)
-                    .on_toggle_maybe(app.module_enabled(crate::modules::ModuleId::Git).then_some(
-                        |_| Message::TogglePanel(Panel::Module(crate::modules::ModuleId::Git))
-                    ))
-                    .into()
-            ),
-            setting(
-                t(Key::Pipelines),
-                t(Key::PipelinesDescription),
-                toggler(preferences.show_pipelines)
-                    .style(theme::toggle)
-                    .on_toggle_maybe(
-                        app.module_enabled(crate::modules::ModuleId::Pipelines)
-                            .then_some(|_| Message::TogglePanel(Panel::Module(
-                                crate::modules::ModuleId::Pipelines
-                            )))
-                    )
-                    .into()
-            ),
-        ]
-        .spacing(0)
-        .into(),
         SettingsTab::Modules => iced::widget::column![
             crate::ui::modules::settings(app),
             crate::ui::modules::external_settings(app),
@@ -441,7 +422,7 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
             app.windows.settings,
         ),
     };
-    let base = if app.shortcuts.recording.is_none() {
+    let base = if deployment.is_some() || app.shortcuts.recording.is_none() {
         let dismiss = window.map_or(Message::Navigate(crate::app::Navigation::Projects), |id| {
             Message::WindowShortcut(id, Box::new(Message::DismissDialog))
         });
@@ -468,62 +449,134 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
 }
 
 fn language_servers(app: &App) -> Element<'_, Message> {
+    use crate::domain::language::Language as DocumentLanguage;
+    let t = |key| app.i18n.text(key);
     let mut rows = column![
-        group_heading(app.i18n.text(Key::SettingsToolsGroup)),
-        text(app.i18n.text(Key::LanguageServersDescription))
+        text(t(Key::LanguageServersDescription))
             .size(13)
             .style(theme::MUTED.text()),
-        button(text(app.i18n.text(Key::LanguageServerCheck)).size(13))
-            .on_press(Message::CheckLanguageServers)
-            .style(theme::action(false))
-            .padding([8, 12])
-    ]
-    .spacing(10);
-    for (id, name) in [
-        ("python", "Python"),
-        ("go", "Go"),
-        ("typescript", "JavaScript / TypeScript"),
-        ("php", "PHP"),
-        ("rust", "Rust"),
-        ("markdown", "Markdown"),
-        ("json", "JSON"),
-        ("yaml", "YAML"),
-        ("toml", "TOML"),
-        ("shellscript", "Shell"),
-        ("html", "HTML"),
-        ("css", "CSS"),
+        divider(),
+    ];
+    let web = "https://github.com/hrsh7th/vscode-langservers-extracted";
+    for (language, name, install) in [
+        (
+            DocumentLanguage::Python,
+            "Python",
+            "https://microsoft.github.io/pyright/#/installation",
+        ),
+        (DocumentLanguage::Go, "Go", "https://go.dev/gopls/"),
+        (
+            DocumentLanguage::TypeScript,
+            "JavaScript / TypeScript",
+            "https://github.com/typescript-language-server/typescript-language-server#installing",
+        ),
+        (
+            DocumentLanguage::Php,
+            "PHP",
+            "https://intelephense.com/docs",
+        ),
+        (
+            DocumentLanguage::Rust,
+            "Rust",
+            "https://rust-analyzer.github.io/book/installation.html",
+        ),
+        (
+            DocumentLanguage::Markdown,
+            "Markdown",
+            "https://github.com/artempyanykh/marksman#how-to-install",
+        ),
+        (DocumentLanguage::Json, "JSON", web),
+        (
+            DocumentLanguage::Yaml,
+            "YAML",
+            "https://github.com/redhat-developer/yaml-language-server",
+        ),
+        (
+            DocumentLanguage::Toml,
+            "TOML",
+            "https://github.com/tamasfe/taplo/releases",
+        ),
+        (
+            DocumentLanguage::Shell,
+            "Shell",
+            "https://github.com/bash-lsp/bash-language-server#installation",
+        ),
+        (DocumentLanguage::Html, "HTML", web),
+        (DocumentLanguage::Css, "CSS", web),
     ] {
-        let value = app
-            .workspace
-            .preferences
-            .language_servers
-            .get(id)
-            .map(String::as_str)
-            .unwrap_or_default();
-        let status = app.i18n.text(match app.editor.server_checks.get(id) {
-            Some(true) => Key::LanguageServerFound,
-            Some(false) => Key::LanguageServerMissing,
-            None => Key::LanguageServerAutomatic,
-        });
-        rows = rows.push(
+        let Some((program, _)) = language.server_command() else {
+            continue;
+        };
+        let id = language.id();
+        let configured = app.workspace.preferences.language_servers.get(id);
+        let status = match app.editor.server_checks.get(id) {
+            Some(true) => Some(Key::LanguageServerFound),
+            Some(false) => Some(Key::LanguageServerMissing),
+            None => None,
+        };
+        let detail = configured.map_or(program, String::as_str);
+        let action = |key, message, name| {
             container(
-                column![
-                    row![
-                        text(name).size(14).font(theme::semibold()),
-                        iced::widget::space().width(Length::Fill),
-                        text(status).size(12).style(theme::MUTED.text())
-                    ]
-                    .align_y(Alignment::Center),
-                    iced::widget::text_input(&app.i18n.text(Key::LanguageServerAutomatic), value)
-                        .on_input(move |path| Message::SetLanguageServer(id.to_owned(), path))
-                        .padding(8)
-                ]
-                .spacing(8),
+                button(text(t(key)).size(12))
+                    .on_press(message)
+                    .padding([6, 9])
+                    .style(theme::action(false)),
             )
-            .padding(12)
+            .id(format!("language-server-{name}-{id}"))
+        };
+        let mut actions = row![
+            action(
+                Key::LanguageServerDetect,
+                Message::DetectLanguageServer(language),
+                "detect"
+            ),
+            action(
+                Key::LanguageServerChoosePath,
+                Message::ChooseLanguageServer(language),
+                "path"
+            ),
+            action(
+                Key::LanguageServerInstall,
+                Message::OpenUrl(install.to_owned()),
+                "install"
+            ),
+        ]
+        .spacing(4)
+        .align_y(Alignment::Center);
+        if configured.is_some() {
+            actions = actions.push(action(
+                Key::LanguageServerAutomatic,
+                Message::ResetLanguageServer(language),
+                "automatic",
+            ));
+        }
+        let mut description = column![
+            text(name).size(13).font(theme::semibold()),
+            container(
+                text(detail)
+                    .size(12)
+                    .style(theme::MUTED.text())
+                    .wrapping(text::Wrapping::None)
+            )
             .width(Length::Fill)
-            .style(theme::code_surface),
-        );
+            .clip(true),
+        ]
+        .spacing(3)
+        .width(Length::Fill);
+        if let Some(status) = status {
+            description = description.push(text(t(status)).size(12).style(theme::MUTED.text()));
+        }
+        rows = rows
+            .push(
+                container(
+                    row![description, actions]
+                        .spacing(12)
+                        .align_y(Alignment::Center),
+                )
+                .padding([10, 0])
+                .width(Length::Fill),
+            )
+            .push(divider());
     }
     rows.into()
 }
@@ -547,24 +600,30 @@ fn typography(app: &App, terminal: bool) -> Element<'_, Message> {
     } else {
         (prefs.code_font, prefs.code_line_height)
     };
-    let mut choices = row![].spacing(6);
-    for (choice, label) in [
+    let choices = [
         (CodeFont::System, app.i18n.text(Key::SystemFont)),
         (CodeFont::JetBrainsMono, "JetBrains Mono".to_owned()),
         (CodeFont::FiraCode, "Fira Code".to_owned()),
-    ] {
-        choices = choices.push(
-            button(text(label).size(13))
-                .padding([8, 10])
-                .style(theme::action(font == choice))
-                .on_press(Message::SetFont(terminal, choice)),
-        );
-    }
+    ]
+    .map(|(value, label)| SelectOption { value, label });
+    let selected = choices.iter().find(|option| option.value == font).cloned();
     column![
         setting(
             app.i18n.text(Key::FontFamily),
             app.i18n.text(Key::FontFamilyDescription),
-            choices.wrap().into()
+            container(
+                pick_list(choices, selected, move |option| Message::SetFont(
+                    terminal,
+                    option.value
+                ))
+                .text_size(13)
+                .padding([8, 12])
+                .width(180)
+                .style(theme::select)
+                .menu_style(theme::select_menu)
+            )
+            .id("settings-font-family-select")
+            .into()
         ),
         setting(
             app.i18n.text(Key::LineSpacing),
@@ -607,44 +666,58 @@ fn shortcut_group<'a>(
 
 fn shortcut_control(app: &App, command: Command) -> Element<'_, Message> {
     use crate::app::shortcuts::Event;
-    let recording = app.shortcuts.recording == Some(command);
-    let label = if recording {
-        app.i18n.text(Key::ShortcutRecording)
-    } else {
-        app.workspace.preferences.shortcuts.binding(command).label()
-    };
-    let mut controls = row![
+    let label = app.workspace.preferences.shortcuts.binding(command).label();
+    let mut content = column![
         button(text(label).size(13))
             .padding([8, 14])
             .on_press(Message::Shortcut(Event::Record(command)))
-            .style(theme::action(recording)),
+            .style(theme::action(false)),
     ]
     .spacing(8);
-    if recording {
-        controls = controls.push(
-            button(text(app.i18n.text(Key::Cancel)).size(13))
-                .padding([8, 14])
-                .on_press(Message::Shortcut(Event::Cancel))
-                .style(theme::action(false)),
-        );
-    }
-    let mut content = column![controls].spacing(8);
     if app.workspace.preferences.shortcuts.conflict(command) {
         content = content.push(text(app.i18n.text(Key::ShortcutConflict)).size(13));
-    }
-    if recording {
-        content = content.push(
-            text(app.i18n.text(Key::ShortcutInstructions))
-                .size(12)
-                .style(theme::MUTED.text()),
-        );
-        if let Some(error) = app.shortcuts.error {
-            content = content.push(text(app.i18n.text(error)).size(13));
-        }
     }
     container(content)
         .id(format!("shortcut-{command:?}"))
         .into()
+}
+
+pub(crate) fn shortcut_recording_overlay<'a>(
+    app: &'a App,
+    base: Element<'a, Message>,
+) -> Element<'a, Message> {
+    if app.shortcuts.recording.is_none() {
+        return base;
+    }
+    let cancel = Message::Shortcut(crate::app::shortcuts::Event::Cancel);
+    let mut content = column![
+        text(app.i18n.text(Key::ShortcutRecording))
+            .size(20)
+            .font(theme::semibold()),
+        text(app.i18n.text(Key::ShortcutInstructions))
+            .size(13)
+            .style(theme::MUTED.text()),
+    ]
+    .spacing(14);
+    if let Some(error) = app.shortcuts.error {
+        content = content.push(text(app.i18n.text(error)).size(13).style(theme::RED.text()));
+    }
+    content = content.push(row![
+        iced::widget::space().width(Length::Fill),
+        container(
+            button(text(app.i18n.text(Key::Cancel)).size(13))
+                .on_press(cancel.clone())
+                .padding([8, 14])
+                .style(theme::action(false))
+        )
+        .id("shortcut-recording-cancel"),
+    ]);
+    super::modal::overlay(
+        base,
+        container(content).id("shortcut-recording-dialog").into(),
+        440.,
+        cancel,
+    )
 }
 
 pub(crate) fn setting<'a>(

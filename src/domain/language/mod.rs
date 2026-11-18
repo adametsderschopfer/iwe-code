@@ -59,6 +59,26 @@ impl Language {
         )
     }
 
+    pub(crate) fn server_command(self) -> Option<(&'static str, &'static [&'static str])> {
+        Some(match self {
+            Self::Python => ("pyright-langserver", &["--stdio"]),
+            Self::Go => ("gopls", &["serve"]),
+            Self::JavaScript | Self::JavaScriptReact | Self::TypeScript | Self::TypeScriptReact => {
+                ("typescript-language-server", &["--stdio"])
+            }
+            Self::Php => ("intelephense", &["--stdio"]),
+            Self::Rust => ("rust-analyzer", &[]),
+            Self::Markdown => ("marksman", &["server"]),
+            Self::Json | Self::JsonComments => ("vscode-json-language-server", &["--stdio"]),
+            Self::Yaml => ("yaml-language-server", &["--stdio"]),
+            Self::Toml => ("taplo", &["lsp", "stdio"]),
+            Self::Shell => ("bash-language-server", &["start"]),
+            Self::Html => ("vscode-html-language-server", &["--stdio"]),
+            Self::Css => ("vscode-css-language-server", &["--stdio"]),
+            Self::Env => return None,
+        })
+    }
+
     pub(crate) fn id(self) -> &'static str {
         match self {
             Self::Python => "python",

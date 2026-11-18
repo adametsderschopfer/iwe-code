@@ -6,4 +6,3 @@ pipeline-stage-title = Этап: { $name }
 pipeline-job-title = Задача: { $name }
 job-action-pending = Отправляем команду…
 job-action-access = Войдите с правом запуска и остановки задач в этом проекте.
-pipelines-description = Показывать пайплайны, если у проекта есть remote.

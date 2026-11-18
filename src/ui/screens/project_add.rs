@@ -2,10 +2,13 @@ use super::modal;
 use crate::{
     app::{App, Message, project_add::Message as Event},
     i18n::Key,
-    ui::theme,
+    ui::{
+        icons::{Icon, icon},
+        theme,
+    },
 };
 use iced::{
-    Element, Length,
+    Alignment, Element, Length,
     widget::{button, column, container, row, space, text, text_input},
 };
 
@@ -91,25 +94,47 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 .size(14)
                 .style(theme::MUTED.text()),
         );
-        for (id, key, event) in [
+        let choices = [
             (
                 "add-project-directories",
                 Key::AddProjectFolder,
+                Icon::Folder,
                 Event::Directories,
             ),
-            ("add-project-remote", Key::CloneRepository, Event::Remote),
-        ] {
-            content = content.push(
-                container(
-                    button(text(app.i18n.text(key)).size(14))
-                        .on_press(Message::ProjectAdd(event))
-                        .padding([14, 18])
-                        .width(Length::Fill)
-                        .style(theme::secondary),
+            (
+                "add-project-remote",
+                Key::CloneRepository,
+                Icon::Branch,
+                Event::Remote,
+            ),
+        ]
+        .map(|(id, key, symbol, event)| {
+            container(
+                button(
+                    container(
+                        column![
+                            icon(symbol, theme::MUTED),
+                            text(app.i18n.text(key)).size(14).align_x(Alignment::Center),
+                        ]
+                        .spacing(6)
+                        .align_x(Alignment::Center),
+                    )
+                    .center(Length::Fill),
                 )
-                .id(id),
-            );
-        }
+                .on_press(Message::ProjectAdd(event))
+                .padding(12)
+                .width(Length::Fill)
+                .height(80)
+                .style(|theme, status| {
+                    let mut style = theme::secondary(theme, status);
+                    style.border.radius = 12.0.into();
+                    style
+                }),
+            )
+            .id(id)
+            .into()
+        });
+        content = content.push(row(choices).spacing(12));
     }
     let mut actions = row![
         space().width(Length::Fill),

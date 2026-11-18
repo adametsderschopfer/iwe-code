@@ -73,6 +73,22 @@ impl App {
     }
 
     pub(super) fn load_repository(&mut self) -> Task<Message> {
+        self.load_repository_with_scroll_reset(true)
+    }
+
+    pub(super) fn refresh_git_repositories(&mut self) -> Task<Message> {
+        if !self.loaded || !self.module_enabled(crate::modules::ModuleId::Git) {
+            return Task::none();
+        }
+        let repositories = if self.loading {
+            Task::none()
+        } else {
+            self.load_repository_with_scroll_reset(false)
+        };
+        Task::batch([repositories, self.refresh_changes()])
+    }
+
+    fn load_repository_with_scroll_reset(&mut self, reset_scroll: bool) -> Task<Message> {
         let Some(path) = self.workspace.directory().cloned() else {
             return Task::none();
         };
@@ -99,7 +115,11 @@ impl App {
             },
             move |result| Message::RepositoryLoaded(generation, request, result),
         );
-        Task::batch([load, self.reset_history_scroll()])
+        if reset_scroll {
+            Task::batch([load, self.reset_history_scroll()])
+        } else {
+            load
+        }
     }
 
     pub(super) fn reset_history_scroll(&mut self) -> Task<Message> {

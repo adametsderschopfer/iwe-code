@@ -6,35 +6,13 @@ use std::path::{Path, PathBuf};
 #[cfg(test)]
 mod tests;
 
-pub(crate) fn check(
-    configured: &std::collections::BTreeMap<String, String>,
-) -> std::collections::BTreeMap<String, bool> {
+pub(crate) fn check(language: Language, configured: Option<&str>) -> bool {
     let Some(base) = directories::BaseDirs::new() else {
-        return Default::default();
+        return false;
     };
     let managed = base.data_dir().join("iwe/language-servers");
-    [
-        Language::Python,
-        Language::Go,
-        Language::TypeScript,
-        Language::Php,
-        Language::Rust,
-        Language::Markdown,
-        Language::Json,
-        Language::Yaml,
-        Language::Toml,
-        Language::Shell,
-        Language::Html,
-        Language::Css,
-    ]
-    .into_iter()
-    .map(|language| {
-        let id = language.id();
-        let found = discover_configured(language, &managed, configured.get(id).map(String::as_str))
-            .is_some_and(|server| server.program.is_file());
-        (id.to_owned(), found)
-    })
-    .collect()
+    discover_configured(language, &managed, configured)
+        .is_some_and(|server| server.program.is_file())
 }
 
 #[derive(Debug, Clone)]
@@ -48,27 +26,15 @@ pub(crate) fn discover_configured(
     managed: &Path,
     configured: Option<&str>,
 ) -> Option<Server> {
-    let (name, arguments): (&str, &[&str]) = match language {
-        Language::Python => ("pyright-langserver", &["--stdio"]),
-        Language::Go => ("gopls", &["serve"]),
-        Language::JavaScript
-        | Language::JavaScriptReact
-        | Language::TypeScript
-        | Language::TypeScriptReact => ("typescript-language-server", &["--stdio"]),
-        Language::Php => ("intelephense", &["--stdio"]),
-        Language::Rust => ("rust-analyzer", &[]),
-        Language::Markdown => ("marksman", &["server"]),
-        Language::Json | Language::JsonComments => ("vscode-json-language-server", &["--stdio"]),
-        Language::Yaml => ("yaml-language-server", &["--stdio"]),
-        Language::Toml => ("taplo", &["lsp", "stdio"]),
-        Language::Shell => ("bash-language-server", &["start"]),
-        Language::Html => ("vscode-html-language-server", &["--stdio"]),
-        Language::Css => ("vscode-css-language-server", &["--stdio"]),
-        Language::Env => return None,
-    };
+    let (name, arguments) = language.server_command()?;
     let mut directories: Vec<PathBuf> = std::env::var_os("PATH")
         .map(|path| std::env::split_paths(&path).collect())
         .unwrap_or_default();
+    #[cfg(target_os = "macos")]
+    directories.extend([
+        PathBuf::from("/opt/homebrew/bin"),
+        PathBuf::from("/usr/local/bin"),
+    ]);
     directories.push(managed.join("node_modules/.bin"));
     directories.push(managed.join("bin"));
     if let Some(base) = directories::BaseDirs::new() {

@@ -113,9 +113,7 @@ fn application(
                 window::Event::Unfocused => Some(Message::BranchSelection(
                     branch_selection::Event::Unfocused(id),
                 )),
-                window::Event::Focused => Some(Message::Update(updates::Event::Automatic(
-                    updates::Trigger::Focused,
-                ))),
+                window::Event::Focused => Some(Message::WindowFocused(id)),
                 _ => None,
             }),
             app.pipeline_subscription(),
@@ -127,6 +125,7 @@ fn application(
             app.native_menu_subscription(),
             #[cfg(target_os = "macos")]
             app.zoom_subscription(),
+            app.spaces_sidebar_subscription(),
             window_state_subscription(),
             external::subscription(),
             iced::event::listen_with(|event, status, id| {
@@ -150,11 +149,11 @@ fn application(
 }
 
 fn window_state_subscription() -> Subscription<Message> {
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
     {
         window::resize_events().map(|(id, _)| Message::WindowResized(id))
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         Subscription::none()
     }
@@ -189,7 +188,6 @@ pub(crate) enum SettingsTab {
     Code,
     Terminal,
     LanguageServers,
-    Panels,
     Modules,
     Connections,
     Deployment,
@@ -206,6 +204,7 @@ pub(crate) struct App {
     pub workspace: Workspace,
     pub navigation: Navigation,
     pub settings_tab: SettingsTab,
+    window_zoom_preview: Option<u16>,
     pub shortcuts: shortcuts::State,
     pub modules: modules::State,
     pub panes: pane_grid::State<Panel>,
@@ -217,6 +216,7 @@ pub(crate) struct App {
     pub files: files::State,
     pub file_panel: FilePanel,
     pub file_panel_visible: bool,
+    spaces_sidebar_transition: Option<(std::time::Instant, f32)>,
     pub explain: explain::State,
     pub sidebar_menu_choices: bool,
     pub project_menu: Option<(usize, PathBuf, iced::Point)>,
@@ -229,6 +229,8 @@ pub(crate) struct App {
     repository_cache: repository_cache::Cache,
     pub project_changes: project_changes::State,
     pub tabs: tabs::State,
+    path_copy_request: u64,
+    copied_path: Option<PathBuf>,
     pub editor: editor::State,
     pub collapsed_spaces: BTreeSet<usize>,
     pub auth_dialog: Option<auth::Dialog>,
@@ -273,6 +275,7 @@ pub(crate) enum Message {
     Explain(explain::Event),
     Editor(editor::Event),
     WindowOpened(window::Id),
+    WindowFocused(window::Id),
     Window(windows::Event),
     WindowShortcut(window::Id, Box<Message>),
     #[cfg(target_os = "macos")]
@@ -286,7 +289,7 @@ pub(crate) enum Message {
     CloseRepositoryMenu,
     ClearBranchAttention(u64),
     WindowMaximized(bool),
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
     WindowResized(window::Id),
     #[cfg(target_os = "windows")]
     MinimizeWindow,
@@ -324,6 +327,7 @@ pub(crate) enum Message {
     SelectProject(usize, usize),
     ToggleSpace(usize),
     Refresh,
+    RefreshGitRepositories,
     RepositoryLoaded(u64, u64, Result<RepositorySet, Failure>),
     HistoryLoaded(u64, u64, usize, Result<HistoryPage, Failure>),
     HistoryScrolled {
@@ -335,6 +339,8 @@ pub(crate) enum Message {
     SelectFilePanel(FilePanel),
     ToggleFilePanel(FilePanel),
     ToggleSpacesSidebar,
+    SpacesSidebarFrame(std::time::Instant),
+    ResizeSpacesSidebar(f32, bool),
     ResizeFilePanel(f32, bool),
     MoveFilePanel(usize, usize),
     ToggleWorktreeFolder {
@@ -384,13 +390,19 @@ pub(crate) enum Message {
     SetLineHeight(bool, u16),
     SetFont(bool, crate::domain::workspace::CodeFont),
     SetWindowZoom(u16),
+    PreviewWindowZoom(u16),
+    ApplyWindowZoom,
     Zoom(i16),
-    SetLanguageServer(String, String),
-    CheckLanguageServers,
-    LanguageServersChecked(BTreeMap<String, String>, BTreeMap<String, bool>),
+    ChooseLanguageServer(crate::domain::language::Language),
+    LanguageServerChosen(crate::domain::language::Language, Option<PathBuf>),
+    ResetLanguageServer(crate::domain::language::Language),
+    DetectLanguageServer(crate::domain::language::Language),
+    LanguageServerDetected(crate::domain::language::Language, Option<String>, bool),
     SetLineNumbers(bool),
     SetRestoreProjectTabs(bool),
     CopyPath,
+    PathCopied(u64, PathBuf),
+    ClearCopiedPath(u64),
     OpenTabMenu(iced::Point),
     CloseTabMenu,
     CopyCommitId(String),
@@ -431,6 +443,7 @@ impl App {
             workspace: Workspace::default(),
             navigation: Navigation::Projects,
             settings_tab: SettingsTab::default(),
+            window_zoom_preview: None,
             shortcuts: shortcuts::State::default(),
             modules: modules::State::default(),
             panes: pane_grid::State::new(Panel::Workspace).0,
@@ -442,6 +455,7 @@ impl App {
             files: files::State::default(),
             file_panel: FilePanel::Project,
             file_panel_visible: true,
+            spaces_sidebar_transition: None,
             explain: explain::State::default(),
             sidebar_menu_choices: false,
             project_menu: None,
@@ -454,6 +468,8 @@ impl App {
             repository_cache: repository_cache::Cache::default(),
             project_changes: project_changes::State::default(),
             tabs: tabs::State::default(),
+            path_copy_request: 0,
+            copied_path: None,
             editor: editor::State::default(),
             collapsed_spaces: BTreeSet::new(),
             auth_dialog: None,
@@ -635,9 +651,11 @@ impl App {
                     | Message::SelectFilePanel(_)
                     | Message::ToggleFilePanel(_)
                     | Message::ToggleSpacesSidebar
+                    | Message::ResizeSpacesSidebar(..)
                     | Message::ResizeFilePanel(_, _)
                     | Message::MoveFilePanel(_, _)
                     | Message::Refresh
+                    | Message::RefreshGitRepositories
                     | Message::SelectBranch(_)
                     | Message::AllRepositories
                     | Message::SelectCommit(_)
@@ -707,7 +725,13 @@ impl App {
             Message::SearchEverywhere(event) => return self.update_search_everywhere(event),
             Message::TextSearch(event) => return self.update_text_search(event),
             Message::Git(message) => return self.update_git(message),
-            Message::BranchSelection(event) => return self.update_branch_selection(event),
+            Message::BranchSelection(event) => {
+                if matches!(&event, branch_selection::Event::Unfocused(id) if self.windows.settings == Some(*id))
+                {
+                    self.window_zoom_preview = None;
+                }
+                return self.update_branch_selection(event);
+            }
             Message::ProjectMenu(space, path, point)
                 if self.space_draft.is_none()
                     && self.project_add.is_none()
@@ -799,6 +823,16 @@ impl App {
                 }
             }
             Message::WindowOpened(id) => return self.window_opened(id),
+            Message::WindowFocused(id) => {
+                let updates =
+                    self.update_release(updates::Event::Automatic(updates::Trigger::Focused));
+                let git = if self.window_id == Some(id) {
+                    self.refresh_git_repositories()
+                } else {
+                    Task::none()
+                };
+                return Task::batch([updates, git]);
+            }
             Message::Window(event) => return self.update_window(event),
             #[cfg(target_os = "macos")]
             Message::NativeMenu(event) => return self.update_native_menu(event),
@@ -847,6 +881,12 @@ impl App {
                 });
             }
             Message::WindowMaximized(maximized) => self.window_maximized = maximized,
+            #[cfg(target_os = "macos")]
+            Message::WindowResized(id)
+                if self.window_id == Some(id) || self.windows.is_secondary(id) =>
+            {
+                return self.align_window_controls(id);
+            }
             #[cfg(target_os = "windows")]
             Message::WindowResized(id) if self.windows.is_secondary(id) => {
                 return window::is_maximized(id)
@@ -897,6 +937,8 @@ impl App {
                 }
                 self.apply_language();
                 return Task::batch([
+                    #[cfg(target_os = "macos")]
+                    self.align_open_window_controls(),
                     self.load_directory(),
                     self.refresh_project_changes(),
                     self.save(),
@@ -935,6 +977,7 @@ impl App {
                 return self.refresh_pipeline_overviews(false);
             }
             Message::SelectSettingsTab(tab) => {
+                self.window_zoom_preview = None;
                 self.shortcuts = shortcuts::State::default();
                 let (connections, event) = match tab {
                     SettingsTab::Connections => {
@@ -1045,6 +1088,7 @@ impl App {
                 }
             }
             Message::Refresh => return self.load_directory(),
+            Message::RefreshGitRepositories => return self.refresh_git_repositories(),
             Message::SelectFilePanel(panel) => {
                 self.file_panel = panel;
                 self.file_panel_visible = true;
@@ -1056,9 +1100,35 @@ impl App {
             Message::ToggleSpacesSidebar if self.loaded => {
                 self.space_menu = None;
                 self.project_menu = None;
+                let now = std::time::Instant::now();
+                let from = self.spaces_sidebar_progress_at(now);
                 self.workspace.preferences.show_spaces_sidebar =
                     !self.workspace.preferences.show_spaces_sidebar;
+                let animate = self.window_id.is_some();
+                #[cfg(target_os = "macos")]
+                let animate = animate
+                    && !objc2_app_kit::NSWorkspace::sharedWorkspace()
+                        .accessibilityDisplayShouldReduceMotion();
+                self.spaces_sidebar_transition = animate.then_some((now, from));
                 return self.save();
+            }
+            Message::SpacesSidebarFrame(now) => {
+                if self.spaces_sidebar_transition.is_some_and(|(start, _)| {
+                    now.saturating_duration_since(start) >= theme::SPACES_SIDEBAR_TRANSITION
+                }) {
+                    self.spaces_sidebar_transition = None;
+                }
+            }
+            Message::ResizeSpacesSidebar(width, finished)
+                if self.workspace.preferences.show_spaces_sidebar
+                    && self.spaces_sidebar_transition.is_none()
+                    && width.is_finite() =>
+            {
+                self.workspace.preferences.spaces_sidebar_width =
+                    crate::domain::workspace::Preferences::clamp_spaces_sidebar_width(width);
+                if finished {
+                    return self.save();
+                }
             }
             Message::ResizeFilePanel(width, finished)
                 if self.file_panel_visible && width.is_finite() =>
@@ -1483,9 +1553,26 @@ impl App {
                 *target = font;
                 return self.save();
             }
+            Message::PreviewWindowZoom(zoom) => {
+                self.window_zoom_preview = Some(zoom.clamp(75, 200));
+            }
+            Message::ApplyWindowZoom => {
+                if let Some(zoom) = self.window_zoom_preview.take() {
+                    return self.update(Message::SetWindowZoom(zoom));
+                }
+            }
             Message::SetWindowZoom(zoom) => {
-                self.workspace.preferences.window_zoom = zoom.clamp(75, 200);
-                return self.save();
+                self.window_zoom_preview = None;
+                let zoom = zoom.clamp(75, 200);
+                if self.workspace.preferences.window_zoom == zoom {
+                    return Task::none();
+                }
+                self.workspace.preferences.window_zoom = zoom;
+                return Task::batch([
+                    self.save(),
+                    #[cfg(target_os = "macos")]
+                    self.align_open_window_controls(),
+                ]);
             }
             Message::Zoom(delta) => {
                 let zoom = if delta == 0 {
@@ -1499,39 +1586,78 @@ impl App {
                 self.workspace.preferences.code_size = size.clamp(10, 32);
                 return self.save();
             }
-            Message::SetLanguageServer(language, path) => {
-                self.editor.server_checks.remove(&language);
-                if path.trim().is_empty() {
-                    self.workspace
-                        .preferences
-                        .language_servers
-                        .remove(&language);
-                } else {
-                    self.workspace
-                        .preferences
-                        .language_servers
-                        .insert(language, path);
-                }
-                return self.save();
-            }
-            Message::CheckLanguageServers => {
-                let configured = self.workspace.preferences.language_servers.clone();
+            Message::ChooseLanguageServer(language) => {
+                let title = self.i18n.text(Key::LanguageServerChoosePath);
                 return Task::perform(
                     async move {
-                        let settings = configured.clone();
-                        let checks = tokio::task::spawn_blocking(move || {
-                            crate::infrastructure::language_server::discovery::check(&settings)
-                        })
-                        .await
-                        .unwrap_or_default();
-                        (configured, checks)
+                        rfd::AsyncFileDialog::new()
+                            .set_title(title)
+                            .pick_file()
+                            .await
+                            .map(|file| file.path().to_owned())
                     },
-                    |(configured, checks)| Message::LanguageServersChecked(configured, checks),
+                    move |path| Message::LanguageServerChosen(language, path),
                 );
             }
-            Message::LanguageServersChecked(configured, checks) => {
-                if configured == self.workspace.preferences.language_servers {
-                    self.editor.server_checks = checks;
+            Message::LanguageServerChosen(language, Some(path)) => {
+                let id = language.id().to_owned();
+                let Some(path) = path.to_str() else {
+                    return Task::none();
+                };
+                self.editor.server_checks.remove(&id);
+                self.workspace
+                    .preferences
+                    .language_servers
+                    .insert(id, path.to_owned());
+                return Task::batch([
+                    self.save(),
+                    self.update(Message::DetectLanguageServer(language)),
+                ]);
+            }
+            Message::ResetLanguageServer(language) => {
+                let id = language.id();
+                self.editor.server_checks.remove(id);
+                self.workspace.preferences.language_servers.remove(id);
+                return Task::batch([
+                    self.save(),
+                    self.update(Message::DetectLanguageServer(language)),
+                ]);
+            }
+            Message::DetectLanguageServer(language) => {
+                let configured = self
+                    .workspace
+                    .preferences
+                    .language_servers
+                    .get(language.id())
+                    .cloned();
+                let path = configured.clone();
+                return Task::perform(
+                    async move {
+                        tokio::task::spawn_blocking(move || {
+                            crate::infrastructure::language_server::discovery::check(
+                                language,
+                                path.as_deref(),
+                            )
+                        })
+                        .await
+                        .unwrap_or(false)
+                    },
+                    move |found| {
+                        Message::LanguageServerDetected(language, configured.clone(), found)
+                    },
+                );
+            }
+            Message::LanguageServerDetected(language, configured, found) => {
+                if configured.as_ref()
+                    == self
+                        .workspace
+                        .preferences
+                        .language_servers
+                        .get(language.id())
+                {
+                    self.editor
+                        .server_checks
+                        .insert(language.id().to_owned(), found);
                 }
             }
             Message::SetLineNumbers(value) => {
@@ -1543,9 +1669,22 @@ impl App {
                 return self.save();
             }
             Message::CopyPath => {
-                if let Some(path) = self.preview().path.as_ref().or(self.workspace.directory()) {
-                    return iced::clipboard::write(path.to_string_lossy().into_owned());
+                if let Some(path) = self.footer_path().map(std::path::Path::to_owned) {
+                    self.path_copy_request += 1;
+                    return iced::clipboard::write(path.to_string_lossy().into_owned()).chain(
+                        Task::done(Message::PathCopied(self.path_copy_request, path)),
+                    );
                 }
+            }
+            Message::PathCopied(request, path) if request == self.path_copy_request => {
+                self.copied_path = Some(path);
+                return Task::perform(
+                    async { tokio::time::sleep(std::time::Duration::from_secs(2)).await },
+                    move |()| Message::ClearCopiedPath(request),
+                );
+            }
+            Message::ClearCopiedPath(request) if request == self.path_copy_request => {
+                self.copied_path = None;
             }
             Message::CopyCommitId(id) => {
                 self.modules.git.copy_request += 1;
@@ -1645,6 +1784,25 @@ impl App {
             crate::infrastructure::external::shutdown();
             iced::exit()
         }
+    }
+
+    pub(crate) fn window_zoom_preview(&self) -> u16 {
+        self.window_zoom_preview
+            .unwrap_or(self.workspace.preferences.window_zoom)
+    }
+
+    pub(crate) fn footer_path(&self) -> Option<&std::path::Path> {
+        self.preview()
+            .path
+            .as_ref()
+            .or(self.workspace.directory())
+            .map(PathBuf::as_path)
+    }
+
+    pub(crate) fn footer_path_was_copied(&self) -> bool {
+        self.copied_path
+            .as_deref()
+            .is_some_and(|path| self.footer_path() == Some(path))
     }
 
     fn apply_language(&mut self) {

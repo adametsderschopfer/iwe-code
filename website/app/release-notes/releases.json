@@ -2295,6 +2295,106 @@
           ".github/workflows/bump-version.yml",
           ".github/scripts/tests/test_workflow_structure.py"
         ]
+      },
+      {
+        "id": "spaces-sidebar-width-and-animation",
+        "category": "added",
+        "text": {
+          "en": "Resize Spaces and slide the sidebar out of view. IWE remembers its width.",
+          "ru": "Меняйте ширину панели «Пространства» и скрывайте её с анимацией. IWE запоминает ширину.",
+          "es": "Ajusta el ancho de Espacios y oculta la barra lateral con una animación. IWE recuerda su ancho."
+        },
+        "sources": ["src/ui/screens/workspace.rs", "src/domain/workspace.rs"]
+      },
+      {
+        "id": "workspace-header-and-window-controls",
+        "category": "changed",
+        "text": {
+          "en": "The workspace header includes Settings. On macOS, native buttons align with each window header.",
+          "ru": "Кнопка настроек находится в шапке. На macOS системные кнопки выровнены по центру шапки каждого окна.",
+          "es": "El encabezado incluye Ajustes. En macOS, los botones del sistema se alinean con el encabezado de cada ventana."
+        },
+        "sources": ["src/ui/screens/workspace.rs", "src/app/windows.rs"]
+      },
+      {
+        "id": "git-refresh-on-focus",
+        "category": "changed",
+        "text": {
+          "en": "IWE refreshes Git when the workspace regains focus. The header also offers a Git refresh button.",
+          "ru": "IWE обновляет Git при возврате фокуса в рабочее окно. В шапке также есть кнопка обновления Git.",
+          "es": "IWE actualiza Git cuando la ventana de trabajo recupera el foco. El encabezado también ofrece un botón de actualización."
+        },
+        "sources": ["src/app/repositories.rs", "src/app/mod.rs"]
+      },
+      {
+        "id": "remember-open-project-tabs",
+        "category": "added",
+        "text": {
+          "en": "Reopen the files and active tab from the previous session.",
+          "ru": "Восстанавливайте открытые файлы и активную вкладку из предыдущего сеанса.",
+          "es": "Vuelve a abrir los archivos y la pestaña activa de la sesión anterior."
+        },
+        "sources": ["0b9d465"]
+      },
+      {
+        "id": "choose-interface-language",
+        "category": "changed",
+        "text": {
+          "en": "Choose the interface language from a list in General. IWE defaults to English.",
+          "ru": "Выбирайте язык интерфейса из списка в общих настройках. По умолчанию IWE использует английский.",
+          "es": "Elige el idioma de la interfaz en General. IWE usa inglés de forma predeterminada."
+        },
+        "sources": ["8499253"]
+      },
+      {
+        "id": "font-select-and-zoom-on-release",
+        "category": "changed",
+        "text": {
+          "en": "Choose code and terminal fonts from lists. Window zoom applies when you release the slider.",
+          "ru": "Выбирайте шрифты кода и терминала из списков. Масштаб окна применяется при отпускании ползунка.",
+          "es": "Elige las fuentes de código y terminal en listas. La escala de la ventana se aplica al soltar el control."
+        },
+        "sources": ["src/ui/screens/settings.rs", "vendor/iced_widget/src/slider.rs"]
+      },
+      {
+        "id": "language-server-actions",
+        "category": "changed",
+        "text": {
+          "en": "Find language servers, choose executable paths, and open installation guides from each language row.",
+          "ru": "Ищите языковые серверы, выбирайте файлы и открывайте инструкции установки из строки нужного языка.",
+          "es": "Busca servidores de lenguaje, elige ejecutables y abre guías de instalación desde la fila de cada lenguaje."
+        },
+        "sources": ["src/ui/screens/settings.rs", "src/infrastructure/language_server/discovery.rs"]
+      },
+      {
+        "id": "shortcut-recording-dialog",
+        "category": "changed",
+        "text": {
+          "en": "Record shortcuts in a dialog that shows instructions and errors.",
+          "ru": "Записывайте сочетания клавиш в диалоге с подсказкой и сообщениями об ошибках.",
+          "es": "Graba atajos en un diálogo que muestra instrucciones y errores."
+        },
+        "sources": ["src/ui/screens/settings.rs", "src/app/windows.rs"]
+      },
+      {
+        "id": "project-source-options",
+        "category": "changed",
+        "text": {
+          "en": "Choose a local folder or clone a repository from two side-by-side buttons.",
+          "ru": "Добавляйте локальные папки или клонируйте репозиторий с помощью двух кнопок в одном ряду.",
+          "es": "Elige una carpeta local o clona un repositorio con dos botones en la misma fila."
+        },
+        "sources": ["src/ui/screens/project_add.rs"]
+      },
+      {
+        "id": "footer-path-copy-feedback",
+        "category": "added",
+        "text": {
+          "en": "The footer confirms when you copy its file or project path.",
+          "ru": "Нижняя панель подтверждает копирование пути к файлу или проекту.",
+          "es": "La barra inferior confirma la copia de la ruta del archivo o del proyecto."
+        },
+        "sources": ["src/ui/screens/workspace.rs", "src/app/mod.rs"]
       }
     ]
   }

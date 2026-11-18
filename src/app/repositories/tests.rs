@@ -491,3 +491,38 @@ fn header_shows_two_repositories_and_lists_the_rest_with_their_current_branches(
         );
     }
 }
+#[test]
+fn workspace_focus_refreshes_git_without_reloading_the_project() {
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    let root = std::path::PathBuf::from("project");
+    app.workspace
+        .create_space("Work".into(), vec![root.clone()]);
+    app.workspace.select_project(0, 0);
+    let window = iced::window::Id::unique();
+    app.window_id = Some(window);
+    let repo_request = app.repo_request;
+    let _ = app.update(Message::WindowFocused(window));
+    assert_eq!(app.repo_request, repo_request);
+
+    app.loaded = true;
+    app.project_directory = Some(root.clone());
+    let _ = app.open_file(root.join("readme.md"));
+    let preview = app.preview().id;
+    let generation = app.generation;
+    app.modules.git.history_scroll_y = 240.;
+
+    let _ = app.update(Message::WindowFocused(iced::window::Id::unique()));
+    assert_eq!(app.repo_request, repo_request);
+
+    let _ = app.update(Message::WindowFocused(window));
+    assert_eq!(app.repo_request, repo_request + 1);
+    assert_eq!(app.generation, generation);
+    assert_eq!(app.preview().id, preview);
+    assert_eq!(app.modules.git.history_scroll_y, 240.);
+
+    let _ = app.update(Message::RefreshGitRepositories);
+    assert_eq!(app.repo_request, repo_request + 1);
+    app.loading = false;
+    let _ = app.update(Message::RefreshGitRepositories);
+    assert_eq!(app.repo_request, repo_request + 2);
+}

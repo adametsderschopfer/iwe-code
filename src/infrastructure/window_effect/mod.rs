@@ -2,4 +2,4 @@
 
 mod macos;
 
-pub(crate) use macos::{Zoom, configure_resize, fade_for_exit};
+pub(crate) use macos::{Zoom, align_controls, configure_resize, fade_for_exit};

@@ -100,14 +100,16 @@ pub(crate) const COMMIT_GRAPH_PADDING: f32 = 12.;
 pub(crate) const COMMIT_REPOSITORY_GRAPH_PADDING: f32 = 4.;
 pub(crate) const COMMIT_REPOSITORY_MAX_WIDTH: f32 = 160.;
 
-pub(crate) const SIDEBAR_WIDTH: f32 = 264.0;
+#[cfg(test)]
+pub(crate) const SIDEBAR_WIDTH: f32 =
+    crate::domain::workspace::Preferences::DEFAULT_SPACES_SIDEBAR_WIDTH;
 pub(crate) const SIDEBAR_SCROLL_GAP: f32 = 6.0;
 pub(crate) const SETTINGS_SIDEBAR_WIDTH: f32 = 220.0;
 pub(crate) const SETTINGS_CONTENT_INSET: f32 = 24.0;
 pub(crate) const SETTINGS_CONTENT_WIDTH: f32 = 860.0;
 pub(crate) const SETTINGS_CONTROL_WIDTH: f32 = 320.0;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
-pub(crate) const SETTINGS_HEADER_HEIGHT: f32 = 48.0;
+pub(crate) const SETTINGS_HEADER_HEIGHT: f32 = 40.0;
 pub(crate) const NOTIFICATION_WIDTH: f32 = 380.0;
 pub(crate) const NOTIFICATION_INSET: f32 = 16.0;
 pub(crate) const NOTIFICATION_GAP: f32 = 8.0;
@@ -150,8 +152,11 @@ pub(crate) const DIFF_MARKERS_WIDTH: f32 = 11.0;
 pub(crate) const GIT_PANE_SPACING: f32 = 1.0;
 pub(crate) const GIT_PANE_MIN_SIZE: f32 = 120.0;
 pub(crate) const BRANCH_HEADER_INSET: f32 = 8.0;
-pub(crate) const SIDEBAR_TOP_INSET: f32 = 32.0;
-pub(crate) const MACOS_WINDOW_CONTROLS_WIDTH: f32 = 96.0;
+pub(crate) const MACOS_WINDOW_CONTROLS_WIDTH: f32 = 80.;
+pub(crate) const WORKSPACE_HEADER_HEIGHT: f32 = 56.;
+pub(crate) const WORKSPACE_HEADER_BUTTON_SIZE: f32 = 40.;
+pub(crate) const SPACES_SIDEBAR_TRANSITION: std::time::Duration =
+    std::time::Duration::from_millis(133);
 pub(crate) const FILE_TAB_MIN_WIDTH: f32 = 200.0;
 pub(crate) const FILE_TAB_TEXT_SIZE: f32 = 12.0;
 pub(crate) const FILE_TAB_NAME_LIMIT: usize = 35;
@@ -354,17 +359,6 @@ pub(crate) fn file_tab_indicator(active: bool) -> impl Fn(&Theme) -> container::
             }
             .into(),
         ),
-        ..Default::default()
-    }
-}
-
-pub(crate) fn settings_section(theme: &Theme) -> container::Style {
-    container::Style {
-        border: Border {
-            color: LINE.resolve(theme),
-            width: 1.,
-            radius: 8.0.into(),
-        },
         ..Default::default()
     }
 }

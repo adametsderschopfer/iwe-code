@@ -5,7 +5,6 @@ git-update-done = Rama actualizada
 git-push-done = Rama enviada
 git-rename-done = Rama renombrada
 git-delete-done = Rama eliminada
-git-description = Muestra ramas, commits y archivos modificados.
 git-missing = Instala Git para ver el historial.
 git-fetch-all = Obtener todos los remotos
 git-new-branch = Nueva rama

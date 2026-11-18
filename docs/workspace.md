@@ -13,15 +13,22 @@ choose **Create space**. Select several folders in one directory dialog. IWE Cod
 once within the space. You can also create an empty space and add projects later. Canceling the form
 discards its name, folder choices, and project order.
 
+In **Add project**, choose the folder button to add local folders. Choose the Git branch button to
+clone a repository.
+
 Use the settings button beside a space name to edit that space in the same form. Change its name,
 add project folders, or remove projects, then choose **Save changes**. Cancel keeps the saved space
 unchanged. Removing a project only detaches its folder. The application never deletes the folder.
 The header shows **Space • Project** whenever a project is selected. Without a selected project, it
 shows only the space name. Settings keeps its own heading.
 
-Use the sidebar button in the header to hide or show **Spaces**. The workspace uses the freed width
-when you hide the sidebar. IWE Code keeps the current project and open files. It remembers the
-sidebar setting across restarts.
+Use the sidebar button in the header to hide or show **Spaces**. Drag the sidebar's right edge to
+change its width. The sidebar slides open and closed below the window header. On macOS, Reduce
+Motion skips this animation. IWE Code keeps the current project and open files. It remembers the
+sidebar width and visibility across restarts.
+
+Open Settings from the button to the right of **Refresh Git repositories**. Click the path in the
+footer to copy it. The footer briefly shows **Path copied** beside the path.
 
 The header shows up to two repository badges with their current branches. Projects with more
 repositories show an arrow listing the remaining repository names and current branches. Click a
@@ -453,6 +460,10 @@ requests, not completed jobs.
 For one repository, opening or refreshing a project selects the checked-out branch and shows its
 history. Detached checkouts show history from HEAD.
 
+Use **Refresh Git repositories** in the workspace header to reload Git history and working-file
+status. IWE Code also refreshes Git when the workspace window regains focus. Both actions keep open
+files and the current history view.
+
 Repository labels in history fit their text and sit close to the graph. Long labels truncate within
 160 pixels. Hovering a label shows the complete repository path.
 
@@ -601,24 +612,25 @@ its result. Switching directories also cancels pending authorization. See
 
 ## Layout and settings
 
-The gear at the bottom left opens settings in a separate window. Reopening settings focuses the
+The gear in the workspace header opens settings in a separate window. Reopening settings focuses the
 existing window. Closing settings keeps the workspace open. Settings changes apply to both windows
-immediately. Command+, on macOS or Ctrl+, on Windows and Linux also opens settings. A persistent
-left navigation column lists General, Code, Panels, Keyboard shortcuts, and About. The selected
-section appears on the right with its own heading and scrollable controls. Section headings and
-controls share one left edge. Compact rows place descriptions left and controls right. Subtle
-separators divide rows. Module settings use the same compact list layout. On macOS, an opaque
-application header covers the titlebar area while preserving native window controls. The header
-supports dragging and double-clicking to maximize or restore the settings window. The **Language**
-list in **General** offers English, Russian, and Spanish. English is the default. Language changes
-apply immediately. General also switches between **Dark** and **Light** appearance. Dark remains the
-default. Appearance changes apply immediately to panels, dialogs, source code, and both diff views.
-The choice survives restarts. Switching themes preserves open files and scroll positions. Code
-adjusts the source font size and line numbers. The bottom toolbar lists Terminal, Git, and Pipelines
-in that order. Opening one panel hides the current panel. Select the active button again to collapse
-its panel. The toolbar stays vertical. It sits beside the open panel or at the bottom of the file
-toolbar when collapsed. Drag the horizontal divider to resize the open panel. The sidebar keeps
-Settings in its own section.
+immediately except for window zoom. Drag the zoom slider to preview the value. Release it to apply
+the new scale. Command+, on macOS or Ctrl+, on Windows and Linux also opens settings. A persistent
+left navigation column lists General, Code, Terminal, Language servers, Modules, Keyboard shortcuts,
+and About. The selected section appears on the right with its own heading and scrollable controls.
+Section headings and controls share one left edge. Compact rows place descriptions left and controls
+right. Subtle separators divide rows. Module settings use the same compact list layout. On macOS, an
+opaque application header covers the titlebar area while preserving native window controls. The
+header supports dragging and double-clicking to maximize or restore the settings window. The
+**Language** list in **General** offers English, Russian, and Spanish. English is the default.
+Language changes apply immediately. General also switches between **Dark** and **Light** appearance.
+Dark remains the default. Appearance changes apply immediately to panels, dialogs, source code, and
+both diff views. The choice survives restarts. Switching themes preserves open files and scroll
+positions. Code adjusts the source font size and line numbers. Code and Terminal each have a font
+family list. The bottom toolbar lists Terminal, Git, and Pipelines in that order. Opening one panel
+hides the current panel. Select the active button again to collapse its panel. The toolbar stays
+vertical. It sits beside the open panel or at the bottom of the file toolbar when collapsed. Drag
+the horizontal divider to resize the open panel.
 
 On macOS, choose **IWE Code** → **Settings** to open the settings window. **Spaces**, **Projects**,
 and **Deployment** appear beside the **IWE Code** application menu. **Deployment** offers separate
@@ -643,15 +655,15 @@ Preferences and projects are saved automatically in the system configuration dir
 replace the previous configuration atomically. A damaged configuration is preserved without
 automatic overwriting. Set `IWE_DATA_DIR` to use a separate configuration directory for development.
 
-Keyboard shortcuts use two groups in settings: **Code** and **Tabs**. Click a shortcut button, then
-press the new combination. Escape or **Cancel** keeps the previous shortcut. Use Ctrl, Command,
-Super, or Alt with a letter, digit, or F1–F12. Shift can supplement these modifiers. IWE Code
-rejects combinations assigned to another listed action or reserved application commands. A rejected
-combination keeps recording open and preserves the previous shortcut. Valid changes apply
-immediately and persist with workspace preferences. Shortcuts follow physical key positions across
-keyboard layouts. Text fields and the terminal retain their own keyboard controls. The
-settings-opening shortcut remains fixed. macOS also reserves its hide and quit shortcuts. The table
-lists the defaults.
+In **Keyboard shortcuts**, click a shortcut button to open the recording dialog. The dialog dims the
+settings window and shows instructions and errors. Escape or **Cancel** keeps the previous shortcut.
+Use Ctrl, Command, Super, or Alt with a letter, digit, or F1–F12. Shift can supplement these
+modifiers. IWE Code rejects combinations assigned to another listed action or reserved application
+commands. A rejected combination keeps recording open and preserves the previous shortcut. Valid
+changes apply immediately and persist with workspace preferences. Shortcuts follow physical key
+positions across keyboard layouts. Text fields and the terminal retain their own keyboard controls.
+The settings-opening shortcut remains fixed. macOS also reserves its hide and quit shortcuts. The
+table lists the defaults.
 
 | Group | macOS               | Windows and Linux | Action                          |
 | ----- | ------------------- | ----------------- | ------------------------------- |

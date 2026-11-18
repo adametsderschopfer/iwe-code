@@ -127,8 +127,28 @@ fn translated_dialogs_fit_and_block_background_actions() {
         let _ = app.update_project_add(Message::Open(Some(0)));
         let mut ui =
             iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+        let local = ui
+            .click(Id::new("add-project-directories"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        let remote = ui
+            .click(Id::new("add-project-remote"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        assert_eq!(local.y, remote.y);
+        assert_eq!(local.height, remote.height);
+        assert!((local.width - remote.width).abs() < 1.);
+        assert!(local.x + local.width < remote.x);
         ui.click(Id::new("nav-settings")).unwrap();
-        assert!(ui.into_messages().next().is_none());
+        assert!(matches!(
+            ui.into_messages().collect::<Vec<_>>().as_slice(),
+            [
+                AppMessage::ProjectAdd(Message::Directories),
+                AppMessage::ProjectAdd(Message::Remote)
+            ]
+        ));
         if let Some(output) = std::env::var_os("IWE_RENDER_DIR").map(PathBuf::from) {
             let mut ui = iced_test::Simulator::with_size(
                 iced::Settings::default(),

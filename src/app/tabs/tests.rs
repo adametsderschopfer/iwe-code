@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     domain::repository::GraphRow,
-    i18n::{I18n, Language},
+    i18n::{I18n, Key, Language},
 };
 use std::rc::Rc;
 
@@ -928,6 +928,7 @@ async fn footer_copies_the_complete_active_file_path_and_falls_back_to_project()
         ui.into_messages().collect::<Vec<_>>().as_slice(),
         [Message::CopyPath]
     ));
+    let mut previous = None;
     for expected in [path, PathBuf::from("project")] {
         let mut stream = task::into_stream(app.update(Message::CopyPath)).unwrap();
         match stream.next().await.unwrap() {
@@ -936,8 +937,27 @@ async fn footer_copies_the_complete_active_file_path_and_falls_back_to_project()
             }
             action => panic!("Expected a clipboard write, got {action:?}"),
         }
+        let Action::Output(Message::PathCopied(request, copied)) = stream.next().await.unwrap()
+        else {
+            panic!("Expected copy feedback after the write");
+        };
+        assert_eq!(copied, expected);
+        let _ = app.update(Message::PathCopied(request, copied));
+        if let Some(previous) = previous {
+            let _ = app.update(Message::ClearCopiedPath(previous));
+        }
+        assert!(app.footer_path_was_copied());
+        previous = Some(request);
         let _ = app.close_tab(id);
     }
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        app.i18n = Rc::new(I18n::new(language));
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+        assert!(ui.find(app.i18n.text(Key::PathCopied)).is_ok());
+    }
+    let _ = app.update(Message::ClearCopiedPath(previous.unwrap()));
+    assert!(!app.footer_path_was_copied());
 }
 
 #[test]

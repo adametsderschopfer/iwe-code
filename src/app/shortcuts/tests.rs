@@ -123,10 +123,11 @@ fn reassignment_changes_runtime_dispatch_and_releases_previous_combination() {
 }
 
 #[test]
-fn shortcut_buttons_and_conflicts_render_in_all_languages() {
+fn shortcut_recording_dialog_keeps_the_settings_layout_and_displays_errors() {
     for language in [Language::English, Language::Russian, Language::Spanish] {
         let mut app = App::new(Rc::new(I18n::new(language)));
-        app.navigation = Navigation::Settings;
+        let settings = window::Id::unique();
+        app.windows.settings = Some(settings);
         app.settings_tab = SettingsTab::Shortcuts;
         let label = app
             .workspace
@@ -134,8 +135,16 @@ fn shortcut_buttons_and_conflicts_render_in_all_languages() {
             .shortcuts
             .binding(Command::GoToLine)
             .label();
-        let mut ui =
-            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 900.), app.view());
+        let size = (1080., 900.);
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            size,
+            app.view_window(settings),
+        );
+        let nav = iced::widget::Id::new("settings-navigation");
+        let nav_bounds = ui.find(nav.clone()).unwrap().bounds();
+        let control = iced::widget::Id::new("shortcut-GoToLine");
+        let control_bounds = ui.find(control.clone()).unwrap().bounds();
         ui.click(label).unwrap();
         let messages = ui.into_messages().collect::<Vec<_>>();
         assert!(
@@ -148,8 +157,20 @@ fn shortcut_buttons_and_conflicts_render_in_all_languages() {
             let _ = app.update(message);
         }
         app.shortcuts.error = Some(Key::ShortcutConflict);
-        let mut ui =
-            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 900.), app.view());
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            size,
+            app.view_window(settings),
+        );
+        assert_eq!(ui.find(nav).unwrap().bounds(), nav_bounds);
+        assert_eq!(ui.find(control).unwrap().bounds(), control_bounds);
+        let dialog = ui
+            .find(iced::widget::Id::new("shortcut-recording-dialog"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        assert!((dialog.center_x() - size.0 / 2.).abs() < 1.);
+        assert!((dialog.center_y() - size.1 / 2.).abs() < 1.);
         for key in [
             Key::ShortcutRecording,
             Key::ShortcutInstructions,
@@ -163,6 +184,14 @@ fn shortcut_buttons_and_conflicts_render_in_all_languages() {
                     .is_some()
             );
         }
+        ui.click(iced::widget::Id::new("settings-tab-general"))
+            .unwrap();
+        ui.click(iced::widget::Id::new("shortcut-recording-cancel"))
+            .unwrap();
+        assert!(matches!(
+            ui.into_messages().collect::<Vec<_>>().as_slice(),
+            [Message::Shortcut(Event::Cancel)]
+        ));
     }
 }
 
