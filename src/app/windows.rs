@@ -50,6 +50,8 @@ pub(crate) enum Event {
     Close(window::Id),
     Closed(window::Id),
     #[cfg(target_os = "macos")]
+    ExitFadeFinished,
+    #[cfg(target_os = "macos")]
     ZoomTick,
     #[cfg(target_os = "macos")]
     ZoomUpdated,
@@ -99,6 +101,18 @@ pub(super) fn settings_settings() -> window::Settings {
         },
         ..window::Settings::default()
     }
+}
+
+#[cfg(target_os = "macos")]
+pub(super) fn fade_for_exit(id: window::Id) -> Task<Message> {
+    let (send, receive) = iced::futures::channel::oneshot::channel();
+    Task::batch([
+        window::run(id, move |window| window_effect::fade_for_exit(window, send)).discard(),
+        Task::perform(
+            async move { tokio::time::timeout(std::time::Duration::from_secs(1), receive).await },
+            |_| Message::Window(Event::ExitFadeFinished),
+        ),
+    ])
 }
 
 impl App {

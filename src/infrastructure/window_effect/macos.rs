@@ -1,9 +1,10 @@
-//! Configure native macOS window resizing.
+//! Configure native macOS window effects.
 
 use objc2::{MainThreadMarker, rc::Retained, runtime::AnyObject};
 use objc2_app_kit::{
-    NSApplication, NSView, NSViewLayerContentsPlacement, NSViewLayerContentsRedrawPolicy, NSWindow,
-    NSWindowStyleMask, NSWorkspace,
+    NSAnimatablePropertyContainer, NSAnimationContext, NSApplication, NSView,
+    NSViewLayerContentsPlacement, NSViewLayerContentsRedrawPolicy, NSWindow, NSWindowStyleMask,
+    NSWorkspace,
 };
 use objc2_foundation::{NSArray, NSObjectNSKeyValueCoding, NSRect, ns_string};
 use objc2_quartz_core::CALayer;
@@ -11,6 +12,32 @@ use raw_window_handle::RawWindowHandle;
 use std::time::{Duration, Instant};
 
 const ZOOM_DURATION: Duration = Duration::from_millis(240);
+pub(crate) fn fade_for_exit(
+    window: &dyn iced::window::Window,
+    finished: iced::futures::channel::oneshot::Sender<()>,
+) {
+    let Some((window, _)) = native_window(window) else {
+        return;
+    };
+    if !window.isVisible()
+        || NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceMotion()
+    {
+        return;
+    }
+
+    let finished = std::cell::Cell::new(Some(finished));
+    let completion = block2::RcBlock::new(move || {
+        if let Some(sender) = finished.take() {
+            let _ = sender.send(());
+        }
+    });
+    NSAnimationContext::beginGrouping();
+    let context = NSAnimationContext::currentContext();
+    context.setDuration(ZOOM_DURATION.as_secs_f64());
+    context.setCompletionHandler(Some(&completion));
+    window.animator().setAlphaValue(0.);
+    NSAnimationContext::endGrouping();
+}
 
 struct Transition {
     start: Instant,

@@ -75,7 +75,16 @@ fn application(
                 ]),
             )
         },
-        App::update,
+        |app: &mut App, message| {
+            let task = app.update(message);
+            #[cfg(target_os = "macos")]
+            if app.exit_ready {
+                // Closing an AppKit window during runtime teardown can stall WindowServer.
+                crate::infrastructure::external::shutdown();
+                std::process::exit(0);
+            }
+            task
+        },
         App::view_window,
     )
     .scale_factor(|app: &App, _| f32::from(app.workspace.preferences.window_zoom) / 100.)
@@ -253,6 +262,10 @@ pub(crate) struct App {
     save_pending: bool,
     save_blocked: bool,
     exit_pending: bool,
+    #[cfg(target_os = "macos")]
+    exit_ready: bool,
+    #[cfg(target_os = "macos")]
+    exit_fade_started: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -478,6 +491,10 @@ impl App {
             save_pending: false,
             save_blocked: false,
             exit_pending: false,
+            #[cfg(target_os = "macos")]
+            exit_ready: false,
+            #[cfg(target_os = "macos")]
+            exit_fade_started: false,
         };
         if matches!(app.updates, updates::State::Failed(_)) {
             app.notifications.error(Key::UpdateInstallFailed, None);
@@ -486,6 +503,20 @@ impl App {
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
+        #[cfg(target_os = "macos")]
+        if self.exit_fade_started {
+            return match message {
+                Message::Window(windows::Event::ExitFadeFinished) => {
+                    self.exit_ready = true;
+                    Task::none()
+                }
+                Message::Window(windows::Event::Closed(id)) if self.window_id == Some(id) => {
+                    self.exit_ready = true;
+                    Task::none()
+                }
+                _ => Task::none(),
+            };
+        }
         if let Message::InspectWindow(include_text, reply) = &message {
             let _ = reply.try_send(external::window_snapshot(self, *include_text));
             return Task::none();
@@ -1597,10 +1628,23 @@ impl App {
         if let Some(cancel) = self.auth_cancel.take() {
             cancel.cancel();
         }
-        crate::infrastructure::external::shutdown();
         // Child processes of modules and terminals die with the process when
         // their input pipes close; background tasks end with the runtime.
-        iced::exit()
+        #[cfg(target_os = "macos")]
+        {
+            if let Some(id) = self.window_id {
+                self.exit_fade_started = true;
+                windows::fade_for_exit(id)
+            } else {
+                self.exit_ready = true;
+                Task::none()
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            crate::infrastructure::external::shutdown();
+            iced::exit()
+        }
     }
 
     fn apply_language(&mut self) {

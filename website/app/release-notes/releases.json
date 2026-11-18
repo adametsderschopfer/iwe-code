@@ -2274,6 +2274,16 @@
     "source": null,
     "items": [
       {
+        "id": "macos-workspace-window-exit",
+        "category": "fixed",
+        "text": {
+          "en": "On macOS, the workspace fades out on exit and bypasses a system call that can freeze the desktop.",
+          "ru": "На macOS окно рабочей области плавно скрывается при выходе и обходит системный вызов, который может вызвать зависание.",
+          "es": "En macOS, la ventana se desvanece al salir y evita una llamada del sistema que puede bloquear el escritorio."
+        },
+        "sources": ["src/app/mod.rs", "src/infrastructure/window_effect/macos.rs"]
+      },
+      {
         "id": "publish-site-after-macos-release",
         "category": "maintenance",
         "text": {

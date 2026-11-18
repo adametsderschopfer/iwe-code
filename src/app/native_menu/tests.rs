@@ -133,21 +133,17 @@ async fn quit_flushes_edits_before_exit_and_keeps_conflicting_drafts_open() {
         let quit = app.update_native_menu(Event::Polled(Ok(vec![Action::Quit])));
         assert!(app.editor.pending.is_some());
         let mut tasks = VecDeque::from([quit]);
-        let mut exited = false;
         while let Some(next) = tasks.pop_front() {
             if let Some(mut actions) = task::into_stream(next) {
                 while let Some(action) = actions.next().await {
-                    match action {
-                        RuntimeAction::Output(message) => tasks.push_back(app.update(message)),
-                        RuntimeAction::Exit => {
-                            exited = true;
-                        }
-                        _ => {}
+                    if let RuntimeAction::Output(message) = action {
+                        tasks.push_back(app.update(message));
                     }
                 }
             }
         }
-        assert_eq!(exited, !conflict);
+        assert_eq!(app.exit_fade_started, !conflict);
+        assert_eq!(app.exit_ready, !conflict);
         assert_eq!(
             std::fs::read_to_string(&path).unwrap(),
             if conflict {
@@ -186,4 +182,33 @@ async fn quit_flushes_edits_before_exit_and_keeps_conflicting_drafts_open() {
             }
         }
     }
+}
+
+#[test]
+fn closing_empty_workspace_waits_for_save_and_fade() {
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    let id = window::Id::unique();
+    app.window_id = Some(id);
+    app.loaded = true;
+    app.workspace.preferences.restore_project_tabs = true;
+    assert!(app.workspace.directory().is_none());
+
+    let close = Message::Window(windows::Event::Close(id));
+    let _ = app.update(close.clone());
+    assert!(app.saving);
+    assert!(!app.exit_fade_started);
+
+    let _ = app.update(Message::Saved(Err(crate::domain::Failure::Storage)));
+    assert!(!app.exit_fade_started);
+    assert_eq!(app.window_id, Some(id));
+
+    let _ = app.update(close.clone());
+    let _ = app.update(Message::Saved(Ok(())));
+    assert!(app.exit_fade_started);
+    let _ = app.update(close);
+    assert!(app.exit_fade_started);
+    assert!(!app.exit_ready);
+
+    let _ = app.update(Message::Window(windows::Event::ExitFadeFinished));
+    assert!(app.exit_ready);
 }

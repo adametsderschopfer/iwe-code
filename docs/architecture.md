@@ -627,7 +627,11 @@ replace newer draft text.
 
 `app/tabs.rs` records project-relative local tab paths, comparison mode, and the active tab in
 workspace metadata. It reopens the remembered tabs when their project becomes active. Normal exit
-flushes pending editor writes, then waits for workspace metadata to save.
+flushes pending editor writes, then waits for workspace metadata to save. On macOS, Iwe fades out
+the workspace window with a 240-millisecond AppKit animation. Iwe skips the fade when Reduce Motion
+is enabled. Iwe releases the local endpoint and exits directly to bypass AppKit window teardown.
+Window teardown can block on a WindowServer permission check. Secondary window closure keeps the
+workspace running.
 
 ### Local project file operations
 
