@@ -185,8 +185,8 @@ overrides its location, as described in [workspace behavior](workspace.md). Clos
 before changing the workspace from the command line. Both processes save without locking, so a
 concurrent interface save would overwrite command-line changes.
 
-`IWE_LANG` and the system locale select the output language, including help text. Unsupported
-languages fall back to English.
+Command output and help text use English by default. Set `IWE_LANG` to choose Russian or Spanish.
+Unsupported languages fall back to English.
 
 ## Implementation
 

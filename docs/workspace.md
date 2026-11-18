@@ -609,15 +609,16 @@ section appears on the right with its own heading and scrollable controls. Secti
 controls share one left edge. Compact rows place descriptions left and controls right. Subtle
 separators divide rows. Module settings use the same compact list layout. On macOS, an opaque
 application header covers the titlebar area while preserving native window controls. The header
-supports dragging and double-clicking to maximize or restore the settings window. General selects
-English, Russian, Spanish, or the system language. Language changes apply immediately. General also
-switches between **Dark** and **Light** appearance. Dark remains the default. Appearance changes
-apply immediately to panels, dialogs, source code, and both diff views. The choice survives
-restarts. Switching themes preserves open files and scroll positions. Code adjusts the source font
-size and line numbers. The bottom toolbar lists Terminal, Git, and Pipelines in that order. Opening
-one panel hides the current panel. Select the active button again to collapse its panel. The toolbar
-stays vertical. It sits beside the open panel or at the bottom of the file toolbar when collapsed.
-Drag the horizontal divider to resize the open panel. The sidebar keeps Settings in its own section.
+supports dragging and double-clicking to maximize or restore the settings window. The **Language**
+list in **General** offers English, Russian, and Spanish. English is the default. Language changes
+apply immediately. General also switches between **Dark** and **Light** appearance. Dark remains the
+default. Appearance changes apply immediately to panels, dialogs, source code, and both diff views.
+The choice survives restarts. Switching themes preserves open files and scroll positions. Code
+adjusts the source font size and line numbers. The bottom toolbar lists Terminal, Git, and Pipelines
+in that order. Opening one panel hides the current panel. Select the active button again to collapse
+its panel. The toolbar stays vertical. It sits beside the open panel or at the bottom of the file
+toolbar when collapsed. Drag the horizontal divider to resize the open panel. The sidebar keeps
+Settings in its own section.
 
 On macOS, choose **IWE Code** → **Settings** to open the settings window. **Spaces**, **Projects**,
 and **Deployment** appear beside the **IWE Code** application menu. **Deployment** offers separate
@@ -641,7 +642,6 @@ first. While recording a shortcut, Escape cancels recording.
 Preferences and projects are saved automatically in the system configuration directory. Writes
 replace the previous configuration atomically. A damaged configuration is preserved without
 automatic overwriting. Set `IWE_DATA_DIR` to use a separate configuration directory for development.
-`IWE_LANG` overrides system language when the saved preference is **System**.
 
 Keyboard shortcuts use two groups in settings: **Code** and **Tabs**. Click a shortcut button, then
 press the new combination. Escape or **Cancel** keeps the previous shortcut. Use Ctrl, Command,

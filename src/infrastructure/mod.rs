@@ -12,7 +12,6 @@ pub(crate) mod graphics;
 pub(crate) mod http;
 pub(crate) mod ipc;
 pub(crate) mod language_server;
-pub(crate) mod locale;
 pub(crate) mod mcp;
 pub(crate) mod modules;
 #[cfg(target_os = "macos")]

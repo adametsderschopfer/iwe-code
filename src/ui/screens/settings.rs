@@ -2,13 +2,25 @@ use super::workspace::divider;
 use crate::{
     app::{App, Message, Panel, SettingsTab},
     domain::{shortcuts::Command, workspace::Appearance},
-    i18n::Key,
+    i18n::{Key, Language},
     ui::theme,
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{button, column, container, row, scrollable, slider, text, toggler},
+    widget::{button, column, container, pick_list, row, scrollable, slider, text, toggler},
 };
+
+#[derive(Clone, PartialEq, Eq)]
+struct LanguageOption {
+    language: Language,
+    label: String,
+}
+
+impl std::fmt::Display for LanguageOption {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.label)
+    }
+}
 
 pub(crate) fn view(app: &App) -> Element<'_, Message> {
     view_for(app, None)
@@ -87,27 +99,36 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
     }
     let section: Element<'_, Message> = match selected {
         SettingsTab::General => {
-            let language = preferences.language.as_deref().unwrap_or("auto");
-            let mut languages = row![].spacing(6);
-            for (code, label) in [
-                ("auto", t(Key::SystemLanguage)),
-                ("en", "English".to_owned()),
-                ("ru", "Русский".to_owned()),
-                ("es", "Español".to_owned()),
-            ] {
-                languages = languages.push(
-                    button(text(label).size(13))
-                        .padding([8, 12])
-                        .on_press(Message::SetLanguage(code.to_owned()))
-                        .style(theme::action(language == code)),
-                );
-            }
+            let languages = [
+                (Language::English, Key::LanguageEnglish),
+                (Language::Russian, Key::LanguageRussian),
+                (Language::Spanish, Key::LanguageSpanish),
+            ]
+            .map(|(language, key)| LanguageOption {
+                language,
+                label: t(key),
+            });
+            let selected = languages
+                .iter()
+                .find(|option| option.language == app.i18n.language())
+                .cloned();
             column![
                 group_heading(t(Key::SettingsAppearanceGroup)),
                 setting(
                     t(Key::Language),
                     t(Key::LanguageDescription),
-                    languages.wrap().into()
+                    container(
+                        pick_list(languages, selected, |option| Message::SetLanguage(
+                            option.language
+                        ))
+                        .text_size(13)
+                        .padding([8, 12])
+                        .width(180)
+                        .style(theme::select)
+                        .menu_style(theme::select_menu)
+                    )
+                    .id("settings-language-select")
+                    .into()
                 ),
                 setting(
                     t(Key::WindowZoom),

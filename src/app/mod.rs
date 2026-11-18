@@ -363,7 +363,7 @@ pub(crate) enum Message {
     Auth(auth::Message),
     OpenUrl(String),
     Opened(Result<(), Failure>),
-    SetLanguage(String),
+    SetLanguage(Language),
     SetAppearance(Appearance),
     Shortcut(shortcuts::Event),
     SetCodeSize(u16),
@@ -1422,7 +1422,7 @@ impl App {
             }
             Message::Opened(Err(_)) => self.notifications.error(Key::OpenFailed, None),
             Message::SetLanguage(language) => {
-                self.workspace.preferences.language = (language != "auto").then_some(language);
+                self.workspace.preferences.language = Some(language.code().to_owned());
                 self.apply_language();
                 return self.save();
             }
@@ -1604,13 +1604,7 @@ impl App {
     }
 
     fn apply_language(&mut self) {
-        let language = self
-            .workspace
-            .preferences
-            .language
-            .as_deref()
-            .map(|language| Language::select(Some(language), None))
-            .unwrap_or_else(crate::infrastructure::locale::detect);
+        let language = Language::select(self.workspace.preferences.language.as_deref());
         self.i18n = Rc::new(I18n::new(language));
     }
 

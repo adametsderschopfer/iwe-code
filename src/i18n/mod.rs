@@ -22,11 +22,8 @@ impl Language {
         }
     }
 
-    pub(crate) fn select(explicit: Option<&str>, system: Option<&str>) -> Self {
-        let locale = explicit
-            .filter(|value| !value.trim().is_empty())
-            .or(system)
-            .unwrap_or("en");
+    pub(crate) fn select(locale: Option<&str>) -> Self {
+        let locale = locale.unwrap_or("en");
         let primary = locale.trim().split(['-', '_', '.', '@']).next();
 
         match primary.map(str::to_ascii_lowercase).as_deref() {
@@ -610,7 +607,9 @@ message_keys! {
     General => "general",
     Language => "language",
     LanguageDescription => "language-description",
-    SystemLanguage => "system-language",
+    LanguageEnglish => "language-english",
+    LanguageRussian => "language-russian",
+    LanguageSpanish => "language-spanish",
     Appearance => "appearance",
     AppearanceDescription => "appearance-description",
     Dark => "dark",

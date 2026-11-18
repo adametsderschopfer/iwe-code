@@ -101,16 +101,8 @@ cargo run --locked -- /path/to/file.md
 cargo run --locked -- "iwe://open?path=/path/to/file.md"
 ```
 
-The application uses the system language. Set `IWE_LANG` to override it:
-
-```sh
-IWE_LANG=en make run
-IWE_LANG=ru make run
-IWE_LANG=es make run
-```
-
-In PowerShell, set `$env:IWE_LANG = "en"` before running `cargo run --locked`. Unsupported languages
-fall back to English.
+IWE Code starts in English by default. Choose English, Russian, or Spanish from the **Language**
+list in **Settings → General**.
 
 ## Build and verify
 

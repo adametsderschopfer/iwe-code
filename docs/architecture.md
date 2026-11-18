@@ -80,7 +80,6 @@ File writes reuse the editor's conflict-checked save with a revision token from 
 | `ui/theme/`                                           | Define interface colors, syntax colors, and the native material fallback                 |
 | `ui/tooltip.rs`                                       | Apply shared spacing and styling to hover hints                                          |
 | `i18n/`                                               | Format embedded Fluent translations and recover from missing messages                    |
-| `infrastructure/locale.rs`                            | Read `IWE_LANG` and the system locale                                                    |
 | `infrastructure/workspace.rs`                         | Save workspace metadata and read bounded local previews                                  |
 | `infrastructure/project_index.rs`                     | Cache directory metadata and prioritize background folder reads                          |
 | `infrastructure/file_operations/`                     | Validate and execute explicit local project file operations                              |
@@ -589,9 +588,10 @@ and the revisit criteria are recorded in [ADR 0004](adr/0004-accessibility.md).
 
 The executable embeds shared English, Russian, and Spanish catalogs from root `locales/`. Each
 bundled module owns its translations under `modules/<name>/locales/`. The shared localizer combines
-the resources and rejects duplicate message identifiers. `IWE_LANG` overrides the system locale.
-Unsupported languages select English. Missing selected messages fall back to English, then to
-localized fallback text. The interface never displays translation keys or technical diagnostics.
+the resources and rejects duplicate message identifiers. The interface uses the saved language and
+defaults to English. Command-line output uses `IWE_LANG` and defaults to English. Missing messages
+fall back to English, then to localized fallback text. The interface never displays translation keys
+or technical diagnostics.
 
 Platform-only typed keys compile only for their target platform and catalog tests. The key macro
 applies platform conditions to variants, lookup arms, and the test registry. Tests retain every

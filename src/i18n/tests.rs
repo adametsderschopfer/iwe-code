@@ -4,20 +4,18 @@ use std::collections::BTreeSet;
 
 const LANGUAGES: [Language; 3] = [Language::English, Language::Russian, Language::Spanish];
 #[test]
-fn locale_selection_handles_overrides_regions_and_fallbacks() {
-    for (explicit, system, expected) in [
-        (Some("es-MX"), Some("ru-RU"), Language::Spanish),
-        (Some(" RU_ru.UTF-8 "), None, Language::Russian),
-        (Some("EN-us"), Some("es"), Language::English),
-        (None, Some("ru-RU"), Language::Russian),
-        (None, Some("es_ES.UTF-8"), Language::Spanish),
-        (Some("  "), Some("ru"), Language::Russian),
-        (Some("de-DE"), Some("ru"), Language::English),
-        (None, Some("C"), Language::English),
-        (None, Some("russian"), Language::English),
-        (None, None, Language::English),
+fn locale_selection_accepts_explicit_languages_and_defaults_to_english() {
+    for (locale, expected) in [
+        (Some("es-MX"), Language::Spanish),
+        (Some(" RU_ru.UTF-8 "), Language::Russian),
+        (Some("EN-us"), Language::English),
+        (Some("auto"), Language::English),
+        (Some("  "), Language::English),
+        (Some("de-DE"), Language::English),
+        (Some("C"), Language::English),
+        (None, Language::English),
     ] {
-        assert_eq!(Language::select(explicit, system), expected);
+        assert_eq!(Language::select(locale), expected);
     }
 }
 

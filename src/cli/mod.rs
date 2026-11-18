@@ -12,7 +12,7 @@ mod tests;
 
 use crate::domain::external::Link;
 use crate::domain::workspace::{Project, Workspace};
-use crate::i18n::{FluentArgs, I18n, Key};
+use crate::i18n::{FluentArgs, I18n, Key, Language};
 use crate::infrastructure;
 use std::{
     ffi::OsStr,
@@ -44,7 +44,8 @@ fn belongs_to_interface(first: &OsStr) -> bool {
 }
 
 fn execute() -> ExitCode {
-    let i18n = I18n::new(infrastructure::locale::detect());
+    let locale = std::env::var("IWE_LANG").ok();
+    let i18n = I18n::new(Language::select(locale.as_deref()));
     match args::parse(&i18n) {
         Ok(invocation) => dispatch(&i18n, invocation),
         Err(error) => args::report(&i18n, &error),

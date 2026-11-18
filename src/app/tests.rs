@@ -2523,7 +2523,8 @@ fn corrupted_storage_is_not_silently_overwritten() {
 #[test]
 fn settings_change_locale_and_queue_serialized_saves() {
     let mut app = App::new(Rc::new(I18n::new(Language::English)));
-    let _ = app.update(Message::SetLanguage("es".to_owned()));
+    let _ = app.update(Message::SetLanguage(Language::Spanish));
+    assert_eq!(app.workspace.preferences.language.as_deref(), Some("es"));
     assert_eq!(app.i18n.text(Key::Settings), "Ajustes");
     let _ = app.update(Message::SetCodeSize(19));
     assert!(app.saving && app.save_pending);
