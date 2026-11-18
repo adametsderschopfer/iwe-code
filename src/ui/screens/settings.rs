@@ -175,6 +175,14 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
                     .on_toggle(Message::SetLineNumbers)
                     .into()
             ),
+            setting(
+                t(Key::RestoreProjectTabs),
+                t(Key::RestoreProjectTabsDescription),
+                toggler(preferences.restore_project_tabs)
+                    .style(theme::toggle)
+                    .on_toggle(Message::SetRestoreProjectTabs)
+                    .into()
+            ),
         ]
         .spacing(0)
         .into(),

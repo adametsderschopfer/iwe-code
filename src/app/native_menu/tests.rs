@@ -110,6 +110,7 @@ async fn quit_flushes_edits_before_exit_and_keeps_conflicting_drafts_open() {
         std::fs::write(&path, "original").unwrap();
         let mut app = App::new(Rc::new(I18n::new(Language::English)));
         app.loaded = true;
+        app.save_blocked = true;
         app.workspace
             .create_space("Test".into(), vec![directory.path().into()]);
         app.window_id = Some(iced::window::Id::unique());

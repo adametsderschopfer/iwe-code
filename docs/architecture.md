@@ -625,6 +625,10 @@ checking the saved baseline. Server saves use typed deployment operations and co
 The module does not import application state. Save completions carry operation tokens and never
 replace newer draft text.
 
+`app/tabs.rs` records project-relative local tab paths, comparison mode, and the active tab in
+workspace metadata. It reopens the remembered tabs when their project becomes active. Normal exit
+flushes pending editor writes, then waits for workspace metadata to save.
+
 ### Local project file operations
 
 `app/files/operations.rs` owns file commands, confirmation forms, and the in-memory file clipboard.

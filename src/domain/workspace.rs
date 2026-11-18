@@ -68,6 +68,7 @@ pub(crate) struct Preferences {
     pub show_git: bool,
     pub show_pipelines: bool,
     pub line_numbers: bool,
+    pub restore_project_tabs: bool,
     pub show_spaces_sidebar: bool,
     pub collapse_unchanged: bool,
     pub diff_view: DiffView,
@@ -129,6 +130,7 @@ impl Default for Preferences {
             show_git: false,
             show_pipelines: false,
             line_numbers: true,
+            restore_project_tabs: true,
             show_spaces_sidebar: true,
             collapse_unchanged: false,
             diff_view: DiffView::default(),
@@ -141,6 +143,18 @@ impl Default for Preferences {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct ProjectTab {
+    pub path: PathBuf,
+    pub compare: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct ProjectTabs {
+    pub files: Vec<ProjectTab>,
+    pub active: Option<usize>,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(from = "StoredWorkspace")]
 pub(crate) struct Workspace {
@@ -148,6 +162,8 @@ pub(crate) struct Workspace {
     pub selected_space: Option<usize>,
     pub selected_project: Option<usize>,
     pub preferences: Preferences,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub project_tabs: BTreeMap<PathBuf, ProjectTabs>,
     pub providers: BTreeMap<String, Provider>,
     pub deployment: super::deployment::Connections,
 }
@@ -188,6 +204,7 @@ impl Workspace {
     }
 
     pub(crate) fn normalize(&mut self) {
+        self.prune_project_tabs();
         self.preferences.shortcuts.normalize();
         let mut panels = Vec::new();
         for panel in self
@@ -235,6 +252,20 @@ impl Workspace {
             self.selected_space = first;
             self.selected_project = first.map(|_| 0);
         }
+    }
+
+    pub(crate) fn prune_project_tabs(&mut self) {
+        if !self.preferences.restore_project_tabs {
+            self.project_tabs.clear();
+            return;
+        }
+        let directories: BTreeSet<_> = self
+            .spaces
+            .iter()
+            .flat_map(|space| space.projects.iter().map(|project| &project.directory))
+            .collect();
+        self.project_tabs
+            .retain(|root, _| directories.contains(root));
     }
 
     pub(crate) fn create_space(
@@ -468,6 +499,7 @@ struct StoredWorkspace {
     selected_project: Option<usize>,
     selected_directory: usize,
     preferences: Preferences,
+    project_tabs: BTreeMap<PathBuf, ProjectTabs>,
     providers: BTreeMap<String, Provider>,
     deployment: super::deployment::Connections,
 }
@@ -507,6 +539,7 @@ impl From<StoredWorkspace> for Workspace {
             selected_space,
             selected_project,
             preferences: stored.preferences,
+            project_tabs: stored.project_tabs,
             providers: stored.providers,
             deployment: stored.deployment,
         }

@@ -14,6 +14,49 @@ fn app() -> App {
 }
 
 #[test]
+fn closing_the_workspace_remembers_open_files_for_each_project() {
+    let mut app = app();
+    let first = open(&mut app, "first.rs");
+    let closed = open(&mut app, "closed.rs");
+    let _ = app.close_tab(closed);
+    open_change(&mut app, "first.rs");
+    let _ = app.select_tab(first);
+    app.workspace.add_project(0, PathBuf::from("other-project"));
+    let _ = app.load_directory();
+    let _ = app.open_file(PathBuf::from("other-project/other.rs"));
+
+    let window = iced::window::Id::unique();
+    app.window_id = Some(window);
+    let _ = app.update(Message::Window(super::super::windows::Event::Close(window)));
+    assert!(app.exit_pending);
+    assert!(app.saving);
+
+    let json = serde_json::to_string(&app.workspace).unwrap();
+    let mut restored = App::new(Rc::new(I18n::new(Language::English)));
+    restored.workspace = serde_json::from_str(&json).unwrap();
+    restored.workspace.normalize();
+    let _ = restored.load_directory();
+    assert_eq!(restored.preview().title, "other.rs");
+
+    restored.workspace.select_project(0, 0);
+    let _ = restored.load_directory();
+    assert_eq!(restored.tabs.files.len(), 2);
+    assert_eq!(restored.preview().title, "first.rs");
+    assert!(!restored.preview().working_comparison());
+    assert!(restored.tabs.files[1].working_comparison());
+    assert!(restored.tabs.closed.is_empty());
+
+    let _ = restored.update(Message::SetRestoreProjectTabs(false));
+    let json = serde_json::to_string(&restored.workspace).unwrap();
+    let mut disabled = App::new(Rc::new(I18n::new(Language::English)));
+    disabled.workspace = serde_json::from_str(&json).unwrap();
+    assert!(!disabled.workspace.preferences.restore_project_tabs);
+    assert!(disabled.workspace.project_tabs.is_empty());
+    let _ = disabled.load_directory();
+    assert!(!disabled.preview().is_open());
+}
+
+#[test]
 fn collapse_mode_applies_to_all_tabs_new_files_and_restored_preferences() {
     use crate::domain::changes::Source;
     let document = || {
@@ -1456,8 +1499,9 @@ fn the_stash_keeps_only_the_four_most_recent_projects() {
 
     app.workspace.select_project(0, 0);
     let _ = app.load_directory();
-    assert!(app.preview().title.is_empty());
-    assert!(app.preview().path.is_none());
+    assert_eq!(app.preview().title, "first.rs");
+    assert!(app.preview().document.is_none());
+    assert!(app.preview().loading);
     assert_eq!(app.tabs.stash.len(), 4);
 }
 

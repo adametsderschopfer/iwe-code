@@ -9,7 +9,7 @@ use crate::{
         Failure,
         changes::{TextCursor, TextPage},
         repository::{ChangedFile, Commit},
-        workspace::DiffView,
+        workspace::{DiffView, ProjectTab, ProjectTabs},
     },
     infrastructure::repository,
     ui::code::{Document, comparison::Side, folding::Folding, syntax_for},
@@ -17,7 +17,7 @@ use crate::{
 use iced::{Task, widget::operation};
 use std::{
     collections::VecDeque,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     sync::Arc,
 };
 
@@ -373,6 +373,48 @@ impl State {
     fn restore_project(&mut self, root: &Path) -> Option<Stashed> {
         let index = self.stash.iter().position(|(path, _)| path == root)?;
         self.stash.remove(index).map(|(_, stashed)| stashed)
+    }
+}
+
+fn remember_project(
+    sessions: &mut std::collections::BTreeMap<PathBuf, ProjectTabs>,
+    root: &Path,
+    previews: &[Preview],
+    selected: usize,
+) {
+    let mut files = Vec::new();
+    let mut active = None;
+    for (index, preview) in previews.iter().enumerate() {
+        let Some(Source::Working {
+            root: source_root,
+            path,
+            compare,
+        }) = &preview.source
+        else {
+            continue;
+        };
+        if source_root != root {
+            continue;
+        }
+        let Ok(path) = path.strip_prefix(root) else {
+            continue;
+        };
+        // Workspace JSON can only store Unicode paths.
+        if path.to_str().is_none() {
+            continue;
+        }
+        if index == selected {
+            active = Some(files.len());
+        }
+        files.push(ProjectTab {
+            path: path.to_path_buf(),
+            compare: *compare,
+        });
+    }
+    if files.is_empty() {
+        sessions.remove(root);
+    } else {
+        sessions.insert(root.to_path_buf(), ProjectTabs { files, active });
     }
 }
 
@@ -1322,10 +1364,56 @@ impl App {
         Task::none()
     }
 
+    pub(super) fn remember_project_tabs(&mut self) {
+        if self.workspace.preferences.restore_project_tabs {
+            let sessions = &mut self.workspace.project_tabs;
+            for (root, stashed) in &self.tabs.stash {
+                remember_project(sessions, root, &stashed.files, stashed.active);
+            }
+            if let Some(root) = &self.tabs.root {
+                remember_project(sessions, root, &self.tabs.files, self.tabs.active);
+            }
+        }
+        self.workspace.prune_project_tabs();
+    }
+
+    fn restore_project_tabs(&mut self) -> Task<Message> {
+        if !self.workspace.preferences.restore_project_tabs {
+            return Task::none();
+        }
+        let Some(root) = self.tabs.root.clone() else {
+            return Task::none();
+        };
+        let Some(session) = self.workspace.project_tabs.get(&root).cloned() else {
+            return Task::none();
+        };
+        let mut reads = Vec::new();
+        let mut active = None;
+        for (index, tab) in session.files.into_iter().take(OPEN_FILE_LIMIT).enumerate() {
+            if tab.path.as_os_str().is_empty()
+                || !tab
+                    .path
+                    .components()
+                    .all(|part| matches!(part, Component::Normal(_)))
+            {
+                continue;
+            }
+            reads.push(self.open_working_file(root.join(tab.path), tab.compare));
+            if session.active == Some(index) {
+                active = Some(self.preview().id);
+            }
+        }
+        if let Some(id) = active {
+            reads.push(self.select_tab(id));
+        }
+        Task::batch(reads)
+    }
+
     pub(super) fn sync_preview_project(&mut self) -> Task<Message> {
         let root = self.workspace.directory().cloned();
         let mut restored = false;
         if self.tabs.root != root {
+            self.remember_project_tabs();
             if let Some(previous) = self.tabs.root.take()
                 && self.tabs.keeps_project_state()
             {
@@ -1345,6 +1433,8 @@ impl App {
                 self.tabs.closed = stashed.closed;
                 self.tabs.active = stashed.active;
                 restored = true;
+            } else {
+                return self.restore_project_tabs();
             }
         }
         if restored {

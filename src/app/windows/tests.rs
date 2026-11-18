@@ -174,6 +174,17 @@ fn settings_window_fits_all_languages_without_the_project_sidebar() {
                     label.y < heading.y + heading.height + 80.,
                     "{tab:?}: {label:?}, {heading:?}"
                 );
+                if tab == super::super::SettingsTab::Code {
+                    for key in [Key::RestoreProjectTabs, Key::RestoreProjectTabsDescription] {
+                        let bounds = ui
+                            .find(app.i18n.text(key))
+                            .unwrap()
+                            .visible_bounds()
+                            .unwrap();
+                        assert!(bounds.x >= heading.x);
+                        assert!(bounds.x + bounds.width <= size.width);
+                    }
+                }
                 if let Some(output) =
                     std::env::var_os("IWE_SETTINGS_RENDER_DIR").map(std::path::PathBuf::from)
                 {

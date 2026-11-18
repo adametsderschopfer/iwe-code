@@ -376,6 +376,7 @@ pub(crate) enum Message {
     CheckLanguageServers,
     LanguageServersChecked(BTreeMap<String, String>, BTreeMap<String, bool>),
     SetLineNumbers(bool),
+    SetRestoreProjectTabs(bool),
     CopyPath,
     OpenTabMenu(iced::Point),
     CloseTabMenu,
@@ -832,7 +833,9 @@ impl App {
             }
             #[cfg(target_os = "windows")]
             Message::CloseWindow => {
-                return self.window_id.map_or_else(Task::none, window::close);
+                return self.window_id.map_or_else(Task::none, |id| {
+                    self.update_window(windows::Event::Close(id))
+                });
             }
             #[cfg(target_os = "windows")]
             Message::ResizeWindow(direction) if !self.window_maximized => {
@@ -887,7 +890,11 @@ impl App {
                 }
                 if self.exit_pending {
                     self.exit_pending = false;
-                    return self.finalize_exit();
+                    return if result.is_ok() || self.window_id.is_none() {
+                        self.finalize_exit()
+                    } else {
+                        Task::none()
+                    };
                 }
             }
             Message::Navigate(Navigation::Settings) => return self.open_settings(),
@@ -1500,6 +1507,10 @@ impl App {
                 self.workspace.preferences.line_numbers = value;
                 return self.save();
             }
+            Message::SetRestoreProjectTabs(value) => {
+                self.workspace.preferences.restore_project_tabs = value;
+                return self.save();
+            }
             Message::CopyPath => {
                 if let Some(path) = self.preview().path.as_ref().or(self.workspace.directory()) {
                     return iced::clipboard::write(path.to_string_lossy().into_owned());
@@ -1555,6 +1566,7 @@ impl App {
         if self.save_blocked {
             return Task::none();
         }
+        self.remember_project_tabs();
         if self.saving {
             self.save_pending = true;
             return Task::none();
@@ -1563,12 +1575,15 @@ impl App {
         Task::perform(workspace::save(self.workspace.clone()), Message::Saved)
     }
 
-    /// Leave the application, letting an in-flight workspace save finish.
-    ///
-    /// Saves are atomic, but waiting for the current one keeps the last
-    /// changes from being silently dropped. The save completion message
-    /// re-enters this path through `exit_pending`.
+    /// Save the current tab session before leaving the application.
     fn exit(&mut self) -> Task<Message> {
+        if self.exit_pending {
+            return Task::none();
+        }
+        if self.loaded && self.workspace.preferences.restore_project_tabs && !self.save_blocked {
+            self.exit_pending = true;
+            return self.save();
+        }
         if self.saving && !self.save_blocked {
             self.exit_pending = true;
             return Task::none();
@@ -1670,8 +1685,8 @@ impl App {
         self.modules.pipelines.pipeline_refreshing = false;
         self.modules.pipelines.pipeline_reload_after_repository = true;
         self.sync_panels();
-        let previews = self.sync_preview_project();
         let files = self.load_file_tree();
+        let previews = self.sync_preview_project();
         if self.workspace.directory().is_some() {
             Task::batch([
                 self.load_repository(),

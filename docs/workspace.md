@@ -329,7 +329,12 @@ first part. Working files refresh after restoration. Settings lists both shortcu
 tabs and closure history for the current project. Switching projects keeps each project's open tabs,
 scroll positions, and closure history in memory for the current session. The four most recent
 projects retain this state. Documents beyond a 16 MiB budget per background project reload from disk
-on return. Closing the application clears this memory.
+on return.
+
+IWE Code remembers open local file tabs across restarts, including their order and selected tab. It
+restores each project's tabs when you open the project. Change this behavior in **Settings** →
+**Code** → **Restore open files**. The setting starts enabled. Turning it off clears remembered
+tabs. Restarting discards scroll positions, closed-tab history, Git revision tabs, and server tabs.
 
 The bottom bar shows the active file's full path. Clicking the path copies it to the clipboard. When
 no file is open, the bar shows the project path. Revision identifiers remain in commit tabs.

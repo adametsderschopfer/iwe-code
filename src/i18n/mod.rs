@@ -645,6 +645,8 @@ message_keys! {
     FontSizeDescription => "font-size-description",
     LineNumbers => "line-numbers",
     LineNumbersDescription => "line-numbers-description",
+    RestoreProjectTabs => "restore-project-tabs",
+    RestoreProjectTabsDescription => "restore-project-tabs-description",
     Panels => "panels",
     GitDescription => "git-description",
     PipelinesDescription => "pipelines-description",
