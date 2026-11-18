@@ -19,6 +19,10 @@ unchanged. Removing a project only detaches its folder. The application never de
 The header shows **Space • Project** whenever a project is selected. Without a selected project, it
 shows only the space name. Settings keeps its own heading.
 
+Use the sidebar button in the header to hide or show **Spaces**. The workspace uses the freed width
+when you hide the sidebar. IWE Code keeps the current project and open files. It remembers the
+sidebar setting across restarts.
+
 The header shows up to two repository badges with their current branches. Projects with more
 repositories show an arrow listing the remaining repository names and current branches. Click a
 repository badge or list entry to open Git history and reveal that repository's current branch. This

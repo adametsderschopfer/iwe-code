@@ -92,27 +92,38 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
     workspace = workspace.push(divider()).push(main);
     let mut center = row![workspace.width(Length::Fill)];
     if !app.external_zone_modules(Placement::Left).is_empty() {
+        let top = if cfg!(target_os = "macos") && !app.workspace.preferences.show_spaces_sidebar {
+            theme::SIDEBAR_TOP_INSET
+        } else {
+            0.
+        };
         center = row![
             container(external_module_panel::zone_panel(app, Placement::Left))
                 .width(EXTERNAL_ZONE_WIDTH)
                 .height(Length::Fill)
+                .padding(iced::Padding::default().top(top))
                 .clip(true),
             vertical_divider(),
             center,
         ]
         .width(Length::Fill);
     }
-    let base = container(row![
-        column![sidebar_header(), sidebar(app)]
-            .width(theme::SIDEBAR_WIDTH)
-            .height(Length::Fill),
-        vertical_divider(),
-        center.height(Length::Fill),
-    ])
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .style(theme::surface)
-    .into();
+    let spaces: Element<'_, Message> = if app.workspace.preferences.show_spaces_sidebar {
+        row![
+            column![sidebar_header(), sidebar(app)]
+                .width(theme::SIDEBAR_WIDTH)
+                .height(Length::Fill),
+            vertical_divider(),
+        ]
+        .into()
+    } else {
+        space().width(0).into()
+    };
+    let base = container(row![spaces, center.height(Length::Fill)])
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(theme::surface)
+        .into();
     let base = crate::modules::deployment::overlay(
         &app.modules.deployment,
         &app.i18n,
@@ -183,6 +194,7 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
 
 fn header(app: &App) -> Element<'_, Message> {
     let is_settings = app.navigation == Navigation::Settings;
+    let show_spaces = app.workspace.preferences.show_spaces_sidebar;
     let selected_space = app
         .workspace
         .selected_space
@@ -198,6 +210,18 @@ fn header(app: &App) -> Element<'_, Message> {
         app.i18n.text(Key::Workspace)
     };
     let mut heading = row![
+        container(icon_button(
+            app,
+            Icon::Sidebar,
+            if show_spaces {
+                Key::HideSpacesSidebar
+            } else {
+                Key::ShowSpacesSidebar
+            },
+            Message::ToggleSpacesSidebar,
+            show_spaces,
+        ))
+        .id("toggle-spaces-sidebar"),
         container(
             text(title)
                 .size(18)
@@ -244,11 +268,22 @@ fn header(app: &App) -> Element<'_, Message> {
         heading = heading.push(space().width(3. * theme::WINDOW_CONTROL_WIDTH));
     }
 
+    let left_inset = if cfg!(target_os = "macos")
+        && !show_spaces
+        && app.external_zone_modules(Placement::Left).is_empty()
+    {
+        theme::MACOS_WINDOW_CONTROLS_WIDTH
+    } else {
+        24.
+    };
     mouse_area(
         container(heading)
             .height(56)
             .width(Length::Fill)
-            .padding([8, 24])
+            .padding(iced::Padding {
+                left: left_inset,
+                ..[8, 24].into()
+            })
             .style(theme::surface),
     )
     .on_press(Message::DragWindow)

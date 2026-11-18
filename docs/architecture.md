@@ -491,6 +491,10 @@ restore the window. On macOS, the app updates the window frame over 240 millisec
 between updates. The app changes the frame immediately when Reduce Motion is enabled. Linux keeps
 its native title bar.
 
+The workspace header toggles the spaces sidebar. The saved preference changes its width without
+replacing the workspace panes. When the sidebar is hidden, the layout keeps macOS window controls
+clear of workspace buttons.
+
 Windows disables the native title bar and places minimize, maximize, restore, and close controls in
 the application header. `ui/window_chrome.rs` keeps these controls above dialogs and provides edge
 and corner resize handles. Window tasks use safe Iced APIs. Resize events update the maximize icon.

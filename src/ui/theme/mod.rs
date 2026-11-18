@@ -151,6 +151,7 @@ pub(crate) const GIT_PANE_SPACING: f32 = 1.0;
 pub(crate) const GIT_PANE_MIN_SIZE: f32 = 120.0;
 pub(crate) const BRANCH_HEADER_INSET: f32 = 8.0;
 pub(crate) const SIDEBAR_TOP_INSET: f32 = 32.0;
+pub(crate) const MACOS_WINDOW_CONTROLS_WIDTH: f32 = 96.0;
 pub(crate) const FILE_TAB_MIN_WIDTH: f32 = 200.0;
 pub(crate) const FILE_TAB_TEXT_SIZE: f32 = 12.0;
 pub(crate) const FILE_TAB_NAME_LIMIT: usize = 35;

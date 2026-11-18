@@ -321,6 +321,7 @@ pub(crate) enum Message {
     ToggleFolder(PathBuf),
     SelectFilePanel(FilePanel),
     ToggleFilePanel(FilePanel),
+    ToggleSpacesSidebar,
     ResizeFilePanel(f32, bool),
     MoveFilePanel(usize, usize),
     ToggleWorktreeFolder {
@@ -601,6 +602,7 @@ impl App {
                     | Message::RemoveProjectFromSpace
                     | Message::SelectFilePanel(_)
                     | Message::ToggleFilePanel(_)
+                    | Message::ToggleSpacesSidebar
                     | Message::ResizeFilePanel(_, _)
                     | Message::MoveFilePanel(_, _)
                     | Message::Refresh
@@ -1012,6 +1014,13 @@ impl App {
             Message::ToggleFilePanel(panel) => {
                 self.file_panel_visible = !self.file_panel_visible || self.file_panel != panel;
                 self.file_panel = panel;
+            }
+            Message::ToggleSpacesSidebar if self.loaded => {
+                self.space_menu = None;
+                self.project_menu = None;
+                self.workspace.preferences.show_spaces_sidebar =
+                    !self.workspace.preferences.show_spaces_sidebar;
+                return self.save();
             }
             Message::ResizeFilePanel(width, finished)
                 if self.file_panel_visible && width.is_finite() =>

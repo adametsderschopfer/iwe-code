@@ -16,6 +16,7 @@ pub(crate) enum Icon {
     CollapseLines,
     ExpandLines,
     SplitDiff,
+    Sidebar,
     UnifiedDiff,
     Back,
     Branch,
@@ -154,6 +155,10 @@ impl Drawing {
                 line(&[(10., 3.), (10., 17.)]);
                 line(&[(4., 7.), (7., 7.)]);
                 line(&[(13., 11.), (16., 11.)]);
+            }
+            Icon::Sidebar => {
+                line(&[(2., 4.), (18., 4.), (18., 16.), (2., 16.), (2., 4.)]);
+                line(&[(7., 4.), (7., 16.)]);
             }
             Icon::UnifiedDiff => {
                 line(&[(2., 3.), (18., 3.), (18., 17.), (2., 17.), (2., 3.)]);

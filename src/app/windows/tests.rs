@@ -6,6 +6,63 @@ use crate::{
 use std::rc::Rc;
 
 #[test]
+fn workspace_header_hides_and_restores_the_spaces_sidebar() {
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let mut app = App::new(Rc::new(I18n::new(language)));
+        app.loaded = true;
+        let root = std::path::PathBuf::from("project");
+        app.workspace
+            .create_space("Work".into(), vec![root.clone()]);
+        let _ = app.open_file(root.join("readme.md"));
+        let tab = app.preview().id;
+        let size = main_settings().min_size.unwrap();
+        let toggle = iced::widget::Id::new("toggle-spaces-sidebar");
+        let spaces = iced::widget::Id::new("spaces-heading");
+        let source = iced::widget::Id::new("source-preview");
+        let settings = iced::Settings {
+            default_font: theme::font(),
+            ..Default::default()
+        };
+        let mut widths = Vec::new();
+
+        for shown in [true, false, true] {
+            assert_eq!(app.workspace.preferences.show_spaces_sidebar, shown);
+            assert_eq!(app.workspace.directory(), Some(&root));
+            assert_eq!(app.preview().id, tab);
+            let mut ui = iced_test::Simulator::with_size(settings.clone(), size, app.view());
+            assert_eq!(ui.find(spaces.clone()).is_ok(), shown);
+            widths.push(
+                ui.find(source.clone())
+                    .unwrap()
+                    .visible_bounds()
+                    .unwrap()
+                    .width,
+            );
+            if !shown && cfg!(target_os = "macos") {
+                let button = ui.find(toggle.clone()).unwrap().visible_bounds().unwrap();
+                assert!(button.x >= theme::MACOS_WINDOW_CONTROLS_WIDTH);
+            }
+            ui.click(toggle.clone()).unwrap();
+            let messages: Vec<_> = ui
+                .into_messages()
+                .map(crate::app::modules::host_message)
+                .collect();
+            assert!(matches!(
+                messages.as_slice(),
+                [Message::ToggleSpacesSidebar]
+            ));
+            let _ = app.update(Message::ToggleSpacesSidebar);
+        }
+
+        assert!(widths[1] > widths[0]);
+        assert_eq!(widths[2], widths[0]);
+        let json = serde_json::to_string(&app.workspace).unwrap();
+        let restored: crate::domain::workspace::Workspace = serde_json::from_str(&json).unwrap();
+        assert!(!restored.preferences.show_spaces_sidebar);
+    }
+}
+
+#[test]
 fn settings_reuses_one_window_and_preserves_workspace_navigation() {
     let mut app = App::new(Rc::new(I18n::new(Language::English)));
     app.window_id = Some(window::Id::unique());

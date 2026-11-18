@@ -654,6 +654,8 @@ message_keys! {
     BackToWorkspace => "back-to-workspace",
     Refresh => "refresh",
     HidePanel => "hide-panel",
+    HideSpacesSidebar => "hide-spaces-sidebar",
+    ShowSpacesSidebar => "show-spaces-sidebar",
     Dismiss => "dismiss",
     Loading => "loading",
     Retry => "retry",
