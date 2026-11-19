@@ -2268,10 +2268,10 @@
   },
   {
     "version": "1.5.1",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
+    "status": "released",
+    "publishedAt": "2026-11-18T23:35:45Z",
+    "tags": ["macos-v1.5.1"],
+    "source": "2c082ca7c254c4d47bacc1e3e41aecfba6fd698a",
     "items": [
       {
         "id": "macos-workspace-window-exit",
