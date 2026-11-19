@@ -997,6 +997,7 @@ fn completed_activity_expires_but_transfers_and_open_details_remain_available() 
         Some(&root),
     );
     let now = Instant::now();
+    assert_eq!(state.subscription().units(), 1);
     state.expire_activity(now);
     state.expire_activity(now + Duration::from_secs(6));
     assert!(state.activity_visible && state.busy);
@@ -1014,6 +1015,7 @@ fn completed_activity_expires_but_transfers_and_open_details_remain_available() 
     assert_eq!(state.status, Some(Key::DeploymentComplete));
     state.activity_visible = true;
     state.activity_expanded = true;
+    assert_eq!(state.subscription().units(), 0);
     state.expire_activity(now + Duration::from_secs(10));
     assert!(state.activity_visible);
     let _ = state.update(
@@ -1022,6 +1024,7 @@ fn completed_activity_expires_but_transfers_and_open_details_remain_available() 
         &mut profiles,
         Some(&root),
     );
+    assert_eq!(state.subscription().units(), 1);
     state.expire_activity(now + Duration::from_secs(12));
     assert!(state.activity_visible);
     state.expire_activity(now + Duration::from_secs(17));

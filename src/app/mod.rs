@@ -1659,6 +1659,15 @@ impl App {
                     self.editor
                         .server_checks
                         .insert(language.id().to_owned(), found);
+                    if found
+                        && self
+                            .editor
+                            .diagnostics
+                            .as_ref()
+                            .is_some_and(|report| report.failed)
+                    {
+                        self.editor.diagnostics = None;
+                    }
                 }
             }
             Message::SetLineNumbers(value) => {

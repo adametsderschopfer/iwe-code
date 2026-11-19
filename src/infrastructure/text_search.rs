@@ -26,7 +26,7 @@ pub(crate) struct Request {
     pub mask: String,
     pub query: String,
     pub options: Options,
-    pub buffers: BTreeMap<PathBuf, String>,
+    pub buffers: BTreeMap<PathBuf, std::sync::Arc<String>>,
     pub file: Option<PathBuf>,
     pub cancelled: CancellationToken,
 }
@@ -106,12 +106,20 @@ fn scan(request: Request) -> Results {
             }
             match std::fs::read_dir(&path) {
                 Ok(entries) => {
-                    let mut entries = entries
-                        .flatten()
-                        .map(|entry| entry.path())
-                        .collect::<Vec<_>>();
-                    entries.sort();
-                    queue.extend(entries.into_iter().rev());
+                    let remaining = 100_000 - visited - queue.len();
+                    let mut paths = Vec::new();
+                    for entry in entries.flatten() {
+                        if request.cancelled.is_cancelled() {
+                            return Results::default();
+                        }
+                        if paths.len() == remaining || Instant::now() >= deadline {
+                            results.limited = true;
+                            break;
+                        }
+                        paths.push(entry.path());
+                    }
+                    paths.sort();
+                    queue.extend(paths.into_iter().rev());
                 }
                 Err(_) => results.skipped += 1,
             }
@@ -203,13 +211,20 @@ fn scan(request: Request) -> Results {
 mod tests;
 
 /// Read a small context window without retaining the whole file.
-pub(crate) async fn preview(path: PathBuf, line: usize) -> Option<String> {
+pub(crate) async fn preview(
+    path: PathBuf,
+    line: usize,
+    cancelled: CancellationToken,
+) -> Option<String> {
     tokio::task::spawn_blocking(move || {
         let file = std::fs::File::open(path).ok()?;
         let mut reader = BufReader::new(file);
         let mut text = String::new();
         let mut bytes = Vec::new();
         for index in 0..line.saturating_add(13) {
+            if cancelled.is_cancelled() {
+                return None;
+            }
             bytes.clear();
             let mut bounded = std::io::Read::take(&mut reader, 2 * 1024 * 1024 + 1);
             let read = bounded.read_until(b'\n', &mut bytes).ok()?;

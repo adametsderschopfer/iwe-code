@@ -135,10 +135,11 @@ Projects with uncommitted files show a small green change icon at the right of t
 Pinned projects use the same indicator. The **Uncommitted files** section uses the same
 circle-and-line icon. Changes include staged, unstaged, untracked, and deleted files within the
 project's discovered repositories. The selected project's existing three-second status refresh
-updates its indicator. Other projects refresh at startup and every ten seconds, with at most two
-simultaneous status reads. The workspace applies the inactive projects' indicators together after
-each scan. Repeated project directories share one result. Failed reads preserve the last known
-indicator.
+updates its indicator. IWE checks other projects at startup and again after ten seconds. Repeated
+identical results increase the interval to 20, 40, then 60 seconds. A changed result restores the
+ten-second interval. IWE spreads Git launches across up to four seconds per scan. It checks up to
+two projects simultaneously. The workspace applies their indicators together after each scan.
+Repeated project directories share one result. Failed reads preserve the last known indicator.
 
 After copying a commit hash, its hover hint turns green and shows **Copied to clipboard** for two
 seconds. The hint retains the complete hash. Repeated copying restarts that interval.
@@ -774,9 +775,10 @@ has already loaded. Job requests include the pipeline ID, job status, and job UR
 Command+F opens a search bar above the current text file. Windows and Linux use Ctrl+F. The bar
 supports case sensitivity, whole words, and regular expressions. Enter selects the next match.
 Shift+Enter selects the previous match. Escape closes search. Editable buffers offer replacement and
-Replace all. One undo action reverses Replace all. Search reads current buffer contents, including
-changes awaiting autosave. Large local files use a cancellable background scan and load matching
-pages on demand.
+Replace all. IWE prepares replacements in the background. It discards a replacement if the document
+changes before completion. IWE stops replacements that exceed the 2 MiB editor limit. One undo
+action reverses Replace all. Search reads current buffer contents, including changes awaiting
+autosave. Large local files use a cancellable background scan and load matching pages on demand.
 
 Command+Shift+F searches local files in the current project. Windows and Linux use Ctrl+Shift+F.
 Choose a project-relative folder or comma-separated file masks, such as `*.rs, *.toml`. The scanner

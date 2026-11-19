@@ -18,9 +18,9 @@ fn replace_all_uses_one_undo_step() {
     let mut document = crate::domain::editor::Document::new("кот кот".into());
     let pattern = text_search::compile("кот", &Options::default()).unwrap();
     assert!(document.edit(pattern.replace_all(&document.text, "пёс").into_owned()));
-    assert_eq!(document.text, "пёс пёс");
+    assert_eq!(document.text.as_str(), "пёс пёс");
     document.undo(false);
-    assert_eq!(document.text, "кот кот");
+    assert_eq!(document.text.as_str(), "кот кот");
 }
 
 fn editor_app(language: Language) -> App {
@@ -36,13 +36,18 @@ fn editor_app(language: Language) -> App {
     );
     app
 }
-#[test]
-fn replacement_updates_editor_and_undo_restores_original() {
+#[tokio::test]
+async fn replacement_updates_editor_and_undo_restores_original() {
     let mut app = editor_app(Language::English);
     let _ = app.update_text_search(Event::Open(false));
     let _ = app.update_text_search(Event::Query(false, "кот".into()));
     let _ = app.update_text_search(Event::Replacement("пёс".into()));
-    let _ = app.update_text_search(Event::Replace(true));
+    let apply = app.update_text_search(Event::Replace(true));
+    let mut actions = iced_test::runtime::task::into_stream(apply).unwrap();
+    use iced::futures::StreamExt;
+    while let Some(iced_test::runtime::Action::Output(message)) = actions.next().await {
+        let _ = app.update(message);
+    }
     assert_eq!(app.editor_buffer().unwrap().content.text(), "пёс пёс\n");
     assert!(app.editor_buffer().unwrap().document.dirty());
     let id = app.preview().id;
@@ -107,4 +112,23 @@ fn opening_file_search_again_preserves_query_and_pending_search() {
     let _ = app.update_text_search(Event::Open(false));
     assert_eq!(app.text_search.serial, serial);
     assert_eq!(app.file_search().unwrap().query, "кот");
+}
+
+#[tokio::test]
+async fn replacing_an_obsolete_snapshot_preserves_newer_typing() {
+    use iced::futures::StreamExt;
+    let mut app = editor_app(Language::English);
+    let _ = app.update_text_search(Event::Open(false));
+    let _ = app.update_text_search(Event::Query(false, "кот".into()));
+    let pending = app.update_text_search(Event::Replace(true));
+    let tab = app.preview().id;
+    let _ = app.update_editor(editor::Event::Replace(tab, "new draft".into()));
+    let mut actions = iced_test::runtime::task::into_stream(pending).unwrap();
+    while let Some(iced_test::runtime::Action::Output(message)) = actions.next().await {
+        let _ = app.update(message);
+    }
+    assert_eq!(
+        app.editor_buffer().unwrap().document.text.as_str(),
+        "new draft"
+    );
 }

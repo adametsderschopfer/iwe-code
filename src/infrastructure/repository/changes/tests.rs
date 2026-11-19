@@ -354,3 +354,37 @@ async fn cached_baselines_keep_nested_repository_ownership_and_report_refresh_co
         }
     }
 }
+
+#[tokio::test]
+async fn sidebar_status_matches_detailed_status_for_subdirectories_and_nested_repositories() {
+    let dir = project();
+    let root = dir.path();
+    let sub = root.join("scope");
+    let child = sub.join("child");
+    fs::create_dir_all(&child).unwrap();
+    git_test(&child, &["init", "-b", "main"]);
+    fs::write(root.join("outside"), "work").unwrap();
+    for dirty in [false, true, false] {
+        if dirty {
+            fs::write(child.join("new file"), "work").unwrap();
+        } else if child.join("new file").exists() {
+            fs::remove_file(child.join("new file")).unwrap();
+        }
+        assert_eq!(has_working_changes(&sub).await, Ok(dirty));
+        for path in [root, sub.as_path(), child.as_path()] {
+            let detail = working_status(path.to_owned()).await.unwrap();
+            assert_eq!(
+                has_working_changes(path).await,
+                Ok(!detail.files.is_empty())
+            );
+        }
+    }
+    let broken = sub.join("broken");
+    fs::create_dir(&broken).unwrap();
+    fs::write(broken.join(".git"), "gitdir: missing").unwrap();
+    // Ignore the malformed child in the enclosing repository.
+    fs::write(root.join(".git/info/exclude"), "scope/broken/\n").unwrap();
+    assert!(has_working_changes(&sub).await.is_err());
+    fs::write(child.join("dirty"), "work").unwrap();
+    assert_eq!(has_working_changes(&sub).await, Ok(true));
+}

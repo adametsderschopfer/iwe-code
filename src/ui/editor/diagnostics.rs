@@ -12,7 +12,6 @@ use iced::{
 pub(super) struct Underlines<'a> {
     pub content: &'a text_editor::Content,
     pub diagnostics: &'a [Diagnostic],
-    pub text: &'a str,
 }
 
 impl<Message> canvas::Program<Message> for Underlines<'_> {
@@ -43,9 +42,7 @@ impl<Message> canvas::Program<Message> for Underlines<'_> {
         frame.with_clip(Rectangle::with_size(bounds.size()), |frame| {
             self.content.with_editor(|editor| {
                 for run in editor.buffer().layout_runs() {
-                    let Some(line) = self.text.split('\n').nth(run.line_i) else {
-                        continue;
-                    };
+                    let line = run.text;
                     for diagnostic in self.diagnostics.iter().filter(|value| {
                         value.range.start.line as usize <= run.line_i
                             && value.range.end.line as usize >= run.line_i

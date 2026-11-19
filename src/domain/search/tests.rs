@@ -90,3 +90,26 @@ fn rank_matches_names_and_directories() {
     // A directory after the name cannot match.
     assert!(rank("appsrc", &files).is_empty());
 }
+
+#[test]
+fn audit_file_ranking_at_index_limit() {
+    if std::env::var_os("IWE_PROFILE_WORKSPACE").is_none() {
+        return;
+    }
+    let files: Vec<_> = (0..100_000_u64)
+        .map(|index| file(&format!("module_{:05}.rs", index * 65537 % 100_000), "src"))
+        .collect();
+    for _ in 0..5 {
+        let start = std::time::Instant::now();
+        let results = rank("mod", &files);
+        eprintln!("file ranking {:?}", start.elapsed());
+        assert_eq!(results.len(), MAX_RESULTS);
+        assert_eq!(files[*results.last().unwrap()].name, "module_00049.rs");
+    }
+}
+
+#[test]
+fn identical_candidates_keep_input_order_at_the_result_limit() {
+    let files = (0..100).map(|_| file("same.rs", "src")).collect::<Vec<_>>();
+    assert_eq!(rank("same", &files), (0..MAX_RESULTS).collect::<Vec<_>>());
+}

@@ -79,6 +79,7 @@ impl App {
         }
         self.files.worker = None;
         self.files.epoch += 1;
+        self.search_everywhere.tree_changed();
         self.files.pending.clear();
         self.files.loading.clear();
         self.files.errors.clear();
@@ -244,14 +245,30 @@ impl App {
                     self.files.loading.remove(&path);
                     match result {
                         Ok(entries) => {
+                            let children: BTreeSet<_> = entries
+                                .iter()
+                                .filter(|entry| entry.directory)
+                                .filter_map(|entry| entry.path.file_name())
+                                .collect();
                             let retained = |directory: &PathBuf| {
                                 directory == &path
                                     || !directory.starts_with(&path)
-                                    || entries.iter().any(|entry| {
-                                        entry.directory && directory.starts_with(&entry.path)
-                                    })
+                                    || directory
+                                        .strip_prefix(&path)
+                                        .ok()
+                                        .and_then(|relative| relative.components().next())
+                                        .is_some_and(|child| children.contains(child.as_os_str()))
                             };
-                            self.tree.retain(|directory, _| retained(directory));
+                            let removed: Vec<_> = self
+                                .tree
+                                .range(path.clone()..)
+                                .take_while(|(directory, _)| directory.starts_with(&path))
+                                .filter(|(directory, _)| !retained(directory))
+                                .map(|(directory, _)| directory.clone())
+                                .collect();
+                            for directory in removed {
+                                self.tree.remove(&directory);
+                            }
                             self.expanded.retain(retained);
                             self.files
                                 .pending

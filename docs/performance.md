@@ -1,5 +1,8 @@
 # Source scroll performance
 
+The [November 19 workspace audit](performance-audit-2026-11-19.md) covers idle CPU, indexing,
+editing, and search.
+
 The November 10, 2026 audit reproduced delays with `src/i18n/mod.rs` on macOS. The audit covered
 plain source, unified comparisons, and side-by-side comparisons.
 

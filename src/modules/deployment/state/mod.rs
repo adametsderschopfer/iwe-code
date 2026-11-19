@@ -365,7 +365,7 @@ impl State {
     }
 
     pub(crate) fn subscription(&self) -> Subscription<Event> {
-        if self.busy || self.activity_visible {
+        if self.busy || (self.activity_visible && !self.activity_expanded) {
             iced::time::every(std::time::Duration::from_millis(150)).map(|_| Event::Tick)
         } else {
             Subscription::none()

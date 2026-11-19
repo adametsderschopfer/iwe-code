@@ -11,41 +11,91 @@ use std::{
     path::{Path, PathBuf},
 };
 
-fn parse_status(bytes: &[u8], root: &Path) -> BTreeMap<PathBuf, FileChange> {
-    let mut result = BTreeMap::new();
+fn status_entries(bytes: &[u8]) -> impl Iterator<Item = (&str, FileStatus, Option<&str>)> {
     let mut fields = bytes.split(|byte| *byte == 0);
-    while let Some(field) = fields.next() {
-        if field.len() < 4 {
-            continue;
+    std::iter::from_fn(move || {
+        loop {
+            let field = fields.next()?;
+            if field.len() < 4 {
+                continue;
+            }
+            let xy = &field[..2];
+            let renamed = xy.contains(&b'R') || xy.contains(&b'C');
+            let original = renamed
+                .then(|| fields.next())
+                .flatten()
+                .and_then(|path| std::str::from_utf8(path).ok());
+            let Ok(path) = std::str::from_utf8(&field[3..]) else {
+                continue;
+            };
+            let status = if xy == b"??" {
+                FileStatus::Untracked
+            } else if xy.contains(&b'U') || xy == b"AA" || xy == b"DD" {
+                FileStatus::Conflict
+            } else if xy.contains(&b'D') {
+                FileStatus::Deleted
+            } else if renamed {
+                FileStatus::Renamed
+            } else if xy.contains(&b'A') {
+                FileStatus::Added
+            } else if xy.contains(&b'M') || xy.contains(&b'T') {
+                FileStatus::Modified
+            } else {
+                continue;
+            };
+            return Some((path, status, original));
         }
-        let xy = &field[..2];
-        let renamed = xy.contains(&b'R') || xy.contains(&b'C');
-        let original = renamed
-            .then(|| fields.next())
-            .flatten()
-            .and_then(|path| std::str::from_utf8(path).ok())
-            .map(|path| root.join(path));
-        let Ok(path) = std::str::from_utf8(&field[3..]) else {
-            continue;
-        };
-        let status = if xy == b"??" {
-            FileStatus::Untracked
-        } else if xy.contains(&b'U') || xy == b"AA" || xy == b"DD" {
-            FileStatus::Conflict
-        } else if xy.contains(&b'D') {
-            FileStatus::Deleted
-        } else if renamed {
-            FileStatus::Renamed
-        } else if xy.contains(&b'A') {
-            FileStatus::Added
-        } else if xy.contains(&b'M') || xy.contains(&b'T') {
-            FileStatus::Modified
-        } else {
-            continue;
-        };
-        result.insert(root.join(path), FileChange { status, original });
+    })
+}
+
+fn parse_status(bytes: &[u8], root: &Path) -> BTreeMap<PathBuf, FileChange> {
+    status_entries(bytes)
+        .map(|(path, status, original)| {
+            (
+                root.join(path),
+                FileChange {
+                    status,
+                    original: original.map(|old| root.join(old)),
+                },
+            )
+        })
+        .collect()
+}
+
+async fn status_bytes(root: &Path) -> Result<Vec<u8>, Failure> {
+    git(
+        root,
+        &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    )
+    .await
+}
+
+pub(crate) async fn has_working_changes(directory: &Path) -> Result<bool, Failure> {
+    let discovery = discovery::discover(directory).await?;
+    let mut failure = discovery.failures.first().map(|(_, error)| *error);
+    for root in &discovery.roots {
+        match status_bytes(root).await {
+            Ok(bytes) => {
+                let mut entries = status_entries(&bytes);
+                let changed = if discovery.roots.len() == 1 && root == &discovery.scope {
+                    entries.next().is_some()
+                } else {
+                    entries.any(|(path, _, _)| {
+                        let path = root.join(path);
+                        path.starts_with(&discovery.scope)
+                            && discovery::owner(&discovery.roots, &path) == Some(root)
+                    })
+                };
+                if changed {
+                    return Ok(true);
+                }
+            }
+            Err(error) => {
+                failure.get_or_insert(error);
+            }
+        }
     }
-    result
+    failure.map_or(Ok(false), Err)
 }
 
 pub(crate) async fn working_status(directory: PathBuf) -> Result<Worktree, Failure> {
@@ -54,12 +104,7 @@ pub(crate) async fn working_status(directory: PathBuf) -> Result<Worktree, Failu
     let mut roots = Vec::new();
     let mut failures = discovery.failures;
     for root in &discovery.roots {
-        let bytes = match git(
-            root,
-            &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
-        )
-        .await
-        {
+        let bytes = match status_bytes(root).await {
             Ok(bytes) => bytes,
             Err(error) => {
                 failures.push((root.clone(), error));

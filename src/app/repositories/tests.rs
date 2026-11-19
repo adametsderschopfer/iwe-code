@@ -100,8 +100,9 @@ fn fixture() -> App {
                 },
             ),
         ]),
-    );
-    app.changes.status.roots = vec![root("backend"), root("front")];
+    )
+    .into();
+    std::sync::Arc::make_mut(&mut app.changes.status).roots = vec![root("backend"), root("front")];
     app.file_panel = FilePanel::Changes;
     app
 }

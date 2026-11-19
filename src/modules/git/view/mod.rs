@@ -233,9 +233,11 @@ fn selectable_group<'a>(
 }
 
 fn group_selected<'a>(app: View<'a>, target: &SelectionTarget) -> bool {
-    app.repository
-        .as_ref()
-        .is_some_and(|repos| app.state.branch_selection.covers(&target.keys(repos)))
+    !app.state.branch_selection.selected.is_empty()
+        && app
+            .repository
+            .as_ref()
+            .is_some_and(|repos| app.state.branch_selection.covers(&target.keys(repos)))
 }
 
 fn branch_tools<'a>(app: View<'a>) -> Element<'a, Message> {
@@ -358,13 +360,7 @@ fn branches<'a>(app: View<'a>, width: f32) -> Element<'a, Message> {
                 (ReferenceKind::Remote, "true", Key::RemoteBranches),
                 (ReferenceKind::Tag, "tags", Key::Tags),
             ] {
-                let mut branches: Vec<_> = repo
-                    .branches
-                    .iter()
-                    .filter(|branch| branch.kind == kind)
-                    .collect();
-                branches.sort_by_key(|branch| branch_order(branch));
-                if branches.is_empty() {
+                if !repo.branches.iter().any(|branch| branch.kind == kind) {
                     continue;
                 }
                 let group = if multiple {
@@ -404,6 +400,12 @@ fn branches<'a>(app: View<'a>, width: f32) -> Element<'a, Message> {
                 if collapsed {
                     continue;
                 }
+                let mut branches: Vec<_> = repo
+                    .branches
+                    .iter()
+                    .filter(|branch| branch.kind == kind)
+                    .collect();
+                branches.sort_by_cached_key(|branch| branch_order(branch));
                 let mut previous: Vec<&str> = Vec::new();
                 for branch in branches {
                     let components: Vec<_> = if branch.current {

@@ -15,7 +15,7 @@ fn project_search_respects_masks_exclusions_and_live_buffers() {
         mask: "*.rs".into(),
         query: "живой".into(),
         options: Options::default(),
-        buffers: BTreeMap::from([(path.clone(), "строка\nживой".into())]),
+        buffers: BTreeMap::from([(path.clone(), std::sync::Arc::new("строка\nживой".into()))]),
         file: None,
         cancelled: CancellationToken::new(),
     };
@@ -48,4 +48,16 @@ fn large_file_search_reaches_late_lines_and_skips_binary() {
     });
     assert_eq!(results.hits.len(), 1);
     assert_eq!(results.hits[0].found.line, 450_001);
+}
+
+#[tokio::test]
+async fn cancelling_a_preview_skips_an_obsolete_file_read() {
+    let fixture = tempfile::tempdir().unwrap();
+    let path = fixture.path().join("source");
+    std::fs::write(&path, "first\nsecond\n").unwrap();
+    let token = CancellationToken::new();
+    let context = preview(path.clone(), 2, token.clone()).await.unwrap();
+    assert!(context.contains("2  second"));
+    token.cancel();
+    assert!(preview(path, 2, token).await.is_none());
 }

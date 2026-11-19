@@ -9,7 +9,7 @@ use iced::{
     Task,
     widget::{operation, text_editor},
 };
-use std::{collections::BTreeMap, path::PathBuf, time::Duration};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 use tokio_util::sync::CancellationToken;
 
 #[derive(Default)]
@@ -20,7 +20,9 @@ pub(crate) struct State {
     pub pinned: bool,
     last_click: Option<(usize, std::time::Instant)>,
     serial: u64,
+    replacement_request: u64,
     cancelled: CancellationToken,
+    preview_cancelled: CancellationToken,
 }
 #[derive(Clone)]
 pub(crate) struct Search {
@@ -80,6 +82,13 @@ pub(crate) enum Event {
     Activate,
     Close(bool),
     Replace(bool),
+    Replaced {
+        request: u64,
+        serial: u64,
+        tab: u64,
+        original: Arc<String>,
+        result: Result<Option<String>, crate::domain::Failure>,
+    },
     Pin,
     Restore,
     Refresh,
@@ -322,7 +331,7 @@ impl App {
                 return operation::focus(format!("text-editor-{}", self.preview().id));
             }
             Event::Replace(all) => {
-                let Some(search) = self.file_search().cloned() else {
+                let Some(search) = self.file_search() else {
                     return Task::none();
                 };
                 let Some(buffer) = self.editor_buffer() else {
@@ -334,29 +343,61 @@ impl App {
                 if search.query.is_empty() {
                     return Task::none();
                 }
-                let replacement = if search.options.regex {
-                    std::borrow::Cow::Borrowed(search.replacement.as_str())
-                } else {
-                    std::borrow::Cow::Owned(search.replacement.replace('$', "$$"))
-                };
-                let text = if all {
-                    pattern
-                        .replace_all(&buffer.document.text, replacement.as_ref())
-                        .into_owned()
-                } else {
-                    let found = text_search::matches(&buffer.document.text, &pattern, 10_000);
-                    let Some(found) = found.get(search.selected) else {
-                        return Task::none();
-                    };
-                    let mut text = buffer.document.text.clone();
-                    let value = pattern
-                        .replace(&text[found.range.clone()], replacement.as_ref())
-                        .into_owned();
-                    text.replace_range(found.range.clone(), &value);
-                    text
-                };
-                let task = self.update_editor(editor::Event::Replace(search.tab, text));
-                return Task::batch([task, self.schedule_search(false)]);
+                let original = Arc::clone(&buffer.document.text);
+                let expand = search.options.regex;
+                let selected = (!all).then_some(search.selected);
+                let replacement = search.replacement.clone();
+                let tab = search.tab;
+                let serial = self.text_search.serial;
+                self.text_search.replacement_request += 1;
+                let request = self.text_search.replacement_request;
+                return Task::perform(
+                    async move {
+                        let input = Arc::clone(&original);
+                        let result = tokio::task::spawn_blocking(move || {
+                            text_search::replace(
+                                &input,
+                                &pattern,
+                                &replacement,
+                                expand,
+                                selected,
+                                crate::domain::editor::LIMIT,
+                            )
+                        })
+                        .await
+                        .unwrap_or(Err(crate::domain::Failure::Unavailable));
+                        Event::Replaced {
+                            request,
+                            serial,
+                            tab,
+                            original,
+                            result,
+                        }
+                    },
+                    Message::TextSearch,
+                );
+            }
+            Event::Replaced {
+                request,
+                serial,
+                tab,
+                original,
+                result,
+            } if request == self.text_search.replacement_request
+                && serial == self.text_search.serial
+                && self.file_search().is_some_and(|search| search.tab == tab)
+                && self
+                    .editor_buffer()
+                    .is_some_and(|buffer| Arc::ptr_eq(&buffer.document.text, &original)) =>
+            {
+                match result {
+                    Ok(Some(text)) => return self.update_editor(editor::Event::Replace(tab, text)),
+                    Ok(None) => {}
+                    Err(crate::domain::Failure::TooLarge) => {
+                        self.notifications.error(Key::EditorTooLarge, None)
+                    }
+                    Err(error) => self.notifications.error(super::error_key(error), None),
+                }
             }
             Event::Pin => {
                 self.text_search.saved = self.text_search.project.clone();
@@ -372,6 +413,8 @@ impl App {
         Task::none()
     }
     fn load_search_context(&mut self) -> Task<Message> {
+        self.text_search.preview_cancelled.cancel();
+        self.text_search.preview_cancelled = self.text_search.cancelled.child_token();
         let Some(search) = &mut self.text_search.project else {
             return Task::none();
         };
@@ -396,13 +439,24 @@ impl App {
             search.preview = text
                 .lines()
                 .enumerate()
-                .filter(|(index, _)| *index + 12 >= line && *index <= line + 12)
-                .map(|(index, text)| format!("{}  {}\n", index + 1, text))
+                .take(line.saturating_add(13))
+                .skip(line.saturating_sub(12))
+                .map(|(index, text)| {
+                    format!(
+                        "{}  {}\n",
+                        index + 1,
+                        text.chars().take(2000).collect::<String>()
+                    )
+                })
                 .collect();
             return Task::none();
         }
         Task::perform(
-            crate::infrastructure::text_search::preview(path, line),
+            crate::infrastructure::text_search::preview(
+                path,
+                line,
+                self.text_search.preview_cancelled.clone(),
+            ),
             move |value| Message::TextSearch(Event::Preview(serial, index, value)),
         )
     }
@@ -436,23 +490,25 @@ impl App {
         )
     }
     fn run_search(&mut self, project: bool, serial: u64) -> Task<Message> {
-        let Some(search) = self.search_mut(project).cloned() else {
+        let search = if project {
+            self.text_search.project.as_ref()
+        } else {
+            self.file_search()
+        };
+        let Some(search) = search else {
             return Task::none();
         };
-        if !project && search.tab != self.preview().id {
-            return Task::none();
-        }
         if self.workspace.directory() != Some(&search.root) {
             return Task::none();
         }
-        if text_search::compile(&search.query, &search.options).is_err() {
+        let Ok(pattern) = text_search::compile(&search.query, &search.options) else {
             if let Some(search) = self.search_mut(project) {
                 search.error = Some(Key::FindInvalid);
                 search.busy = false;
                 search.results = Results::default();
             }
             return Task::none();
-        }
+        };
         let folder = search.root.join(&search.folder);
         if !folder.starts_with(&search.root)
             || std::path::Path::new(&search.folder)
@@ -465,14 +521,7 @@ impl App {
             }
             return Task::none();
         }
-        let mut buffers = BTreeMap::new();
-        for tab in &self.tabs.files {
-            if let Some(buffer) = &tab.editor
-                && let editor::Target::Local(path) = &buffer.target
-            {
-                buffers.insert(path.clone(), buffer.document.text.clone());
-            }
-        }
+
         if !project {
             let text = self
                 .editor_buffer()
@@ -482,11 +531,10 @@ impl App {
                         .document
                         .as_ref()
                         .filter(|document| document.page.is_none())
-                        .map(|document| document.text.clone())
+                        .map(|document| std::sync::Arc::new(document.text.clone()))
                 });
             if let Some(text) = text {
-                let query = search.query;
-                let options = search.options;
+                let query = search.query.clone();
                 let path = self.preview().path.clone().unwrap_or_default();
                 return Task::perform(
                     async move {
@@ -494,9 +542,7 @@ impl App {
                             let hits = if query.is_empty() {
                                 vec![]
                             } else {
-                                text_search::compile(&query, &options)
-                                    .map(|pattern| text_search::matches(&text, &pattern, 10_000))
-                                    .unwrap_or_default()
+                                text_search::matches(&text, &pattern, 10_000)
                             };
                             Results {
                                 hits: hits
@@ -517,12 +563,12 @@ impl App {
             }
         }
         let request = Request {
-            root: search.root,
+            root: search.root.clone(),
             folder,
-            mask: search.mask,
-            query: search.query,
-            options: search.options,
-            buffers,
+            mask: search.mask.clone(),
+            query: search.query.clone(),
+            options: search.options.clone(),
+            buffers: self.language_buffers().into_iter().collect(),
             file: if project {
                 None
             } else {

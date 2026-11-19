@@ -19,7 +19,7 @@ fn folder_test_app(grouped: bool) -> (App, Vec<PathBuf>) {
     } else {
         vec![project]
     };
-    app.changes.status.roots = roots.clone();
+    std::sync::Arc::make_mut(&mut app.changes.status).roots = roots.clone();
     for (index, root) in roots.iter().enumerate() {
         for path in [
             format!("src/top{index}.rs"),
@@ -27,13 +27,15 @@ fn folder_test_app(grouped: bool) -> (App, Vec<PathBuf>) {
             format!("src/nested/deep/leaf{index}.rs"),
             format!("src-other/sibling{index}.rs"),
         ] {
-            app.changes.status.files.insert(
-                root.join(path),
-                FileChange {
-                    status: FileStatus::Modified,
-                    original: None,
-                },
-            );
+            std::sync::Arc::make_mut(&mut app.changes.status)
+                .files
+                .insert(
+                    root.join(path),
+                    FileChange {
+                        status: FileStatus::Modified,
+                        original: None,
+                    },
+                );
         }
     }
     (app, roots)
@@ -148,21 +150,25 @@ fn uncommitted_files_are_visible_in_the_side_panel_and_open_from_the_tree() {
     app.file_panel = FilePanel::Changes;
     app.changes.loaded = true;
     let path = PathBuf::from("/project/services/changed.py");
-    app.changes.status.files.insert(
-        path.clone(),
-        FileChange {
-            status: FileStatus::Modified,
-            original: None,
-        },
-    );
-    for index in 0..50 {
-        app.changes.status.files.insert(
-            PathBuf::from(format!("/project/services/file{index:02}.py")),
+    std::sync::Arc::make_mut(&mut app.changes.status)
+        .files
+        .insert(
+            path.clone(),
             FileChange {
-                status: FileStatus::Added,
+                status: FileStatus::Modified,
                 original: None,
             },
         );
+    for index in 0..50 {
+        std::sync::Arc::make_mut(&mut app.changes.status)
+            .files
+            .insert(
+                PathBuf::from(format!("/project/services/file{index:02}.py")),
+                FileChange {
+                    status: FileStatus::Added,
+                    original: None,
+                },
+            );
     }
     let mut ui =
         iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
@@ -233,16 +239,16 @@ fn status_results_cannot_cross_project_or_request_boundaries() {
         PathBuf::from("/old"),
         crate::domain::changes::FileStatus::Modified,
     );
-    let _ = app.update_changes(Event::Loaded(3, 2, Ok(status.clone())));
-    let _ = app.update_changes(Event::Loaded(4, 1, Ok(status)));
+    let _ = app.update_changes(Event::Loaded(3, 2, Ok(Arc::new(status.clone()))));
+    let _ = app.update_changes(Event::Loaded(4, 1, Ok(Arc::new(status))));
     assert!(app.changes.status.folders.is_empty());
     assert!(app.changes.pending);
-    let _ = app.update_changes(Event::Loaded(4, 2, Ok(Worktree::default())));
+    let _ = app.update_changes(Event::Loaded(4, 2, Ok(Arc::default())));
     assert!(!app.changes.pending);
     assert!(app.changes.loaded);
     let _ = app.update_changes(Event::Loaded(4, 2, Err(Failure::Read)));
     assert_eq!(app.changes.error, Some(Failure::Read));
-    let _ = app.update_changes(Event::Loaded(4, 2, Ok(Worktree::default())));
+    let _ = app.update_changes(Event::Loaded(4, 2, Ok(Arc::default())));
     assert!(app.changes.error.is_none());
 }
 
@@ -269,4 +275,101 @@ fn background_previews_preserve_scroll_and_reject_old_file_results() {
     ));
     assert_eq!(app.preview().document.as_ref().unwrap().text, "updated");
     assert_eq!(app.preview().scroll_y, 240.);
+}
+
+#[tokio::test]
+async fn ordinary_editor_refresh_detects_external_edits_without_building_a_git_comparison() {
+    use iced::futures::StreamExt;
+    use iced_test::runtime::{Action, task};
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let path = root.join("draft.txt");
+    std::fs::write(&path, "first").unwrap();
+    assert!(
+        std::process::Command::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(root)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.workspace
+        .create_space("Work".into(), vec![root.to_owned()]);
+    let _ = app.open_file(path.clone());
+    let id = app.preview().id;
+    let _ = app.finish_preview(id, Ok(Document::new("first".into(), "txt")));
+    for (text, changed) in [("first", false), ("second", true)] {
+        std::fs::write(&path, text).unwrap();
+        let mut events = task::into_stream(app.refresh_preview()).unwrap();
+        let Some(Action::Output(Message::Worktree(Event::PreviewLoaded(
+            generation,
+            request,
+            Ok(document),
+        )))) = events.next().await
+        else {
+            panic!("Expected preview result")
+        };
+        assert_eq!(document.is_some(), changed);
+        if let Some(ref document) = document {
+            assert!(document.comparison.is_none());
+        }
+        let _ = app.update_changes(Event::PreviewLoaded(generation, request, Ok(document)));
+        assert_eq!(app.editor_buffer().unwrap().document.text.as_str(), text);
+    }
+}
+
+#[tokio::test]
+async fn idle_git_watch_notifies_on_changes_and_skips_repeated_results() {
+    use iced::futures::StreamExt;
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().to_owned();
+    assert!(
+        std::process::Command::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(&root)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let mut events = Box::pin(idle_status((4, 2, root.clone()), Duration::from_millis(10)));
+    let next = |event| match event {
+        Some(Message::Worktree(Event::Loaded(4, 2, Ok(status)))) => status,
+        _ => panic!("Expected the current worktree snapshot"),
+    };
+    assert!(
+        next(
+            tokio::time::timeout(Duration::from_secs(5), events.next())
+                .await
+                .unwrap()
+        )
+        .files
+        .is_empty()
+    );
+    let file = root.join("new.txt");
+    std::fs::write(&file, "test").unwrap();
+    assert!(
+        next(
+            tokio::time::timeout(Duration::from_secs(5), events.next())
+                .await
+                .unwrap()
+        )
+        .files
+        .contains_key(&file)
+    );
+    assert!(
+        tokio::time::timeout(Duration::from_millis(125), events.next())
+            .await
+            .is_err()
+    );
+    std::fs::remove_file(&file).unwrap();
+    assert!(
+        next(
+            tokio::time::timeout(Duration::from_secs(5), events.next())
+                .await
+                .unwrap()
+        )
+        .files
+        .is_empty()
+    );
 }

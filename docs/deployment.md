@@ -137,12 +137,13 @@ shows the operation, server, and transferred bytes. Click the activity indicator
 completed-file counts, and queued-operation counts. These details provide cancellation, explicit
 retry, server-key confirmation, and overwrite confirmation. Errors expand the details automatically.
 Completed statuses disappear after five seconds when their details remain closed. Opening details
-keeps them visible until dismissed. Saving settings also resets the temporary status. Closing the
-details preserves active transfers. Cancel stops subsequent transfer work. An active network call
-can continue until its timeout. Files already uploaded can remain changed after cancellation or
-failure. Uploads write directly to the destination; failed uploads can leave partial remote files.
-Retry requires an explicit action. Switching projects cancels the previous project's operations.
-Results from obsolete requests cannot replace the current project state.
+keeps them visible until dismissed. IWE stops progress polling while completed or failed operations
+show their details. Saving settings also resets the temporary status. Closing the details preserves
+active transfers. Cancel stops subsequent transfer work. An active network call can continue until
+its timeout. Files already uploaded can remain changed after cancellation or failure. Uploads write
+directly to the destination; failed uploads can leave partial remote files. Retry requires an
+explicit action. Switching projects cancels the previous project's operations. Results from obsolete
+requests cannot replace the current project state.
 
 ## Limits and verification
 

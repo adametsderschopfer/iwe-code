@@ -168,15 +168,17 @@ Modal dialogs keep their existing error messages.
 Git status uses NUL-delimited records and preserves renamed paths. Application state aggregates file
 status into folder decorations. Background polling refreshes status, affected directories, and the
 open working file every three seconds. Separate request identifiers reject stale project and preview
-results. The inactive-project scan collects status results before it updates the workspace. One scan
-sends one result message, including when several projects finish close together. Matching content
-fingerprints avoid repeated highlighting and preserve scroll position. Preview refreshes reuse the
-status snapshot's canonical scope and repository roots. A single bounded cache retains the previous
-source by repository, HEAD revision, and original path. Polling still resolves HEAD, so branch
-switches invalidate cached baselines. Git commands disable optional index writes. Source comparison
-reads bounded blobs and keeps all source contents in memory. The `similar` crate compares source
-lines with a 300-millisecond algorithm budget on blocking workers. The viewer retains unchanged
-lines and marks inserted, replaced, and removed lines without losing syntax colors.
+results. When a tab needs no working-file refresh, the selected project reports only distinct status
+snapshots after its first poll. The inactive-project scan collects status results before it updates
+the workspace. One scan sends one result message, including when several projects finish close
+together. Matching content fingerprints avoid repeated highlighting and preserve scroll position.
+Preview refreshes reuse the status snapshot's canonical scope and repository roots. A single bounded
+cache retains the previous source by repository, HEAD revision, and original path. Polling still
+resolves HEAD, so branch switches invalidate cached baselines. Git commands disable optional index
+writes. Source comparison reads bounded blobs and keeps all source contents in memory. The `similar`
+crate compares source lines with a 300-millisecond algorithm budget on blocking workers. The viewer
+retains unchanged lines and marks inserted, replaced, and removed lines without losing syntax
+colors.
 
 Comparisons retain aligned pairs that reference the unified document's highlighted lines. Each pair
 keeps both original line numbers. Change blocks provide connector geometry without copying source
@@ -617,18 +619,19 @@ language requests and rejects obsolete results. `ui/editor` renders completion, 
 diagnostic surfaces. See [code assistance](language-servers.md) for supported programs and current
 limitations.
 
-`domain/editor` tracks text, saved baselines, and bounded undo history without Iced. `app/editor`
-coordinates native text actions, debounced saves, save snapshots, and failed-save decisions.
-Autosave timers carry unique revisions and ignore superseded or closed buffers. Completion tokens
-protect newer drafts. Navigation flushes pending snapshots before releasing buffers. Failed writes
-stop automatic retries. Remote saves wait for the deployment queue before submission. `ui/editor`
-renders Iced text editors with incremental syntax highlighting and synchronized line numbers. Its
-gutter reads visible layout runs through the local widget's read-only inspection API. Project-file
-sources skip Git comparison preparation. Uncommitted-file sources use separate tabs and retain the
-comparison viewer. `infrastructure/editor` replaces local files through temporary files after
-checking the saved baseline. Server saves use typed deployment operations and completion effects.
-The module does not import application state. Save completions carry operation tokens and never
-replace newer draft text.
+`domain/editor` shares immutable text snapshots across saves, bounded undo history, searches, and
+language requests. Each edit creates a new snapshot. Workers retain the revision they received.
+`app/editor` coordinates native text actions, debounced saves, save snapshots, and failed-save
+decisions. Autosave timers carry unique revisions and ignore superseded or closed buffers.
+Completion tokens protect newer drafts. Navigation flushes pending snapshots before releasing
+buffers. Failed writes stop automatic retries. Remote saves wait for the deployment queue before
+submission. `ui/editor` renders Iced text editors with incremental syntax highlighting and
+synchronized line numbers. Its gutter reads visible layout runs through the local widget's read-only
+inspection API. Project-file sources skip Git comparison preparation. Uncommitted-file sources use
+separate tabs and retain the comparison viewer. `infrastructure/editor` replaces local files through
+temporary files after checking the saved baseline. Server saves use typed deployment operations and
+completion effects. The module does not import application state. Save completions carry operation
+tokens and never replace newer draft text.
 
 `app/tabs.rs` records project-relative local tab paths, comparison mode, and the active tab in
 workspace metadata. It reopens the remembered tabs when their project becomes active. Normal exit

@@ -75,6 +75,20 @@ fn obsolete_results_cannot_overwrite_active_or_removed_projects() {
 }
 
 #[tokio::test]
+async fn a_scan_starts_the_first_project_immediately_and_spaces_later_launches() {
+    use iced::futures::FutureExt;
+
+    let roots = ["one", "two", "three"].map(PathBuf::from);
+    let mut stream = Box::pin(paced_roots(roots.to_vec()));
+    assert_eq!(stream.next().now_or_never(), Some(Some(roots[0].clone())));
+    for root in &roots[1..] {
+        assert!(stream.next().now_or_never().is_none());
+        assert_eq!(stream.next().await.as_ref(), Some(root));
+    }
+    assert!(stream.next().await.is_none());
+}
+
+#[tokio::test]
 async fn background_scan_delivers_all_inactive_projects_in_one_message() {
     use iced_test::runtime::{Action, task};
 
@@ -144,13 +158,15 @@ fn dirty_indicators_appear_for_pinned_and_active_projects_in_every_language() {
             .known
             .insert(PathBuf::from("first"), true);
         app.changes.loaded = true;
-        app.changes.status.files.insert(
-            PathBuf::from("active/file.rs"),
-            FileChange {
-                status: FileStatus::Modified,
-                original: None,
-            },
-        );
+        std::sync::Arc::make_mut(&mut app.changes.status)
+            .files
+            .insert(
+                PathBuf::from("active/file.rs"),
+                FileChange {
+                    status: FileStatus::Modified,
+                    original: None,
+                },
+            );
         {
             let mut ui = iced_test::Simulator::with_size(
                 iced::Settings {
@@ -176,7 +192,9 @@ fn dirty_indicators_appear_for_pinned_and_active_projects_in_every_language() {
             }
         }
         app.project_changes.known.clear();
-        app.changes.status.files.clear();
+        std::sync::Arc::make_mut(&mut app.changes.status)
+            .files
+            .clear();
         let mut ui = iced_test::Simulator::with_size(
             iced::Settings {
                 default_font: theme::font(),
@@ -187,5 +205,28 @@ fn dirty_indicators_appear_for_pinned_and_active_projects_in_every_language() {
         );
         assert!(ui.find(Id::new("project-changes-0-0")).is_err());
         assert!(ui.find(Id::new("project-changes-0-1")).is_err());
+    }
+}
+
+#[test]
+fn unchanged_scans_back_off_and_a_new_indicator_restores_fast_checks() {
+    let mut app = app(Language::English);
+    let root = PathBuf::from("first");
+    for (dirty, seconds) in [
+        (false, 10),
+        (false, 20),
+        (false, 40),
+        (false, 60),
+        (false, 60),
+        (true, 10),
+    ] {
+        let _ = app.refresh_project_changes();
+        let _ = app.update_project_changes(Event::Loaded(
+            app.project_changes.request,
+            app.generation,
+            vec![(root.clone(), Ok(dirty))],
+        ));
+        assert_eq!(app.project_changes.interval(), Duration::from_secs(seconds));
+        assert_eq!(app.project_has_changes(&root), dirty);
     }
 }

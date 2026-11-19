@@ -27,7 +27,7 @@ pub(crate) struct Buffer {
     pub error: Option<Key>,
     autosave: u64,
     token: u64,
-    snapshot: String,
+    snapshot: Arc<String>,
 }
 
 impl Buffer {
@@ -40,7 +40,7 @@ impl Buffer {
             error: None,
             autosave: 0,
             token: 0,
-            snapshot: String::new(),
+            snapshot: Arc::default(),
         }
     }
     pub(crate) fn protected(&self) -> bool {
@@ -78,7 +78,7 @@ pub(crate) enum Event {
     Definitions(
         u64,
         u64,
-        String,
+        Arc<String>,
         text_editor::Position,
         Vec<definition::Definition>,
     ),
@@ -118,7 +118,7 @@ impl App {
             };
             start += next + 1;
         }
-        let mut text = source.clone();
+        let mut text = source.as_ref().clone();
         if let Some(length) = source[start..].find('\n') {
             let end = start + length + 1;
             text.insert_str(end, &source[start..end]);
@@ -154,7 +154,7 @@ impl App {
         task
     }
 
-    fn language_buffers(&self) -> Vec<(PathBuf, String)> {
+    pub(super) fn language_buffers(&self) -> Vec<(PathBuf, Arc<String>)> {
         self.tabs
             .files
             .iter()
@@ -373,8 +373,8 @@ impl App {
                         profile,
                         token,
                         path,
-                        expected: Arc::new(expected),
-                        text: Arc::new(text),
+                        expected,
+                        text,
                     },
                 ))
             }
@@ -699,7 +699,8 @@ impl App {
                         && let Some(buffer) = &mut tab.editor
                     {
                         self.modules.deployment.forget_editor_save(buffer.token);
-                        *buffer = Buffer::new(buffer.document.saved.clone(), buffer.target.clone());
+                        *buffer =
+                            Buffer::new((*buffer.document.saved).clone(), buffer.target.clone());
                     }
                 }
                 self.editor.saving_all = false;

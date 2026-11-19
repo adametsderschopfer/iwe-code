@@ -123,14 +123,13 @@ impl Worker {
                     dirty = false;
                     saved = Instant::now();
                 }
-                match self.commands.recv_timeout(Duration::from_millis(250)) {
+                match self.commands.recv() {
                     Ok(path) => {
                         // Read opened folders before resuming speculative traversal.
                         let result = self.read(&path, &mut queue, &mut queued, true);
                         dirty |= result;
                     }
-                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                    Err(mpsc::RecvTimeoutError::Timeout) => {}
+                    Err(_) => break,
                 }
                 continue;
             };

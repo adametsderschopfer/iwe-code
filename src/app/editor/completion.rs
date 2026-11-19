@@ -14,7 +14,7 @@ pub(crate) struct Suggestions {
     pub opened: std::time::Instant,
     pub revision: u64,
     pub tab: u64,
-    pub snapshot: String,
+    pub snapshot: Arc<String>,
     pub cursor: iced::widget::text_editor::Position,
     pub items: Vec<Value>,
     pub selected: usize,

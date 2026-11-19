@@ -22,23 +22,31 @@ impl<Message> canvas::Program<Message> for Highlights<'_> {
         frame.with_clip(Rectangle::with_size(bounds.size()), |frame| {
             self.content.with_editor(|editor| {
                 for run in editor.buffer().layout_runs() {
-                    for (index, hit) in self
-                        .search
-                        .results
-                        .hits
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, hit)| hit.found.line == run.line_i + 1)
-                    {
-                        let found = &hit.found;
-                        let mut left = f32::MAX;
-                        let mut right = 0.0_f32;
-                        for glyph in run.glyphs.iter().filter(|glyph| {
-                            glyph.start < found.end_byte_column && glyph.end > found.byte_column
-                        }) {
-                            left = left.min(glyph.x);
-                            right = right.max(glyph.x + glyph.w);
+                    let hits = &self.search.results.hits;
+                    let line = run.line_i + 1;
+                    let start = hits.partition_point(|hit| hit.found.line < line);
+                    let hits = &hits[start..];
+                    let hits = &hits[..hits.partition_point(|hit| hit.found.line == line)];
+                    if hits.is_empty() {
+                        continue;
+                    }
+                    let mut bounds = vec![(f32::MAX, f32::MIN); hits.len()];
+                    for glyph in run.glyphs {
+                        // Glyphs can follow visual order in bidirectional text.
+                        let first =
+                            hits.partition_point(|hit| hit.found.end_byte_column <= glyph.start);
+                        for (index, _) in hits[first..]
+                            .iter()
+                            .take_while(|hit| hit.found.byte_column < glyph.end)
+                            .enumerate()
+                        {
+                            let (left, right) = &mut bounds[first + index];
+                            *left = left.min(glyph.x);
+                            *right = right.max(glyph.x + glyph.w);
                         }
+                    }
+                    for (offset, (left, right)) in bounds.into_iter().enumerate() {
+                        let index = start + offset;
                         if left < right {
                             let mut color = theme::CODE_SELECTION.resolve(theme);
                             color.a = if index == self.search.selected {

@@ -131,7 +131,7 @@ fn automatic_tab_closure_preserves_unsaved_edits() {
     for index in 0..20 {
         let id = open(&mut app, &format!("file-{index}.rs"));
         let _ = app.finish_preview(id, Ok(Document::new("saved".into(), "rs")));
-        app.preview_mut().editor.as_mut().unwrap().document.text = "draft".into();
+        app.preview_mut().editor.as_mut().unwrap().document.text = Arc::new("draft".into());
     }
 
     open(&mut app, "extra.rs");
@@ -1475,7 +1475,7 @@ fn protected_drafts_travel_with_their_project_when_switches_bypass_the_prompt() 
     assert_eq!(app.preview().title, "draft.rs");
     let buffer = app.preview().editor.as_ref().unwrap();
     assert!(buffer.saving);
-    assert_eq!(buffer.document.text, "draft text");
+    assert_eq!(buffer.document.text.as_str(), "draft text");
     assert!(Arc::ptr_eq(
         &document,
         app.preview().document.as_ref().unwrap()
@@ -2449,7 +2449,7 @@ fn moving_a_folder_retargets_editor_and_preserves_its_buffer() {
         Target::Local("project/src/nested/main.rs".into()),
     );
     buffer.document.edit("after".into());
-    buffer.document.saved = "after".into();
+    buffer.document.saved = Arc::new("after".into());
     app.preview_mut().editor = Some(buffer);
 
     let _ = app.reconcile_file_tabs(Path::new("project/src"), Some(Path::new("project/lib")));
@@ -2465,7 +2465,7 @@ fn moving_a_folder_retargets_editor_and_preserves_its_buffer() {
     );
     let mut document = buffer.document.clone();
     document.undo(false);
-    assert_eq!(document.text, "before");
+    assert_eq!(document.text.as_str(), "before");
 
     let _ = app.reconcile_file_tabs(Path::new("project/lib"), None);
     assert!(app.preview().path.is_none());

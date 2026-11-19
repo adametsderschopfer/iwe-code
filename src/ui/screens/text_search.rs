@@ -270,6 +270,9 @@ pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
     })
 }
 fn project_view<'a>(app: &'a App, search: &'a Search) -> Element<'a, Message> {
+    let pattern = (!search.query.is_empty())
+        .then(|| crate::domain::text_search::compile(&search.query, &search.options).ok())
+        .flatten();
     let mut results = column![];
     let start = search.selected.saturating_sub(8);
     for (index, hit) in search.results.hits.iter().enumerate().skip(start).take(20) {
@@ -281,7 +284,8 @@ fn project_view<'a>(app: &'a App, search: &'a Search) -> Element<'a, Message> {
         results = results.push(
             button(
                 row![
-                    container(highlighted(hit.found.text.clone(), search, app)).width(Length::Fill),
+                    container(highlighted(&hit.found.text, pattern.as_ref(), app))
+                        .width(Length::Fill),
                     text(format!("{}  {}", path, hit.found.line))
                         .size(12)
                         .style(theme::MUTED.text())
@@ -330,7 +334,7 @@ fn project_view<'a>(app: &'a App, search: &'a Search) -> Element<'a, Message> {
                     .width(Length::Fill)
                     .style(theme::search_panel),
                 container(
-                    scrollable(highlighted(preview, search, app))
+                    scrollable(highlighted(&preview, pattern.as_ref(), app))
                         .height(256)
                         .style(theme::scroll)
                 )
@@ -394,13 +398,11 @@ fn project_view<'a>(app: &'a App, search: &'a Search) -> Element<'a, Message> {
     context_menu::on_key(popup, move |event| key(event, true, app))
 }
 
-fn highlighted<'a>(value: String, search: &Search, app: &App) -> Element<'a, Message> {
+fn highlighted<'a>(value: &str, pattern: Option<&regex::Regex>, app: &App) -> Element<'a, Message> {
     let mut spans = Vec::new();
     let mut start = 0;
-    if !search.query.is_empty()
-        && let Ok(pattern) = crate::domain::text_search::compile(&search.query, &search.options)
-    {
-        for found in pattern.find_iter(&value).take(1000) {
+    if let Some(pattern) = pattern {
+        for found in pattern.find_iter(value).take(1000) {
             spans.push(iced::widget::span(value[start..found.start()].to_owned()));
             spans.push(
                 iced::widget::span(value[found.range()].to_owned())

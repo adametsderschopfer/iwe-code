@@ -257,7 +257,8 @@ fn file_tree_centers_names_inside_each_row() {
                 original: None,
             },
         )]),
-    );
+    )
+    .into();
     let mut ui = iced_test::Simulator::with_size(
         iced::Settings {
             default_font: crate::ui::theme::font(),
@@ -421,4 +422,56 @@ fn root_and_file_menus_expose_only_applicable_commands() {
         assert!(ui.find(app.i18n.text(Key::CopyPathMenu).as_str()).is_ok());
         assert!(ui.find(app.i18n.text(Key::FileTrash).as_str()).is_err());
     }
+}
+
+#[test]
+fn audit_directory_updates_at_index_limit() {
+    if std::env::var_os("IWE_PROFILE_WORKSPACE").is_none() {
+        return;
+    }
+    for _ in 0..3 {
+        let mut app = app();
+        let start = std::time::Instant::now();
+        for i in 0..4095 {
+            directory(&mut app, &format!("/project/dir-{i}"), Vec::new());
+        }
+        eprintln!("directory updates {:?}", start.elapsed());
+        assert_eq!(app.tree.len(), 4095);
+    }
+}
+
+#[test]
+fn refreshing_one_subtree_prunes_removed_children_and_preserves_similar_siblings() {
+    let mut app = app();
+    for folder in [
+        "/project/sub/keep",
+        "/project/sub/old/deep",
+        "/project/sub-old",
+    ] {
+        directory(&mut app, folder, Vec::new());
+        app.expanded.insert(folder.into());
+    }
+    app.files.selected_path = Some("/project/sub/old/deep/file".into());
+    directory(
+        &mut app,
+        "/project/sub",
+        vec![entry("/project/sub/keep", true)],
+    );
+    assert!(
+        app.tree
+            .contains_key(std::path::Path::new("/project/sub-old"))
+    );
+    assert!(
+        app.tree
+            .contains_key(std::path::Path::new("/project/sub/keep"))
+    );
+    assert!(
+        !app.tree
+            .contains_key(std::path::Path::new("/project/sub/old/deep"))
+    );
+    assert!(
+        !app.expanded
+            .contains(std::path::Path::new("/project/sub/old/deep"))
+    );
+    assert!(app.files.selected_path.is_none());
 }

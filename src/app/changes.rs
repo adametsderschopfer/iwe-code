@@ -11,7 +11,7 @@ use std::{collections::BTreeSet, path::PathBuf, sync::Arc, time::Duration};
 
 #[derive(Default)]
 pub(crate) struct State {
-    pub status: Worktree,
+    pub status: Arc<Worktree>,
     pub error: Option<Failure>,
     pub loaded: bool,
     pending: bool,
@@ -25,8 +25,24 @@ pub(crate) struct State {
 pub(crate) enum Event {
     Refresh,
     RefreshManually,
-    Loaded(u64, u64, Result<Worktree, Failure>),
+    Loaded(u64, u64, Result<Arc<Worktree>, Failure>),
     PreviewLoaded(u64, u64, Result<Option<Box<Document>>, Failure>),
+}
+
+fn idle_status(
+    (generation, request, root): (u64, u64, PathBuf),
+    interval: Duration,
+) -> impl iced::futures::Stream<Item = Message> {
+    iced::futures::stream::unfold((root, None), move |(root, previous)| async move {
+        loop {
+            tokio::time::sleep(interval).await;
+            let result = repository::working_status(root.clone()).await.map(Arc::new);
+            if previous.as_ref() != Some(&result) {
+                let message = Message::Worktree(Event::Loaded(generation, request, result.clone()));
+                return Some((message, (root, Some(result))));
+            }
+        }
+    })
 }
 
 impl App {
@@ -79,15 +95,32 @@ impl App {
     }
 
     pub(super) fn change_subscription(&self) -> Subscription<Message> {
-        if self.module_enabled(crate::modules::ModuleId::Git)
-            && self.loaded
-            && self.workspace.directory().is_some()
-            && !self.changes.disabled
+        let Some(root) = self.workspace.directory() else {
+            return Subscription::none();
+        };
+        if !self.module_enabled(crate::modules::ModuleId::Git)
+            || !self.loaded
+            || self.changes.disabled
         {
-            iced::time::every(Duration::from_secs(3)).map(|_| Message::Worktree(Event::Refresh))
-        } else {
-            Subscription::none()
+            return Subscription::none();
         }
+        if self.preview().working_paths().is_some()
+            && self
+                .preview()
+                .document
+                .as_ref()
+                .is_none_or(|doc| doc.page.is_none())
+        {
+            return iced::time::every(Duration::from_secs(3))
+                .map(|_| Message::Worktree(Event::Refresh));
+        }
+        if self.changes.pending {
+            return Subscription::none();
+        }
+        Subscription::run_with(
+            (self.generation, self.changes.request, root.clone()),
+            |key| idle_status(key.clone(), Duration::from_secs(3)),
+        )
     }
 
     pub(super) fn refresh_changes_after_file_operation(&mut self) -> Task<Message> {
@@ -110,7 +143,7 @@ impl App {
         self.changes.request += 1;
         let (generation, request) = (self.generation, self.changes.request);
         Task::perform(repository::working_status(root), move |result| {
-            Message::Worktree(Event::Loaded(generation, request, result))
+            Message::Worktree(Event::Loaded(generation, request, result.map(Arc::new)))
         })
     }
 
@@ -167,7 +200,7 @@ impl App {
                         {
                             self.remember_project_changes(root, &Worktree::default());
                         }
-                        self.changes.status = Worktree::default();
+                        self.changes.status = Arc::default();
                         self.changes.disabled = true;
                     }
                     Err(_) => {}
@@ -212,22 +245,32 @@ impl App {
         {
             return Task::none();
         }
-        let (Some(root), Some(path), Some(document)) = (
-            self.workspace.directory().cloned(),
-            self.preview().path.clone(),
-            self.preview().document.as_ref(),
-        ) else {
+        let preview = self.preview();
+        let (Some((root, path)), Some(document)) =
+            (preview.working_paths(), preview.document.as_ref())
+        else {
             return Task::none();
         };
         let (generation, request) = (self.generation, self.preview().id);
         let fingerprint = document.fingerprint;
+        let (root, path) = (root.to_owned(), path.to_owned());
+        let compare = preview.working_comparison();
         self.changes.preview_pending = Some(request);
-        let snapshot = repository::working_snapshot(&self.changes.status, &path);
+        let snapshot = if compare {
+            repository::working_snapshot(&self.changes.status, &path)
+        } else {
+            None
+        };
         let baseline = Arc::clone(&self.changes.baseline);
         Task::perform(
             async move {
                 let extension = syntax_for(&path);
-                let source = if let Some(snapshot) = snapshot {
+                let source = if !compare {
+                    crate::domain::changes::Source {
+                        text: crate::infrastructure::workspace::read(root, path).await?,
+                        ..Default::default()
+                    }
+                } else if let Some(snapshot) = snapshot {
                     repository::working_file_cached(root, path, snapshot, baseline).await?
                 } else {
                     repository::working_file(root, path).await?

@@ -28,7 +28,7 @@ pub(crate) struct FileCandidate {
 /// between matches lower the score. Returns `None` for an empty query or when
 /// `text` does not contain the query subsequence.
 pub(crate) fn score(query: &str, text: &str) -> Option<i32> {
-    score_chars(query, text.chars())
+    score_chars(query, query.chars().any(char::is_uppercase), text.chars())
 }
 
 /// Rank files whose name or project-relative path matches `query`.
@@ -40,24 +40,31 @@ pub(crate) fn rank(query: &str, files: &[FileCandidate]) -> Vec<usize> {
     if query.is_empty() {
         return Vec::new();
     }
+    let sensitive = query.chars().any(char::is_uppercase);
     let mut ranked: Vec<(i32, usize)> = files
         .iter()
         .enumerate()
         .filter_map(|(index, file)| {
-            let score = score_chars(query, file.name.chars()).or_else(|| {
-                score_chars(query, path_chars(file)).map(|score| score - PATH_MATCH_PENALTY)
+            let score = score_chars(query, sensitive, file.name.chars()).or_else(|| {
+                score_chars(query, sensitive, path_chars(file))
+                    .map(|score| score - PATH_MATCH_PENALTY)
             })?;
             Some((score, index))
         })
         .collect();
-    ranked.sort_by(|left, right| {
+    let order = |left: &(i32, usize), right: &(i32, usize)| {
         right
             .0
             .cmp(&left.0)
             .then_with(|| files[left.1].name.cmp(&files[right.1].name))
             .then_with(|| files[left.1].path.cmp(&files[right.1].path))
-    });
-    ranked.truncate(MAX_RESULTS);
+            .then_with(|| left.1.cmp(&right.1))
+    };
+    if ranked.len() > MAX_RESULTS {
+        ranked.select_nth_unstable_by(MAX_RESULTS, order);
+        ranked.truncate(MAX_RESULTS);
+    }
+    ranked.sort_unstable_by(order);
     ranked.into_iter().map(|(_, index)| index).collect()
 }
 
@@ -68,11 +75,10 @@ fn path_chars(file: &FileCandidate) -> impl Iterator<Item = char> + '_ {
         .chain(file.name.chars())
 }
 
-fn score_chars(query: &str, mut text: impl Iterator<Item = char>) -> Option<i32> {
+fn score_chars(query: &str, sensitive: bool, mut text: impl Iterator<Item = char>) -> Option<i32> {
     if query.is_empty() {
         return None;
     }
-    let sensitive = query.chars().any(char::is_uppercase);
     let mut score = 0;
     let mut previous_match: Option<i32> = None;
     let mut previous_char: Option<char> = None;

@@ -7,6 +7,7 @@ use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 #[derive(Default)]
@@ -15,7 +16,7 @@ pub(crate) struct Service {
     root: PathBuf,
     clients: HashMap<&'static str, Client>,
     origins: HashMap<String, PathBuf>,
-    buffers: Vec<(PathBuf, String)>,
+    buffers: Vec<(PathBuf, Arc<String>)>,
 }
 
 impl Service {
@@ -29,7 +30,7 @@ impl Service {
             || self.origins.values().any(|path| !retains(path))
     }
 
-    pub(crate) async fn maintain(&mut self, root: &Path, buffers: Vec<(PathBuf, String)>) {
+    pub(crate) async fn maintain(&mut self, root: &Path, buffers: Vec<(PathBuf, Arc<String>)>) {
         if self.root != root || buffers.is_empty() {
             self.clients.clear();
             self.origins.clear();

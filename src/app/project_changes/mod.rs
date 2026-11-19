@@ -18,6 +18,8 @@ use std::{
 #[derive(Default)]
 pub(crate) struct State {
     known: BTreeMap<PathBuf, bool>,
+    last_scan: BTreeMap<PathBuf, Result<bool, Failure>>,
+    stable_scans: u8,
     pending: bool,
     request: u64,
 }
@@ -39,7 +41,7 @@ impl App {
                 .flat_map(|space| &space.projects)
                 .any(|project| Some(&project.directory) != self.workspace.directory())
         {
-            iced::time::every(Duration::from_secs(10))
+            iced::time::every(self.project_changes.interval())
                 .map(|_| Message::ProjectChanges(Event::Refresh))
         } else {
             Subscription::none()
@@ -104,17 +106,9 @@ impl App {
         self.project_changes.request += 1;
         let request = self.project_changes.request;
         let generation = self.generation;
-        let results = stream::iter(roots)
+        let results = paced_roots(roots)
             .map(move |root| async move {
-                let result = repository::working_status(root.clone())
-                    .await
-                    .and_then(|status| {
-                        if status.files.is_empty() && !status.failures.is_empty() {
-                            Err(status.failures[0].1)
-                        } else {
-                            Ok(!status.files.is_empty())
-                        }
-                    });
+                let result = repository::has_working_changes(&root).await;
                 (root, result)
             })
             .buffer_unordered(2);
@@ -133,25 +127,35 @@ impl App {
                 if generation != self.generation {
                     return Task::none();
                 }
-                for (root, result) in results {
-                    let listed = self.workspace.spaces.iter().any(|space| {
-                        space
-                            .projects
-                            .iter()
-                            .any(|project| project.directory == root)
-                    });
-                    if listed && self.workspace.directory() != Some(&root) {
-                        match result {
-                            Ok(dirty) => {
-                                self.project_changes.known.insert(root, dirty);
-                            }
-                            Err(Failure::NotRepository) => {
-                                self.project_changes.known.remove(&root);
-                            }
-                            Err(_) => {}
+                let listed: BTreeSet<_> = self
+                    .workspace
+                    .spaces
+                    .iter()
+                    .flat_map(|space| space.projects.iter().map(|project| &project.directory))
+                    .collect();
+                let scan: BTreeMap<_, _> = results
+                    .into_iter()
+                    .filter(|(root, _)| {
+                        listed.contains(root) && self.workspace.directory() != Some(root)
+                    })
+                    .collect();
+                self.project_changes.stable_scans = if scan == self.project_changes.last_scan {
+                    (self.project_changes.stable_scans + 1).min(3)
+                } else {
+                    0
+                };
+                for (root, result) in &scan {
+                    match result {
+                        Ok(dirty) => {
+                            self.project_changes.known.insert(root.clone(), *dirty);
                         }
+                        Err(Failure::NotRepository) => {
+                            self.project_changes.known.remove(root);
+                        }
+                        Err(_) => {}
                     }
                 }
+                self.project_changes.last_scan = scan;
             }
             _ => {}
         }
@@ -159,10 +163,26 @@ impl App {
     }
 }
 
+/// Start the first check immediately. Spread later launches over a four-second delay budget.
+fn paced_roots(roots: Vec<PathBuf>) -> impl iced::futures::Stream<Item = PathBuf> {
+    let count = u32::try_from(roots.len()).unwrap_or(u32::MAX).max(1);
+    let spacing = Duration::from_millis(150).min(Duration::from_secs(4) / count);
+    stream::iter(roots.into_iter().enumerate()).then(move |(index, root)| async move {
+        if index > 0 {
+            tokio::time::sleep(spacing).await;
+        }
+        root
+    })
+}
+
 #[cfg(test)]
 mod tests;
 
 impl State {
+    fn interval(&self) -> Duration {
+        Duration::from_secs((10_u64 << self.stable_scans).min(60))
+    }
+
     pub(crate) fn suspend(&mut self) {
         let request = self.request + 1;
         *self = Self {

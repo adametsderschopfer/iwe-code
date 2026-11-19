@@ -192,7 +192,7 @@ async fn quit_flushes_edits_before_exit_and_keeps_conflicting_drafts_open() {
         assert_eq!(app.editor.pending.is_some(), conflict);
         if conflict {
             assert_eq!(
-                app.editor_buffer().unwrap().document.text,
+                app.editor_buffer().unwrap().document.text.as_str(),
                 "saved before quit"
             );
             assert_eq!(

@@ -13,7 +13,7 @@ use std::sync::Arc;
 pub(crate) struct Report {
     pub generation: u64,
     pub tab: u64,
-    pub snapshot: String,
+    pub snapshot: Arc<String>,
     pub edits: Result<Vec<TextEdit>, Key>,
 }
 
@@ -122,7 +122,7 @@ impl App {
                 return Task::none();
             }
         };
-        if text == report.snapshot {
+        if text == *report.snapshot {
             return Task::none();
         }
         self.editor.completion_revision += 1;

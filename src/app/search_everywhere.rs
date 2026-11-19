@@ -55,14 +55,13 @@ pub(crate) struct Dialog {
 #[derive(Default)]
 pub(crate) struct State {
     pub dialog: Option<Dialog>,
-    files: Vec<FileCandidate>,
-    dirty: bool,
+    files: Option<Vec<FileCandidate>>,
 }
 
 impl State {
     /// Rebuild the cached file candidates on the next query change.
     pub(crate) fn tree_changed(&mut self) {
-        self.dirty = true;
+        self.files = None;
     }
 }
 
@@ -100,11 +99,7 @@ impl App {
                 self.space_menu = None;
                 self.modules.git.git_actions.close_menu();
                 self.modules.git.git_actions.bulk.menu = None;
-                let files = self.collect_file_candidates();
-                let state = &mut self.search_everywhere;
-                state.files = files;
-                state.dirty = false;
-                state.dialog = Some(Dialog {
+                self.search_everywhere.dialog = Some(Dialog {
                     scope,
                     query: String::new(),
                     rows: Vec::new(),
@@ -127,10 +122,6 @@ impl App {
                 }
             }
             Event::Changed(query) => {
-                if self.search_everywhere.dialog.is_some() && self.search_everywhere.dirty {
-                    self.search_everywhere.files = self.collect_file_candidates();
-                    self.search_everywhere.dirty = false;
-                }
                 if let Some(dialog) = self.search_everywhere.dialog.as_mut() {
                     dialog.query = query.chars().take(200).collect();
                 }
@@ -177,11 +168,25 @@ impl App {
     }
 
     fn refresh_search_rows(&mut self) -> Task<Message> {
+        if self.search_everywhere.files.is_none()
+            && self
+                .search_everywhere
+                .dialog
+                .as_ref()
+                .is_some_and(|dialog| dialog.scope != Scope::Projects && !dialog.query.is_empty())
+        {
+            self.search_everywhere.files = Some(self.collect_file_candidates());
+        }
         let state = &mut self.search_everywhere;
         let Some(dialog) = state.dialog.as_mut() else {
             return Task::none();
         };
-        dialog.rows = collect_rows(dialog.scope, &dialog.query, &state.files, &self.workspace);
+        dialog.rows = collect_rows(
+            dialog.scope,
+            &dialog.query,
+            state.files.as_deref().unwrap_or_default(),
+            &self.workspace,
+        );
         dialog.selection = 0;
         Task::none()
     }

@@ -2907,7 +2907,8 @@ async fn render_for_visual_review_when_requested() {
             )
         })
         .collect(),
-    );
+    )
+    .into();
     capture(&state, "working-changes", (1440., 1000.));
     state.preview_mut().revision = Some("0123456789abcdef0123456789abcdef01234567".to_owned());
     capture(&state, "commit-changes", (1440., 1000.));
@@ -3469,8 +3470,10 @@ export function App() {
             )
         })
         .collect(),
-    );
-    app.changes.status.roots = vec![frontend.clone(), backend.clone()];
+    )
+    .into();
+    std::sync::Arc::make_mut(&mut app.changes.status).roots =
+        vec![frontend.clone(), backend.clone()];
     app.files.selected_path = Some(src.join("App.tsx"));
     let capture = |app: &App, name: &str, size: (f32, f32)| {
         let mut ui = iced_test::Simulator::with_size(ui_settings(), size, app.view());

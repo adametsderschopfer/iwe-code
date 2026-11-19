@@ -42,7 +42,7 @@ async fn diagnostics_stop_when_the_last_local_language_document_closes() {
         .await
         .maintain(
             std::path::Path::new("project"),
-            vec![(path, "fn main() {}".into())],
+            vec![(path, Arc::new("fn main() {}".into()))],
         )
         .await;
     let _ = app.update(Message::CloseActiveTab);
@@ -74,6 +74,7 @@ fn diagnostic_responses_release_busy_state_while_editor_actions_are_blocked() {
             tab: app.preview().id,
             text: app.editor_buffer().unwrap().document.text.clone(),
             diagnostics: Vec::new(),
+            failed: false,
         };
         let _ = app.update_editor(Event::Diagnostics(report.clone()));
         assert!(!app.editor.diagnostics_busy);
@@ -96,6 +97,7 @@ fn diagnostic_responses_release_busy_state_while_editor_actions_are_blocked() {
 
 #[test]
 fn language_overlays_preserve_editor_widget_state() {
+    use crate::domain::language::{Diagnostic, Position, Range};
     use iced::advanced::widget::{Tree, tree};
     fn first_stateful_leaf(tree: &mut Tree) -> &mut Tree {
         if tree.children.is_empty() && tree.tag != tree::Tag::stateless() {
@@ -130,7 +132,21 @@ fn language_overlays_preserve_editor_widget_state() {
             generation: app.generation,
             tab: app.preview().id,
             text: app.editor_buffer().unwrap().document.text.clone(),
-            diagnostics: Vec::new(),
+            diagnostics: vec![Diagnostic {
+                range: Range {
+                    start: Position {
+                        line: 0,
+                        character: 0,
+                    },
+                    end: Position {
+                        line: 0,
+                        character: 1,
+                    },
+                },
+                severity: Some(1),
+                message: "Test diagnostic".into(),
+            }],
+            failed: false,
         });
         let view = crate::ui::editor::view(&app, app.editor_buffer().unwrap());
         tree.diff(&view);
@@ -207,13 +223,13 @@ fn duplicating_a_line_preserves_endings_and_undoes_in_one_step() {
                 selection: None,
             });
         let _ = app.update_editor(Event::DuplicateLine);
-        assert_eq!(app.editor_buffer().unwrap().document.text, after);
+        assert_eq!(app.editor_buffer().unwrap().document.text.as_str(), after);
         assert_eq!(
             app.editor_buffer().unwrap().content.cursor().position.line,
             line + 1
         );
         let _ = app.update_editor(Event::Undo(id, false));
-        assert_eq!(app.editor_buffer().unwrap().document.text, before);
+        assert_eq!(app.editor_buffer().unwrap().document.text.as_str(), before);
     }
 }
 
@@ -225,7 +241,7 @@ fn formatting_rejects_changed_text_and_undoes_in_one_step() {
     let report = formatting::Report {
         generation: app.generation,
         tab: id,
-        snapshot: "a".into(),
+        snapshot: Arc::new("a".into()),
         edits: Ok(vec![crate::domain::language::TextEdit {
             range: crate::domain::language::Range {
                 start: crate::domain::language::Position {
@@ -242,12 +258,18 @@ fn formatting_rejects_changed_text_and_undoes_in_one_step() {
     };
     edit(&mut app, "changed");
     let _ = app.update_editor(Event::Formatted(report.clone()));
-    assert_eq!(app.editor_buffer().unwrap().document.text, "changed");
+    assert_eq!(
+        app.editor_buffer().unwrap().document.text.as_str(),
+        "changed"
+    );
     edit(&mut app, "a");
     let _ = app.update_editor(Event::Formatted(report));
-    assert_eq!(app.editor_buffer().unwrap().document.text, "formatted");
+    assert_eq!(
+        app.editor_buffer().unwrap().document.text.as_str(),
+        "formatted"
+    );
     let _ = app.update_editor(Event::Undo(id, false));
-    assert_eq!(app.editor_buffer().unwrap().document.text, "a");
+    assert_eq!(app.editor_buffer().unwrap().document.text.as_str(), "a");
 }
 
 #[test]
@@ -297,12 +319,15 @@ fn modified_backspace_deletes_words_and_line_prefixes() {
             let _ = app.update(message);
         }
         assert_eq!(
-            app.editor_buffer().unwrap().document.text,
+            app.editor_buffer().unwrap().document.text.as_str(),
             expected,
             "{modifiers:?}"
         );
         let _ = app.update_editor(Event::Undo(id, false));
-        assert_eq!(app.editor_buffer().unwrap().document.text, "alpha beta");
+        assert_eq!(
+            app.editor_buffer().unwrap().document.text.as_str(),
+            "alpha beta"
+        );
     }
 }
 
@@ -343,7 +368,10 @@ fn word_selection_uses_arrow_keys_even_with_an_empty_text_payload() {
         app.editor_buffer().unwrap().content.selection().as_deref(),
         Some("beta")
     );
-    assert_eq!(app.editor_buffer().unwrap().document.text, "alpha beta");
+    assert_eq!(
+        app.editor_buffer().unwrap().document.text.as_str(),
+        "alpha beta"
+    );
 }
 
 #[test]
@@ -365,7 +393,7 @@ fn completion_popup_fits_and_insertion_is_one_undo_step() {
         opened: std::time::Instant::now() - crate::ui::theme::COMPLETION_APPEAR,
         revision: app.editor.completion_revision,
         tab: id,
-        snapshot: "person.gr".to_owned(),
+        snapshot: Arc::new("person.gr".into()),
         cursor: text_editor::Position { line: 0, column: 9 },
         items: vec![
             serde_json::json!({"label": "greet", "kind": 2, "detail": "() -> str"}),
@@ -397,7 +425,10 @@ fn completion_popup_fits_and_insertion_is_one_undo_step() {
         }
     }
     let _ = app.update_editor(Event::AcceptCompletion(0));
-    assert_eq!(app.editor_buffer().unwrap().document.text, "person.greet");
+    assert_eq!(
+        app.editor_buffer().unwrap().document.text.as_str(),
+        "person.greet"
+    );
     assert_eq!(
         app.editor_buffer()
             .unwrap()
@@ -408,7 +439,10 @@ fn completion_popup_fits_and_insertion_is_one_undo_step() {
         12
     );
     let _ = app.update_editor(Event::Undo(id, false));
-    assert_eq!(app.editor_buffer().unwrap().document.text, "person.gr");
+    assert_eq!(
+        app.editor_buffer().unwrap().document.text.as_str(),
+        "person.gr"
+    );
 }
 
 #[test]
@@ -485,7 +519,10 @@ fn save_completion_keeps_changes_typed_during_save_and_failures_keep_drafts() {
     let token = app.editor_buffer().unwrap().token;
     edit(&mut app, "newer");
     let _ = app.update_editor(Event::Saved(token, Ok(())));
-    assert_eq!(app.editor_buffer().unwrap().document.saved, "submitted");
+    assert_eq!(
+        app.editor_buffer().unwrap().document.saved.as_str(),
+        "submitted"
+    );
     assert_eq!(app.editor_buffer().unwrap().content.text(), "newer");
     assert!(app.editor_buffer().unwrap().document.dirty());
     let _ = app.save_editor(id);
@@ -670,7 +707,7 @@ fn autosave_ignores_old_timers_and_resumes_newer_edits_after_completion() {
     assert!(!app.editor_buffer().unwrap().saving);
     let _ = app.update_editor(Event::Autosave(id, revision));
     let token = app.editor_buffer().unwrap().token;
-    assert_eq!(app.editor_buffer().unwrap().snapshot, "second");
+    assert_eq!(app.editor_buffer().unwrap().snapshot.as_str(), "second");
     edit(&mut app, "third");
     let revision = app.editor_buffer().unwrap().autosave;
     let _ = app.update_editor(Event::Autosave(id, revision));
@@ -678,8 +715,11 @@ fn autosave_ignores_old_timers_and_resumes_newer_edits_after_completion() {
     let _ = app.update_editor(Event::Saved(token, Ok(())));
     let revision = app.editor_buffer().unwrap().autosave;
     let _ = app.update_editor(Event::Autosave(id, revision));
-    assert_eq!(app.editor_buffer().unwrap().snapshot, "third");
-    assert_eq!(app.editor_buffer().unwrap().document.saved, "second");
+    assert_eq!(app.editor_buffer().unwrap().snapshot.as_str(), "third");
+    assert_eq!(
+        app.editor_buffer().unwrap().document.saved.as_str(),
+        "second"
+    );
 }
 
 #[test]
@@ -1034,7 +1074,7 @@ async fn file_move_waits_for_saved_edits_and_stops_on_external_conflicts() {
             assert!(!app.files.operations.busy);
             let buffer = app.editor_buffer().unwrap();
             assert!(buffer.document.dirty());
-            assert_eq!(buffer.document.text, "draft");
+            assert_eq!(buffer.document.text.as_str(), "draft");
         } else {
             let mut actions = task::into_stream(operation).unwrap();
             while let Some(action) = actions.next().await {
@@ -1049,4 +1089,27 @@ async fn file_move_waits_for_saved_edits_and_stops_on_external_conflicts() {
             );
         }
     }
+}
+
+#[test]
+fn failed_diagnostics_back_off_and_detecting_a_program_retries_promptly() {
+    let mut app = app();
+    let _ = app.open_file("project/source.rs".into());
+    let tab = app.preview().id;
+    let _ = app.finish_preview(tab, Ok(Document::new("fn main() {}".into(), "rs")));
+    let report = diagnostics::Report {
+        generation: app.generation,
+        tab,
+        text: app.editor_buffer().unwrap().document.text.clone(),
+        diagnostics: Vec::new(),
+        failed: true,
+    };
+    let _ = app.update_editor(Event::Diagnostics(report));
+    assert_eq!(app.diagnostics_interval(), Some(Duration::from_secs(30)));
+    let _ = app.update(Message::LanguageServerDetected(
+        crate::domain::language::Language::Rust,
+        None,
+        true,
+    ));
+    assert_eq!(app.diagnostics_interval(), Some(Duration::from_millis(800)));
 }

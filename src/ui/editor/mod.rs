@@ -212,18 +212,14 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
     } else {
         iced::widget::stack![editor].into()
     };
-    let editor = if let Some(report) = app
-        .editor
-        .diagnostics
-        .as_ref()
-        .filter(|report| report.tab == id && report.text == buffer.document.text)
-    {
+    let editor = if let Some(report) = app.editor.diagnostics.as_ref().filter(|report| {
+        !report.diagnostics.is_empty() && report.tab == id && report.text == buffer.document.text
+    }) {
         iced::widget::stack![
             editor,
             iced::widget::canvas(diagnostics::Underlines {
                 content: &buffer.content,
                 diagnostics: &report.diagnostics,
-                text: &report.text
             })
             .width(Length::Fill)
             .height(Length::Fill)

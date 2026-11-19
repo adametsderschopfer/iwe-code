@@ -11,12 +11,12 @@ fn undo_redo_and_saved_snapshot_keep_newer_changes() {
     document.undo(false);
     assert!(!document.dirty());
     document.undo(true);
-    assert_eq!(document.text, "third\r\n");
+    assert_eq!(document.text.as_str(), "third\r\n");
     assert!(document.dirty());
     document.undo(false);
     document.edit("replacement".into());
     document.undo(true);
-    assert_eq!(document.text, "replacement");
+    assert_eq!(document.text.as_str(), "replacement");
 }
 
 #[test]
@@ -25,5 +25,16 @@ fn oversized_edits_do_not_change_text_or_history() {
     assert!(!document.edit("x".repeat(LIMIT + 1)));
     assert!(!document.dirty());
     document.undo(false);
-    assert_eq!(document.text, "original");
+    assert_eq!(document.text.as_str(), "original");
+}
+
+#[test]
+fn background_snapshots_share_storage_and_keep_the_submitted_revision() {
+    let mut doc = Document::new("initial".into());
+    let snapshot = Arc::clone(&doc.text);
+    assert!(Arc::ptr_eq(&snapshot, &doc.saved));
+    assert!(doc.edit("new".into()));
+    assert_eq!(snapshot.as_str(), "initial");
+    assert!(doc.undo(false));
+    assert!(Arc::ptr_eq(&doc.text, &snapshot));
 }

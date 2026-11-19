@@ -12,21 +12,37 @@ use std::{path::Path, sync::Arc, time::Duration};
 pub(crate) struct Report {
     pub generation: u64,
     pub tab: u64,
-    pub text: String,
+    pub text: Arc<String>,
     pub diagnostics: Vec<Diagnostic>,
+    pub failed: bool,
 }
 
 impl App {
     pub(in crate::app) fn diagnostics_subscription(&self) -> Subscription<Message> {
-        if self.diagnostic_document().is_some() || self.languages_need_maintenance() {
-            iced::time::every(Duration::from_millis(800))
-                .map(|_| Message::Editor(Event::RefreshDiagnostics))
-        } else {
-            Subscription::none()
+        match self.diagnostics_interval() {
+            Some(delay) => {
+                iced::time::every(delay).map(|_| Message::Editor(Event::RefreshDiagnostics))
+            }
+            None => Subscription::none(),
         }
     }
 
-    fn diagnostic_document(&self) -> Option<(&Path, &str)> {
+    pub(super) fn diagnostics_interval(&self) -> Option<Duration> {
+        let normal = Duration::from_millis(800);
+        if self.diagnostic_document().is_none() {
+            return self.languages_need_maintenance().then_some(normal);
+        }
+        let failed = self.editor.diagnostics.as_ref().is_some_and(|report| {
+            report.failed && report.generation == self.generation && report.tab == self.preview().id
+        });
+        Some(if failed && !self.languages_need_maintenance() {
+            Duration::from_secs(30)
+        } else {
+            normal
+        })
+    }
+
+    fn diagnostic_document(&self) -> Option<(&Path, &Arc<String>)> {
         self.workspace.directory()?;
         let buffer = self.editor_buffer()?;
         let Target::Local(path) = &buffer.target else {
@@ -68,7 +84,7 @@ impl App {
                 |_| Message::Editor(Event::LanguagesMaintained),
             );
         };
-        let (path, text) = (path.to_owned(), text.to_owned());
+        let (path, text) = (path.to_owned(), Arc::clone(text));
         let buffers = self.language_buffers();
         let tab = self.preview().id;
         let generation = self.generation;
@@ -92,6 +108,7 @@ impl App {
                         "textDocument/diagnostic",
                     )
                     .await;
+                let failed = result.is_err();
                 let diagnostics = result
                     .ok()
                     .and_then(|value| serde_json::from_value(value).ok())
@@ -101,6 +118,7 @@ impl App {
                     tab,
                     text,
                     diagnostics,
+                    failed,
                 }
             },
             |report| Message::Editor(Event::Diagnostics(report)),

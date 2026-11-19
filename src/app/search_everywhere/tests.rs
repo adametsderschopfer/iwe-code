@@ -55,11 +55,11 @@ fn app() -> App {
 }
 
 #[test]
-fn open_collects_files_and_refuses_other_dialogs_and_settings() {
+fn opening_empty_search_defers_file_collection_and_respects_other_dialogs() {
     let mut app = app();
     let _ = app.update_search_everywhere(Event::Open(Scope::All));
     assert!(app.search_everywhere.dialog.is_some());
-    assert_eq!(app.search_everywhere.files.len(), 4);
+    assert!(app.search_everywhere.files.is_none());
     app.search_everywhere.dialog = None;
 
     app.navigation = Navigation::Settings;
@@ -200,4 +200,25 @@ fn visible_windows_center_the_selected_row() {
     assert_eq!(visible_window(length, 15), 12..20);
     assert_eq!(visible_window(length, 29), 22..30);
     assert_eq!(visible_window(3, 2), 0..3);
+}
+
+#[test]
+fn project_queries_skip_the_file_cache_and_switching_scope_uses_the_latest_tree() {
+    let mut app = app();
+    let _ = app.update_search_everywhere(Event::Open(Scope::Projects));
+    let _ = app.update_search_everywhere(Event::Changed("al".into()));
+    assert!(app.search_everywhere.files.is_none());
+    let _ = app.update_search_everywhere(Event::ChangeScope(Scope::Files));
+    assert_eq!(app.search_everywhere.files.as_ref().unwrap().len(), 4);
+    app.tree.clear();
+    app.search_everywhere.tree_changed();
+    let _ = app.update_search_everywhere(Event::Changed("app".into()));
+    assert!(
+        app.search_everywhere
+            .dialog
+            .as_ref()
+            .unwrap()
+            .rows
+            .is_empty()
+    );
 }

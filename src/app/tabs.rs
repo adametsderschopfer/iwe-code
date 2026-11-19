@@ -288,6 +288,13 @@ impl Preview {
         self.source.is_some() || self.pending_comparison.is_some()
     }
 
+    pub(super) fn working_paths(&self) -> Option<(&Path, &Path)> {
+        match &self.source {
+            Some(Source::Working { root, path, .. }) => Some((root, path)),
+            _ => None,
+        }
+    }
+
     pub(crate) fn working_comparison(&self) -> bool {
         matches!(self.source, Some(Source::Working { compare: true, .. }))
     }
@@ -997,7 +1004,7 @@ impl App {
                         if preview
                             .editor
                             .as_ref()
-                            .is_none_or(|buffer| buffer.document.text != document.text)
+                            .is_none_or(|buffer| *buffer.document.text != document.text)
                         {
                             preview.editor =
                                 Some(super::editor::Buffer::new(document.text.clone(), target));
@@ -1025,7 +1032,7 @@ impl App {
         if let (Some(Source::Remote { text, .. }), Some(buffer)) =
             (&mut preview.source, &preview.editor)
         {
-            *text = Arc::new(buffer.document.saved.clone());
+            *text = buffer.document.saved.clone();
         }
         let Some(source) = preview.source.clone() else {
             return Task::none();

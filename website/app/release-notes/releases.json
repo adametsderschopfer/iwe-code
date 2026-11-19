@@ -2437,6 +2437,36 @@
           "es": "Los indicadores de Git se actualizan juntos y el espacio de trabajo usa menos CPU cuando está inactivo."
         },
         "sources": ["src/app/project_changes/mod.rs", "src/app/editor/diagnostics.rs"]
+      },
+      {
+        "id": "quiet-background-projects",
+        "category": "fixed",
+        "text": {
+          "en": "Idle workspaces skip redraws for unchanged Git status. Inactive projects with stable status refresh at intervals up to one minute.",
+          "ru": "В простое IWE пропускает перерисовку при прежнем статусе Git. Для неактивных проектов интервал проверки постепенно увеличивается до минуты.",
+          "es": "En reposo, IWE evita redibujar la ventana si el estado de Git sigue igual. Los proyectos inactivos con estado estable se comprueban hasta una vez por minuto."
+        },
+        "sources": ["src/app/changes.rs", "src/app/project_changes/mod.rs"]
+      },
+      {
+        "id": "large-workspace-search-performance",
+        "category": "fixed",
+        "text": {
+          "en": "Large directory indexes update faster. File searches and text searches with many matches on one line return results sooner.",
+          "ru": "IWE быстрее обновляет большие индексы папок. Поиск файлов и поиск множества совпадений в одной строке занимают меньше времени.",
+          "es": "IWE actualiza los índices de carpetas grandes más rápido. Las búsquedas de archivos y de muchas coincidencias en una línea tardan menos."
+        },
+        "sources": ["src/app/files.rs", "src/domain/search/mod.rs", "src/domain/text_search/mod.rs"]
+      },
+      {
+        "id": "responsive-document-replacement",
+        "category": "fixed",
+        "text": {
+          "en": "The editor replaces matches in the background and preserves edits made while the replacement runs.",
+          "ru": "Редактор выполняет замену в фоне и сохраняет правки, введённые во время замены.",
+          "es": "El editor sustituye coincidencias en segundo plano y conserva los cambios realizados durante la sustitución."
+        },
+        "sources": ["src/app/text_search.rs", "src/domain/text_search/mod.rs"]
       }
     ]
   }
