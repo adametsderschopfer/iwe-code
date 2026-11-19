@@ -2422,11 +2422,15 @@
         "id": "macos-idle-cpu",
         "category": "fixed",
         "text": {
-          "en": "Reduce CPU usage when IWE Code is idle on macOS.",
-          "ru": "IWE Code меньше нагружает процессор в простое на macOS.",
-          "es": "IWE Code usa menos CPU cuando está inactivo en macOS."
+          "en": "IWE Code uses less CPU when idle on macOS. In a one-hour test with 29 projects, IWE and its child processes averaged 3.51% of one CPU core.",
+          "ru": "IWE Code меньше нагружает процессор в простое на macOS. За час простоя с 29 проектами IWE и дочерние процессы использовали в среднем 3,51% одного ядра.",
+          "es": "IWE Code usa menos CPU cuando está inactivo en macOS. Durante una hora con 29 proyectos, IWE y sus procesos secundarios usaron en promedio el 3,51 % de un núcleo."
         },
-        "sources": ["src/app/native_menu.rs", "src/infrastructure/native_menu.rs"]
+        "sources": [
+          "src/app/native_menu.rs",
+          "src/infrastructure/native_menu.rs",
+          "docs/performance-audit-2026-11-19.md"
+        ]
       },
       {
         "id": "workspace-idle-refreshes",

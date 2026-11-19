@@ -51,6 +51,36 @@ configured language server was unavailable. Each build ran for 45 seconds with t
 Average IWE CPU fell from 1.09% to 0.77%. Child CPU fell from 0.76% to 0.53%. The highest one-second
 IWE sample rose from 3.36% to 7.28%. This short run establishes no general reduction in peaks.
 
+## One hour on the working profile
+
+On November 19, one instance of commit `07238da` ran on the user's working profile with 29 projects.
+The window reported zero tabs at startup and after the measurement. The monitor recorded 3,593
+intervals from 18:10:35 to 19:10:35 Kaliningrad time. They covered 3,600.06 seconds without a gap.
+
+| CPU as a percentage of one core               | Full hour | After the first 80 seconds |
+| --------------------------------------------- | --------: | -------------------------: |
+| Average IWE                                   |     0.71% |                      0.70% |
+| Average completed children                    |     2.81% |                      2.78% |
+| Combined average                              |     3.51% |                      3.48% |
+| Highest one-second IWE sample                 |    27.51% |                     10.44% |
+| Highest one-second combined sample            |    43.42% |                     35.07% |
+| Highest continuous 60-second IWE average      |     1.21% |                      0.94% |
+| Highest continuous 60-second combined average |     5.58% |                      4.22% |
+
+The averages weight each interval by duration. The minute calculation uses sliding 60-second
+windows. Both full-hour peaks occurred in the first second. After warmup, IWE peaked at 18:57:57.
+Combined CPU peaked at 18:50:01. IWE accounted for 7.49 percentage points and completed children
+accounted for 27.58. macOS charges child CPU at exit. These counters cannot identify the individual
+command.
+
+Zero samples exceeded 50% for IWE or for IWE with its children. The earlier four-hour run recorded
+8.88% average IWE CPU and one 52.85% peak. The new measurement covers one hour.
+
+IWE's physical footprint ranged from 238.78 to 290.58 MiB. The first and last samples measured
+269.67 and 290.55 MiB. The first and last ten-minute medians were 239.58 and 239.78 MiB. The final
+three-second stack profile found the main thread waiting for window events in all 512 samples. The
+monitor captured no threshold-triggered stack profile.
+
 ## Indexing and search
 
 | Optimized-build probe                                     | Baseline median | Updated median |
@@ -134,5 +164,7 @@ overnight CPU peaks or long-term memory growth.
 - Открытые подробности завершённой передачи больше не вызывают обновление окна каждые 150
   миллисекунд.
 
-Тесты охватили macOS. Короткий замер не позволяет оценить пиковую нагрузку за ночь или рост памяти
-за несколько часов.
+За отдельный час на рабочем профиле IWE использовал в среднем 0,71% одного ядра. Вместе с дочерними
+процессами средняя нагрузка составила 3,51%. Ни один из 3 593 интервалов не превысил 50%. В первую
+секунду IWE достиг 27,51%. После прогрева секундный максимум IWE составил 10,44%. Измерения охватили
+macOS. Ночной пик и рост памяти за несколько часов требуют более длительного наблюдения.
