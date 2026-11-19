@@ -2413,10 +2413,10 @@
   },
   {
     "version": "1.5.2",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
+    "status": "released",
+    "publishedAt": "2026-11-19T18:21:19Z",
+    "tags": ["macos-v1.5.2"],
+    "source": "21a179399ae06b6898b9a8b1d2f64ad5f1f862eb",
     "items": [
       {
         "id": "macos-idle-cpu",
