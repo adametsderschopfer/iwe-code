@@ -1,4 +1,4 @@
-//! Own AppKit menu objects on the event-loop thread and return typed selections.
+//! Own AppKit menus and forward selections from the event-loop thread.
 
 use muda::{
     Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu,
@@ -41,7 +41,6 @@ pub(crate) enum Action {
 }
 
 struct Installed {
-    model: Model,
     _menu: Menu,
     actions: BTreeMap<String, Action>,
 }
@@ -63,7 +62,7 @@ fn item(
     item
 }
 
-fn install(model: Model) -> muda::Result<Installed> {
+fn install(model: &Model) -> muda::Result<Installed> {
     let menu = Menu::new();
     let mut actions = BTreeMap::new();
     let application = Submenu::new(&model.application, true);
@@ -141,26 +140,24 @@ fn install(model: Model) -> muda::Result<Installed> {
     menu.append(&deployment)?;
     menu.init_for_nsapp();
     Ok(Installed {
-        model,
         _menu: menu,
         actions,
     })
 }
 
-pub(crate) fn sync_and_poll(model: Model) -> Result<Vec<Action>, ()> {
+pub(crate) fn sync(model: &Model) -> Result<(), ()> {
     objc2::MainThreadMarker::new().ok_or(())?;
-    INSTALLED.with(|slot| {
-        let mut slot = slot.borrow_mut();
-        if slot
-            .as_ref()
-            .is_none_or(|installed| installed.model != model)
-        {
-            *slot = Some(install(model).map_err(|_| ())?);
+    let installed = install(model).map_err(|_| ())?;
+    INSTALLED.with_borrow_mut(|slot| *slot = Some(installed));
+    Ok(())
+}
+
+pub(crate) fn listen(on_action: impl Fn(Action) + Send + Sync + 'static) {
+    MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
+        let action =
+            INSTALLED.with_borrow(|slot| slot.as_ref()?.actions.get(event.id.as_ref()).cloned());
+        if let Some(action) = action {
+            on_action(action);
         }
-        let events = MenuEvent::receiver()
-            .try_iter()
-            .filter_map(|event| slot.as_ref()?.actions.get(event.id.as_ref()).cloned())
-            .collect();
-        Ok(events)
-    })
+    }));
 }

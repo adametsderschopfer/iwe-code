@@ -202,6 +202,8 @@ impl App {
         }
         let maximized = window::is_maximized(id).map(Message::WindowMaximized);
         #[cfg(target_os = "macos")]
+        self.start_native_menu();
+        #[cfg(target_os = "macos")]
         let maximized = Task::batch([
             window::run(id, window_effect::configure_resize).discard(),
             self.align_window_controls(id),

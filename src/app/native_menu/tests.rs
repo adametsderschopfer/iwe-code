@@ -2,6 +2,46 @@ use super::*;
 use crate::i18n::{I18n, Language};
 use std::rc::Rc;
 
+#[tokio::test]
+async fn native_menu_waits_for_selections_when_idle() {
+    use iced::advanced::subscription::into_recipes;
+    use std::time::Duration;
+
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    assert!(into_recipes(app.native_menu_subscription()).is_empty());
+    let _ = app.window_opened(window::Id::unique());
+    let mut recipes = into_recipes(app.native_menu_subscription());
+    assert_eq!(recipes.len(), 1);
+    let mut events = recipes.remove(0).stream(Box::pin(stream::pending()));
+    assert!(matches!(
+        events.next().await,
+        Some(Message::NativeMenu(Event::Ready))
+    ));
+    assert!(
+        tokio::time::timeout(Duration::from_millis(250), events.next())
+            .await
+            .is_err()
+    );
+}
+
+#[test]
+fn native_menu_syncs_only_when_its_contents_change() {
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    let _ = app.window_opened(window::Id::unique());
+    assert_eq!(app.sync_native_menu().units(), 0);
+    let _ = app.update_native_menu(Event::Ready);
+    assert!(app.sync_native_menu().units() > 0);
+    assert_eq!(app.sync_native_menu().units(), 0);
+    app.loaded = true;
+    app.workspace
+        .create_space("Work".into(), vec!["/front".into()]);
+    assert!(app.sync_native_menu().units() > 0);
+    assert_eq!(app.sync_native_menu().units(), 0);
+    let _ = app.update_space(spaces::Message::New);
+    assert!(app.sync_native_menu().units() > 0);
+    assert_eq!(app.sync_native_menu().units(), 0);
+}
+
 #[test]
 fn menu_accelerators_pause_only_while_recording_shortcuts() {
     let mut app = App::new(Rc::new(I18n::new(Language::English)));
@@ -38,7 +78,7 @@ fn new_space_menu_action_opens_creation_and_respects_modal_dialogs() {
     let mut app = App::new(Rc::new(I18n::new(Language::English)));
     app.loaded = true;
     app.workspace.create_space("Work".into(), vec![]);
-    let _ = app.update_native_menu(Event::Polled(Ok(vec![Action::NewSpace])));
+    let _ = app.update_native_menu(Event::Selected(Action::NewSpace));
     assert!(
         app.space_draft
             .as_ref()
@@ -46,7 +86,7 @@ fn new_space_menu_action_opens_creation_and_respects_modal_dialogs() {
     );
     assert_eq!(app.workspace.spaces.len(), 1);
     assert!(!app.menu_model().enabled);
-    let _ = app.update_native_menu(Event::Polled(Ok(vec![Action::NewSpace])));
+    let _ = app.update_native_menu(Event::Selected(Action::NewSpace));
     assert_eq!(app.workspace.spaces.len(), 1);
     assert!(
         app.space_draft
@@ -62,15 +102,12 @@ fn menu_project_actions_resolve_paths_after_reordering() {
     app.workspace
         .create_space("Work".into(), vec!["/front".into(), "/back".into()]);
     app.workspace.move_project(0, 0, 1);
-    let _ = app.update_native_menu(Event::Polled(Ok(vec![Action::Project(0, "/front".into())])));
+    let _ = app.update_native_menu(Event::Selected(Action::Project(0, "/front".into())));
     assert_eq!(
         app.workspace.directory(),
         Some(&std::path::PathBuf::from("/front"))
     );
-    let _ = app.update_native_menu(Event::Polled(Ok(vec![Action::Project(
-        0,
-        "/removed".into(),
-    )])));
+    let _ = app.update_native_menu(Event::Selected(Action::Project(0, "/removed".into())));
     assert_eq!(
         app.workspace.directory(),
         Some(&std::path::PathBuf::from("/front"))
@@ -88,7 +125,7 @@ fn deployment_menu_opens_matching_settings_and_preserves_project() {
         (Action::DeploymentConnections, SettingsTab::Connections),
         (Action::DeploymentProfiles, SettingsTab::Deployment),
     ] {
-        let _ = app.update_native_menu(Event::Polled(Ok(vec![action])));
+        let _ = app.update_native_menu(Event::Selected(action));
         assert!(if tab == SettingsTab::Connections {
             app.windows.connections.is_some()
         } else {
@@ -130,7 +167,7 @@ async fn quit_flushes_edits_before_exit_and_keeps_conflicting_drafts_open() {
         if conflict {
             std::fs::write(&path, "external").unwrap();
         }
-        let quit = app.update_native_menu(Event::Polled(Ok(vec![Action::Quit])));
+        let quit = app.update_native_menu(Event::Selected(Action::Quit));
         assert!(app.editor.pending.is_some());
         let mut tasks = VecDeque::from([quit]);
         while let Some(next) = tasks.pop_front() {

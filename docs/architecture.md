@@ -465,15 +465,15 @@ uses the existing application caption and resize handles, and every secondary wi
 one-pixel frame around its content through `theme::secondary_window`.
 
 On macOS, `app/native_menu.rs` projects localized workspace data into a native application menu.
-`infrastructure/native_menu.rs` retains Muda menu objects on the AppKit event-loop thread. A guarded
-100-millisecond subscription polls menu actions through Iced window callbacks. Menu installation
-changes only when its projected content changes. Menu replacement rejects obsolete item identifiers.
-Project actions resolve directory paths against the current space, preserving selection after
-project reordering. The native menu dependency applies only to macOS. On Windows, `app/menu_bar.rs`
-keeps the open menu in application state and `ui/screens/menu_bar.rs` renders a File, View,
-Deployment, and Help bar at the left of the workspace header through the shared anchored context
-menus. Opening a menu closes anchored menus, and any message other than opening one closes it. Linux
-retains its sidebar controls.
+`infrastructure/native_menu.rs` retains Muda menu objects on the AppKit event-loop thread. The
+native callback sends menu selections to an Iced subscription. Iced installs the menu after the
+workspace window opens and replaces it when the projected content changes. The callback rejects
+obsolete item identifiers. Project actions resolve directory paths against the current space,
+preserving selection after project reordering. The native menu dependency applies only to macOS. On
+Windows, `app/menu_bar.rs` keeps the open menu in application state and `ui/screens/menu_bar.rs`
+renders a File, View, Deployment, and Help bar at the left of the workspace header through the
+shared anchored context menus. Opening a menu closes anchored menus, and any message other than
+opening one closes it. Linux retains its sidebar controls.
 
 The display name is IWE Code. Embedded PNG pixels supply Windows and X11 window icons. Windows
 builds embed an ICO resource through `winresource`. macOS bundles include the ICNS icon. Linux

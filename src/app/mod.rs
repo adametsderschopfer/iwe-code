@@ -83,6 +83,8 @@ fn application(
                 crate::infrastructure::external::shutdown();
                 std::process::exit(0);
             }
+            #[cfg(target_os = "macos")]
+            let task = Task::batch([task, app.sync_native_menu()]);
             task
         },
         App::view_window,

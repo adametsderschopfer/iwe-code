@@ -2417,6 +2417,17 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "macos-idle-cpu",
+        "category": "fixed",
+        "text": {
+          "en": "Reduce CPU usage when IWE Code is idle on macOS.",
+          "ru": "IWE Code меньше нагружает процессор в простое на macOS.",
+          "es": "IWE Code usa menos CPU cuando está inactivo en macOS."
+        },
+        "sources": ["src/app/native_menu.rs", "src/infrastructure/native_menu.rs"]
+      }
+    ]
   }
 ]
