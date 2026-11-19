@@ -3,10 +3,10 @@
 use super::{Event, Target};
 use crate::{
     app::{App, Message},
-    domain::language::{Diagnostic, Position},
+    domain::language::{Diagnostic, Language, Position},
 };
-use iced::Task;
-use std::sync::Arc;
+use iced::{Subscription, Task};
+use std::{path::Path, sync::Arc, time::Duration};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Report {
@@ -17,29 +17,59 @@ pub(crate) struct Report {
 }
 
 impl App {
+    pub(in crate::app) fn diagnostics_subscription(&self) -> Subscription<Message> {
+        if self.diagnostic_document().is_some() || self.languages_need_maintenance() {
+            iced::time::every(Duration::from_millis(800))
+                .map(|_| Message::Editor(Event::RefreshDiagnostics))
+        } else {
+            Subscription::none()
+        }
+    }
+
+    fn diagnostic_document(&self) -> Option<(&Path, &str)> {
+        self.workspace.directory()?;
+        let buffer = self.editor_buffer()?;
+        let Target::Local(path) = &buffer.target else {
+            return None;
+        };
+        Language::for_path(path).filter(|language| *language != Language::Env)?;
+        Some((path, &buffer.document.text))
+    }
+
+    fn languages_need_maintenance(&self) -> bool {
+        self.editor.languages.try_lock().is_ok_and(|service| {
+            service.needs_maintenance(
+                self.workspace.directory().map(|root| root.as_path()),
+                |path| {
+                    self.tabs.files.iter().any(|tab| {
+                        tab.editor.as_ref().is_some_and(|buffer| {
+                        matches!(&buffer.target, Target::Local(local) if local == path)
+                    })
+                    })
+                },
+            )
+        })
+    }
+
     pub(super) fn refresh_diagnostics(&mut self) -> Task<Message> {
         if self.editor.diagnostics_busy || self.editor.pending.is_some() {
             return Task::none();
         }
-        let buffers = self.language_buffers();
-        let Some(buffer) = self.editor_buffer() else {
+        let root = self.workspace.directory().cloned().unwrap_or_default();
+        let Some((path, text)) = self.diagnostic_document() else {
+            if !self.languages_need_maintenance() {
+                return Task::none();
+            }
+            let buffers = self.language_buffers();
             let service = Arc::clone(&self.editor.languages);
-            let root = self.workspace.directory().cloned().unwrap_or_default();
             self.editor.diagnostics_busy = true;
             return Task::perform(
                 async move { service.lock().await.maintain(&root, buffers).await },
                 |_| Message::Editor(Event::LanguagesMaintained),
             );
         };
-        let Target::Local(path) = &buffer.target else {
-            return Task::none();
-        };
-        let Some(root) = self.workspace.directory() else {
-            return Task::none();
-        };
-        let path = path.clone();
-        let root = root.to_owned();
-        let text = buffer.document.text.clone();
+        let (path, text) = (path.to_owned(), text.to_owned());
+        let buffers = self.language_buffers();
         let tab = self.preview().id;
         let generation = self.generation;
         let service = Arc::clone(&self.editor.languages);

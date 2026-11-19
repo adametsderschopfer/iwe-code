@@ -104,8 +104,7 @@ fn application(
             } else {
                 Subscription::none()
             },
-            iced::time::every(std::time::Duration::from_millis(800))
-                .map(|_| Message::Editor(editor::Event::RefreshDiagnostics)),
+            app.diagnostics_subscription(),
             app.change_subscription(),
             app.project_change_subscription(),
             app.module_subscription(),

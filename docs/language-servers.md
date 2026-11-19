@@ -121,6 +121,7 @@ current document and project templates. Supported templates are `.env.example`, 
 
 Code assistance applies to local editable files. Remote deployment previews and historical
 comparisons do not start language servers. Server capabilities determine available suggestions and
-definitions. Missing servers currently produce no suggestions. On Windows, IWE resolves supported
+definitions. The diagnostics timer runs for supported active documents and when closed documents
+need cleanup. Missing servers currently produce no suggestions. On Windows, IWE resolves supported
 npm packages to their JavaScript entry points. It runs those entry points through `node.exe` without
 executing command wrappers. Node must exist beside the wrapper or in the discovery search paths.

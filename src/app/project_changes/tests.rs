@@ -21,8 +21,6 @@ fn app(language: Language) -> App {
 fn inactive_project_indicators_follow_status_and_keep_last_known_results_on_errors() {
     let mut app = app(Language::English);
     let root = PathBuf::from("first");
-    let _ = app.refresh_project_changes();
-    let request = app.project_changes.request;
     let generation = app.generation;
     for (result, expected) in [
         (Ok(true), true),
@@ -31,12 +29,16 @@ fn inactive_project_indicators_follow_status_and_keep_last_known_results_on_erro
         (Ok(true), true),
         (Err(Failure::NotRepository), false),
     ] {
-        let _ =
-            app.update_project_changes(Event::Loaded(request, generation, root.clone(), result));
+        let _ = app.refresh_project_changes();
+        let request = app.project_changes.request;
+        let _ = app.update_project_changes(Event::Loaded(
+            request,
+            generation,
+            vec![(root.clone(), result)],
+        ));
+        assert!(!app.project_changes.pending);
         assert_eq!(app.project_has_changes(&root), expected);
     }
-    let _ = app.update_project_changes(Event::Finished(request));
-    assert!(!app.project_changes.pending);
 }
 
 #[test]
@@ -48,26 +50,62 @@ fn obsolete_results_cannot_overwrite_active_or_removed_projects() {
     let _ = app.update_project_changes(Event::Loaded(
         request,
         generation,
-        PathBuf::from("active"),
-        Ok(true),
+        vec![(PathBuf::from("active"), Ok(true))],
     ));
     assert!(!app.project_has_changes(Path::new("active")));
+    let _ = app.refresh_project_changes();
+    let request = app.project_changes.request;
     app.generation += 1;
     let _ = app.update_project_changes(Event::Loaded(
         request,
         generation,
-        PathBuf::from("first"),
-        Ok(true),
+        vec![(PathBuf::from("first"), Ok(true))],
     ));
+    assert!(!app.project_changes.pending);
     assert!(!app.project_has_changes(Path::new("first")));
+    let _ = app.refresh_project_changes();
+    let request = app.project_changes.request;
     app.workspace.spaces[0].projects.remove(0);
     let _ = app.update_project_changes(Event::Loaded(
         request,
         app.generation,
-        PathBuf::from("first"),
-        Ok(true),
+        vec![(PathBuf::from("first"), Ok(true))],
     ));
     assert!(!app.project_has_changes(Path::new("first")));
+}
+
+#[tokio::test]
+async fn background_scan_delivers_all_inactive_projects_in_one_message() {
+    use iced_test::runtime::{Action, task};
+
+    let fixture = tempfile::tempdir().unwrap();
+    let roots = ["selected", "first", "second"].map(|name| {
+        let path = fixture.path().join(name);
+        std::fs::create_dir(&path).unwrap();
+        path
+    });
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.loaded = true;
+    app.workspace.create_space("Work".into(), roots.to_vec());
+    assert_eq!(app.workspace.directory(), Some(&roots[0]));
+
+    let task = app.refresh_project_changes();
+    let mut output = task::into_stream(task)
+        .unwrap()
+        .filter_map(async |action| match action {
+            Action::Output(message) => Some(message),
+            _ => None,
+        })
+        .boxed();
+    let Some(Message::ProjectChanges(Event::Loaded(_, _, results))) = output.next().await else {
+        panic!("expected one project scan result");
+    };
+    let returned: BTreeSet<_> = results.into_iter().map(|(root, _)| root).collect();
+    assert_eq!(
+        returned,
+        BTreeSet::from([roots[1].clone(), roots[2].clone()])
+    );
+    assert!(output.next().await.is_none());
 }
 
 #[test]

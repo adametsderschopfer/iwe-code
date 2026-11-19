@@ -25,8 +25,7 @@ pub(crate) struct State {
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
     Refresh,
-    Loaded(u64, u64, PathBuf, Result<bool, Failure>),
-    Finished(u64),
+    Loaded(u64, u64, Vec<(PathBuf, Result<bool, Failure>)>),
 }
 
 impl App {
@@ -37,7 +36,8 @@ impl App {
                 .workspace
                 .spaces
                 .iter()
-                .any(|space| !space.projects.is_empty())
+                .flat_map(|space| &space.projects)
+                .any(|project| Some(&project.directory) != self.workspace.directory())
         {
             iced::time::every(Duration::from_secs(10))
                 .map(|_| Message::ProjectChanges(Event::Refresh))
@@ -115,44 +115,43 @@ impl App {
                             Ok(!status.files.is_empty())
                         }
                     });
-                Event::Loaded(request, generation, root, result)
+                (root, result)
             })
             .buffer_unordered(2);
-        Task::run(results, Message::ProjectChanges).chain(Task::done(Message::ProjectChanges(
-            Event::Finished(request),
-        )))
+        Task::perform(results.collect(), move |results| {
+            Message::ProjectChanges(Event::Loaded(request, generation, results))
+        })
     }
 
     pub(super) fn update_project_changes(&mut self, event: Event) -> Task<Message> {
         match event {
             Event::Refresh => return self.refresh_project_changes(),
-            Event::Loaded(request, generation, root, result)
-                if request == self.project_changes.request
-                    && generation == self.generation
-                    && self.project_changes.pending =>
+            Event::Loaded(request, generation, results)
+                if request == self.project_changes.request && self.project_changes.pending =>
             {
-                if self.workspace.directory() == Some(&root)
-                    || !self.workspace.spaces.iter().any(|space| {
+                self.project_changes.pending = false;
+                if generation != self.generation {
+                    return Task::none();
+                }
+                for (root, result) in results {
+                    let listed = self.workspace.spaces.iter().any(|space| {
                         space
                             .projects
                             .iter()
                             .any(|project| project.directory == root)
-                    })
-                {
-                    return Task::none();
-                }
-                match result {
-                    Ok(dirty) => {
-                        self.project_changes.known.insert(root, dirty);
+                    });
+                    if listed && self.workspace.directory() != Some(&root) {
+                        match result {
+                            Ok(dirty) => {
+                                self.project_changes.known.insert(root, dirty);
+                            }
+                            Err(Failure::NotRepository) => {
+                                self.project_changes.known.remove(&root);
+                            }
+                            Err(_) => {}
+                        }
                     }
-                    Err(Failure::NotRepository) => {
-                        self.project_changes.known.remove(&root);
-                    }
-                    Err(_) => {}
                 }
-            }
-            Event::Finished(request) if request == self.project_changes.request => {
-                self.project_changes.pending = false;
             }
             _ => {}
         }

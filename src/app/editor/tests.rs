@@ -27,6 +27,38 @@ fn edit(app: &mut App, value: &str) {
     ));
 }
 
+#[tokio::test]
+async fn diagnostics_stop_when_the_last_local_language_document_closes() {
+    let mut app = app();
+    assert_eq!(app.diagnostics_subscription().units(), 0);
+    let path = PathBuf::from("project/source.rs");
+    let _ = app.open_file(path.clone());
+    let tab = app.preview().id;
+    let _ = app.finish_preview(tab, Ok(Document::new("fn main() {}".into(), "rs")));
+    assert_eq!(app.diagnostics_subscription().units(), 1);
+    app.editor
+        .languages
+        .lock()
+        .await
+        .maintain(
+            std::path::Path::new("project"),
+            vec![(path, "fn main() {}".into())],
+        )
+        .await;
+    let _ = app.update(Message::CloseActiveTab);
+    assert_eq!(app.diagnostics_subscription().units(), 1);
+
+    let cleanup = app.update_editor(Event::RefreshDiagnostics);
+    let mut actions = iced_test::runtime::task::into_stream(cleanup).unwrap();
+    while let Some(action) = iced::futures::StreamExt::next(&mut actions).await {
+        if let iced_test::runtime::Action::Output(message) = action {
+            let _ = app.update(message);
+        }
+    }
+    assert_eq!(app.diagnostics_subscription().units(), 0);
+    assert!(!app.editor.diagnostics_busy);
+}
+
 #[test]
 fn diagnostic_responses_release_busy_state_while_editor_actions_are_blocked() {
     for settings in [false, true] {

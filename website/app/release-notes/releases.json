@@ -2427,6 +2427,16 @@
           "es": "IWE Code usa menos CPU cuando está inactivo en macOS."
         },
         "sources": ["src/app/native_menu.rs", "src/infrastructure/native_menu.rs"]
+      },
+      {
+        "id": "workspace-idle-refreshes",
+        "category": "fixed",
+        "text": {
+          "en": "Update Git project indicators together and reduce CPU usage in idle workspaces.",
+          "ru": "Индикаторы Git обновляются вместе, а рабочая область меньше нагружает процессор в простое.",
+          "es": "Los indicadores de Git se actualizan juntos y el espacio de trabajo usa menos CPU cuando está inactivo."
+        },
+        "sources": ["src/app/project_changes/mod.rs", "src/app/editor/diagnostics.rs"]
       }
     ]
   }

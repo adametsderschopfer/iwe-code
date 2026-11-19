@@ -19,6 +19,16 @@ pub(crate) struct Service {
 }
 
 impl Service {
+    pub(crate) fn needs_maintenance(
+        &self,
+        root: Option<&Path>,
+        retains: impl Fn(&Path) -> bool,
+    ) -> bool {
+        (!self.clients.is_empty() && root != Some(self.root.as_path()))
+            || self.buffers.iter().any(|(path, _)| !retains(path))
+            || self.origins.values().any(|path| !retains(path))
+    }
+
     pub(crate) async fn maintain(&mut self, root: &Path, buffers: Vec<(PathBuf, String)>) {
         if self.root != root || buffers.is_empty() {
             self.clients.clear();

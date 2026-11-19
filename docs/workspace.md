@@ -136,8 +136,9 @@ Pinned projects use the same indicator. The **Uncommitted files** section uses t
 circle-and-line icon. Changes include staged, unstaged, untracked, and deleted files within the
 project's discovered repositories. The selected project's existing three-second status refresh
 updates its indicator. Other projects refresh at startup and every ten seconds, with at most two
-simultaneous status reads. Repeated project directories share one result. Failed reads preserve the
-last known indicator.
+simultaneous status reads. The workspace applies the inactive projects' indicators together after
+each scan. Repeated project directories share one result. Failed reads preserve the last known
+indicator.
 
 After copying a commit hash, its hover hint turns green and shows **Copied to clipboard** for two
 seconds. The hint retains the complete hash. Repeated copying restarts that interval.
