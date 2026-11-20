@@ -2495,7 +2495,8 @@
           ".github/scripts/package-windows.ps1",
           "src/app/shortcuts/tests.rs",
           "src/infrastructure/language_server/discovery/tests.rs",
-          "src/infrastructure/project_index/tests.rs"
+          "src/infrastructure/project_index/tests.rs",
+          "src/modules/terminal/session/tests.rs"
         ]
       }
     ]

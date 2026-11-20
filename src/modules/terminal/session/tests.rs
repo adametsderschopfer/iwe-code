@@ -135,7 +135,12 @@ async fn dropping_the_session_stops_its_shell_without_blocking_the_caller() {
     let marker = directory.path().join("stopped");
     let mut command = CommandBuilder::new("/bin/sh");
     command.env("IWE_TEST_STOP", &marker);
-    command.args(["-c", "trap 'printf stopped > \"$IWE_TEST_STOP\"; exit 0' HUP; printf ready; while :; do sleep 0.05; done"]);
+    command.args([
+        "-c",
+        r#"trap 'printf stopped > "$IWE_TEST_STOP.tmp" && mv "$IWE_TEST_STOP.tmp" "$IWE_TEST_STOP"; exit 0' HUP
+printf ready
+while :; do sleep 0.05; done"#,
+    ]);
     let path = directory.path().to_path_buf();
     let session = tokio::task::spawn_blocking(move || Session::spawn(&path, 24, 80, command))
         .await
