@@ -40,7 +40,6 @@ git-bulk-done = Branch operations completed
 git-bulk-failed = Some branch operations failed. Retry only the branches remaining in the dialog.
 git-bulk-result = Completed: { $success }. Failed: { $failed }.
 
-commit-id-copied = Copied to clipboard
 
 git-history-tip = Go to branch tip
 git-history-merge = Merge into current branch

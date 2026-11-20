@@ -778,7 +778,7 @@ fn commit_table<'a>(
                 tooltip::Position::Top,
             ));
         }
-        let hash = tooltip::view(
+        let hash = tooltip::copy(
             container(
                 button(
                     text(commit.id.chars().take(7).collect::<String>())
@@ -797,26 +797,12 @@ fn commit_table<'a>(
                 entry.root.display(),
                 commit.id
             )),
-            column![
-                text(
-                    app.i18n
-                        .text(if app.state.copied_commit.as_ref() == Some(&commit.id) {
-                            Key::CommitIdCopied
-                        } else {
-                            Key::CopyCommitId
-                        })
-                )
-                .size(12),
-                text(&commit.id).size(11).font(Font::MONOSPACE),
-            ]
-            .spacing(4),
+            app.i18n,
+            Key::CopyCommitId,
+            &commit.id,
+            app.state.copied_commit.as_ref() == Some(&commit.id),
             tooltip::Position::Bottom,
-        )
-        .style(if app.state.copied_commit.as_ref() == Some(&commit.id) {
-            theme::success_tooltip
-        } else {
-            theme::tooltip
-        });
+        );
         let natural_width =
             ellipsis::measured_width(&commit.subject, 13.).ceil() + theme::COMMIT_HASH_WIDTH + 8.;
         let title = container(

@@ -2551,6 +2551,16 @@
           "es": "Abre imágenes locales en el editor y alterna entre la vista previa de SVG y su código fuente."
         },
         "sources": ["src/infrastructure/workspace/images/mod.rs"]
+      },
+      {
+        "id": "copy-path-feedback",
+        "category": "changed",
+        "text": {
+          "en": "Copying a path or commit hash shows the same green confirmation.",
+          "ru": "При копировании пути или хеша коммита появляется одинаковая зелёная подсказка.",
+          "es": "Copiar una ruta o un hash de commit muestra la misma confirmación verde."
+        },
+        "sources": ["src/ui/tooltip.rs"]
       }
     ]
   }

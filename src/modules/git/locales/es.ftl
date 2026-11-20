@@ -40,7 +40,6 @@ git-bulk-done = Operaciones de ramas completadas
 git-bulk-failed = Algunas operaciones fallaron. Reintenta solo las ramas que quedan en el diálogo.
 git-bulk-result = Completadas: { $success }. Fallidas: { $failed }.
 
-commit-id-copied = Copiado al portapapeles
 
 git-history-tip = Ir a la punta de la rama
 git-history-merge = Fusionar con la rama actual

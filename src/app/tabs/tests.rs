@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     domain::repository::GraphRow,
-    i18n::{I18n, Key, Language},
+    i18n::{I18n, Language},
 };
 use std::rc::Rc;
 
@@ -952,12 +952,54 @@ async fn footer_copies_the_complete_active_file_path_and_falls_back_to_project()
     }
     for language in [Language::English, Language::Russian, Language::Spanish] {
         app.i18n = Rc::new(I18n::new(language));
-        let mut ui =
-            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
-        assert!(ui.find(app.i18n.text(Key::PathCopied)).is_ok());
+        for theme in [iced::Theme::Dark, iced::Theme::Light] {
+            let success = crate::ui::theme::GREEN.resolve(&theme).into_rgba8();
+            assert_eq!(footer_hint_pixel(&app, &theme, true), success);
+        }
     }
+    let theme = iced::Theme::Dark;
+    let success = crate::ui::theme::GREEN.resolve(&theme).into_rgba8();
+    assert_ne!(footer_hint_pixel(&app, &theme, false), success);
     let _ = app.update(Message::ClearCopiedPath(previous.unwrap()));
     assert!(!app.footer_path_was_copied());
+    assert_ne!(footer_hint_pixel(&app, &theme, true), success);
+}
+
+// Sample the bottom padding of the hover hint, above the footer button and clear of its text.
+fn footer_hint_pixel(app: &App, theme: &iced::Theme, hover: bool) -> [u8; 4] {
+    let mut ui =
+        iced_test::Simulator::with_size(iced::Settings::default(), (900., 500.), app.view());
+    let path = ui
+        .find(iced::widget::Id::new("footer-path"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    if hover {
+        let position = path.center();
+        ui.point_at(position);
+        ui.simulate([iced::Event::Mouse(iced::mouse::Event::CursorMoved {
+            position,
+        })]);
+    }
+    let directory = tempfile::tempdir().unwrap();
+    ui.snapshot(theme)
+        .unwrap()
+        .matches_image(directory.path().join("footer"))
+        .unwrap();
+    let png = std::fs::read_dir(directory.path())
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let image = image::open(png).unwrap().into_rgba8();
+    let scale = image.width() as f32 / 900.;
+    image
+        .get_pixel(
+            (path.center_x() * scale) as u32,
+            ((path.y - 10.) * scale) as u32,
+        )
+        .0
 }
 
 #[test]

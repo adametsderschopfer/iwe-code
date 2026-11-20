@@ -418,37 +418,37 @@ fn panel_buttons(app: &App) -> Column<'_, Message> {
 }
 
 fn footer(app: &App) -> Element<'_, Message> {
-    let path = app
-        .footer_path()
-        .map(|path| path.to_string_lossy().into_owned())
+    let path = app.footer_path().map(|path| path.to_string_lossy());
+    let label = path
+        .as_deref()
+        .map(|value| short_path(value, 100))
         .unwrap_or_else(|| app.i18n.text(Key::LocalWorkspace));
-    let mut path_row = row![tooltip::view(
-        container(
-            button(
-                text(short_path(&path, 100))
-                    .size(12)
-                    .style(theme::FAINT.text())
-                    .wrapping(text::Wrapping::None)
-            )
-            .on_press(Message::CopyPath)
-            .padding([4, 8])
-            .style(theme::action(false))
-        )
-        .id("footer-path")
-        .clip(true),
-        text(format!("{}\n{}", path, app.i18n.text(Key::CopyPath))).size(12),
-        tooltip::Position::Top
-    )]
-    .spacing(8)
-    .align_y(Alignment::Center);
-    if app.footer_path_was_copied() {
-        path_row = path_row.push(
-            text(app.i18n.text(Key::PathCopied))
+    let control = container(
+        button(
+            text(label)
                 .size(12)
-                .style(theme::GREEN.text()),
-        );
-    }
-    let mut content = row![container(path_row).width(Length::Fill)].spacing(16);
+                .style(theme::FAINT.text())
+                .wrapping(text::Wrapping::None),
+        )
+        .on_press_maybe(path.as_ref().map(|_| Message::CopyPath))
+        .padding([4, 8])
+        .style(theme::action(false)),
+    )
+    .id("footer-path")
+    .clip(true);
+    let path: Element<'_, Message> = match path {
+        Some(value) => tooltip::copy(
+            control,
+            &app.i18n,
+            Key::CopyPath,
+            value,
+            app.footer_path_was_copied(),
+            tooltip::Position::Top,
+        )
+        .into(),
+        None => control.into(),
+    };
+    let mut content = row![container(path).width(Length::Fill)].spacing(16);
     if let Some(activity) = git::activity(app) {
         content = content.push(activity);
     }

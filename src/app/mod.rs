@@ -50,6 +50,8 @@ use std::{
 };
 use tokio_util::sync::CancellationToken;
 
+const COPY_FEEDBACK_DURATION: std::time::Duration = std::time::Duration::from_secs(2);
+
 pub(crate) fn run(i18n: Rc<I18n>) -> iced::Result {
     application(i18n).run()
 }
@@ -1707,7 +1709,7 @@ impl App {
             Message::PathCopied(request, path) if request == self.path_copy_request => {
                 self.copied_path = Some(path);
                 return Task::perform(
-                    async { tokio::time::sleep(std::time::Duration::from_secs(2)).await },
+                    async { tokio::time::sleep(COPY_FEEDBACK_DURATION).await },
                     move |()| Message::ClearCopiedPath(request),
                 );
             }
@@ -1723,9 +1725,7 @@ impl App {
             Message::CommitIdCopied(request, id) if request == self.modules.git.copy_request => {
                 self.modules.git.copied_commit = Some(id);
                 return Task::perform(
-                    async {
-                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                    },
+                    async { tokio::time::sleep(COPY_FEEDBACK_DURATION).await },
                     move |()| Message::ClearCopiedCommit(request),
                 );
             }

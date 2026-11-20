@@ -299,8 +299,9 @@ errors to localized messages. Space folders determine the suggested parent when 
 common. An ambiguous or empty list uses the home directory's `IWE Code` folder. Workspace startup
 creates that folder. Isolated data directories contain their own fallback folder.
 
-Commit clipboard writes precede copied-state messages. A request counter rejects previous completion
-messages and expiration timers. The hash hint uses a shared green success style for two seconds.
+Clipboard writes precede confirmation for footer paths and commit hashes. Each control tracks its
+own request counter to reject stale completions and timers. Both use the same two-line tooltip and
+two-second success state.
 
 The shared `ui/reorder` widget handles project dragging, drop indicators, and edge scrolling. Its
 grouped mode accepts drags only within space headings while forwarding nested project controls.

@@ -27,8 +27,8 @@ change its width. The sidebar slides open and closed below the window header. On
 Motion skips this animation. IWE Code keeps the current project and open files. It remembers the
 sidebar width and visibility across restarts.
 
-Open Settings from the button to the right of **Refresh Git repositories**. Click the path in the
-footer to copy it. The footer briefly shows **Path copied** beside the path.
+Open Settings from the button to the right of **Refresh Git repositories**. Hover over the footer
+path to see its full value. Click it to copy the path.
 
 The header shows up to two repository badges with their current branches. Projects with more
 repositories show an arrow listing the remaining repository names and current branches. Click a
@@ -141,8 +141,8 @@ ten-second interval. IWE spreads Git launches across up to four seconds per scan
 two projects simultaneously. The workspace applies their indicators together after each scan.
 Repeated project directories share one result. Failed reads preserve the last known indicator.
 
-After copying a commit hash, its hover hint turns green and shows **Copied to clipboard** for two
-seconds. The hint retains the complete hash. Repeated copying restarts that interval.
+Copying a footer path or commit hash turns its hover hint green for two seconds. The hint shows
+**Copied to clipboard** above the full value. Copying again restarts the timer.
 
 Hover hints use a consistent eight-pixel gap from their controls. Cursor-following hints keep the
 same gap above the pointer. Hints remain inside the window near its edges.
