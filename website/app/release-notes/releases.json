@@ -2492,6 +2492,8 @@
         "sources": [
           ".github/workflows/ci.yml",
           ".github/workflows/bump-version.yml",
+          "src/app/shortcuts/tests.rs",
+          "src/infrastructure/language_server/discovery/tests.rs",
           "src/infrastructure/project_index/tests.rs"
         ]
       }

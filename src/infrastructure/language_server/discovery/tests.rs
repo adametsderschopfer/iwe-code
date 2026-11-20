@@ -22,13 +22,11 @@ fn npm_launch_uses_node_and_preserves_script_paths_as_one_argument() {
         )
         .unwrap();
         assert_eq!(server.program, directory.join("node.exe"));
-        assert_eq!(
-            server.arguments,
-            [
-                package.join("./dist/server.js").to_str().unwrap(),
-                "--stdio"
-            ]
-        );
+        let [script, option] = server.arguments.as_slice() else {
+            panic!("Expected the script and its option as separate arguments");
+        };
+        assert_eq!(Path::new(script), package.join("dist/server.js"));
+        assert_eq!(option, "--stdio");
     }
 }
 

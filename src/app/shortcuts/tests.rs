@@ -164,13 +164,17 @@ fn shortcut_recording_dialog_keeps_the_settings_layout_and_displays_errors() {
         );
         assert_eq!(ui.find(nav).unwrap().bounds(), nav_bounds);
         assert_eq!(ui.find(control).unwrap().bounds(), control_bounds);
+        let frame = ui
+            .find(iced::widget::Id::new("settings-window-frame"))
+            .unwrap()
+            .bounds();
         let dialog = ui
             .find(iced::widget::Id::new("shortcut-recording-dialog"))
             .unwrap()
             .visible_bounds()
             .unwrap();
-        assert!((dialog.center_x() - size.0 / 2.).abs() < 1.);
-        assert!((dialog.center_y() - size.1 / 2.).abs() < 1.);
+        assert!((dialog.center_x() - frame.center_x()).abs() < 1.);
+        assert!((dialog.center_y() - frame.center_y()).abs() < 1.);
         for key in [
             Key::ShortcutRecording,
             Key::ShortcutInstructions,
