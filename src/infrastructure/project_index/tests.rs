@@ -140,7 +140,7 @@ fn background_traversal_skips_generated_folders_and_stays_bounded() {
     }
     assert!(!prefetch(
         root,
-        &root.join(vec!["deep"; MAX_DEPTH + 1].join("/"))
+        &root.join(["deep"; MAX_DEPTH + 1].join("/"))
     ));
     assert!(!valid_directory(root, &root.join("../outside")));
 }

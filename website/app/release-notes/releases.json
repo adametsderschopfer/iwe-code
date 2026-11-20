@@ -2486,10 +2486,14 @@
         "category": "maintenance",
         "text": {
           "en": "This release includes Windows and Linux downloads again. Automated checks verify packages for every supported architecture.",
-          "ru": "В этот выпуск снова входят пакеты для Windows и Linux. Автоматические проверки проверяют пакеты для всех поддерживаемых архитектур.",
+          "ru": "В этот выпуск снова входят пакеты для Windows и Linux. Пакеты для всех поддерживаемых архитектур проходят автоматическую проверку.",
           "es": "Esta versión vuelve a incluir descargas para Windows y Linux. Las pruebas automatizadas verifican los paquetes de todas las arquitecturas compatibles."
         },
-        "sources": [".github/workflows/ci.yml", ".github/workflows/bump-version.yml"]
+        "sources": [
+          ".github/workflows/ci.yml",
+          ".github/workflows/bump-version.yml",
+          "src/infrastructure/project_index/tests.rs"
+        ]
       }
     ]
   }
