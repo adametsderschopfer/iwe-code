@@ -2475,7 +2475,7 @@
     ]
   },
   {
-    "version": "unreleased",
+    "version": "1.5.3",
     "status": "prepared",
     "publishedAt": null,
     "tags": [],
@@ -2500,5 +2500,13 @@
         ]
       }
     ]
+  },
+  {
+    "version": "unreleased",
+    "status": "prepared",
+    "publishedAt": null,
+    "tags": [],
+    "source": null,
+    "items": []
   }
 ]
