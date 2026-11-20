@@ -2531,6 +2531,16 @@
           "es": "El sitio carga sus archivos desde la dirección configurada en GitHub Pages."
         },
         "sources": [".github/workflows/bump-version.yml", ".github/workflows/website-build.yml"]
+      },
+      {
+        "id": "yandex-website-verification",
+        "category": "maintenance",
+        "text": {
+          "en": "The website includes a tag for ownership verification in Yandex Webmaster.",
+          "ru": "Сайт содержит метатег для подтверждения прав в Яндекс Вебмастере.",
+          "es": "El sitio incluye una etiqueta para verificar la propiedad en Yandex Webmaster."
+        },
+        "sources": ["website/nuxt.config.ts"]
       }
     ]
   }

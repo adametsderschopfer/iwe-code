@@ -117,6 +117,14 @@ for (const { language, route } of locales) {
     assert.equal(decode(title ?? ''), catalog.meta.title)
     const description = elements(html, 'meta').find((entry) => entry.name === 'description')
     assert.equal(description?.content, catalog.meta.description)
+    const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? ''
+    const verificationTags = elements(head, 'meta').filter(
+      (entry) => entry.name === 'yandex-verification',
+    )
+    assert.deepEqual(
+      verificationTags.map((entry) => entry.content),
+      ['22fdae63d84ef874'],
+    )
     assert.equal(elements(html, 'h1').length, 1, 'Each page needs one main heading')
 
     const visibleText = decode(

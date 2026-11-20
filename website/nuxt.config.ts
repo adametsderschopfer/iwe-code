@@ -93,7 +93,10 @@ export default defineNuxtConfig({
   css: ['~/assets/main.css'],
   app: {
     head: {
-      meta: [{ name: 'theme-color', content: '#121311' }],
+      meta: [
+        { name: 'theme-color', content: '#121311' },
+        { name: 'yandex-verification', content: '22fdae63d84ef874' },
+      ],
     },
   },
   nitro: {
