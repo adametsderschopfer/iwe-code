@@ -46,7 +46,8 @@ try {
     $setup = "$dist/iwe-code-$version-$env:ASSET_PLATFORM-setup.exe"
     if (-not (Test-Path $setup)) { throw 'Installer output is missing.' }
     if ($signed -and (Get-AuthenticodeSignature $setup).Status -ne 'Valid') { throw 'Invalid installer signature.' }
-    & tar -czf "$dist/iwe-$version-$env:ASSET_PLATFORM-update.tar.gz" -C $stage iwe.exe
+    $tar = Join-Path ([Environment]::SystemDirectory) 'tar.exe'
+    & $tar -czf "$dist/iwe-$version-$env:ASSET_PLATFORM-update.tar.gz" -C $stage iwe.exe
     if ($LASTEXITCODE -ne 0) { throw 'Update archive creation failed.' }
     Compress-Archive -Path "$stage/iwe.exe", "$stage/README.md" -DestinationPath "$dist/iwe-code-$version-$env:ASSET_PLATFORM.zip" -Force
     & "$PSScriptRoot/test-windows-installer.ps1" -Installer $setup

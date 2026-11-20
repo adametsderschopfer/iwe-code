@@ -74,6 +74,12 @@ class WorkflowStructureTests(unittest.TestCase):
         self.assertIn("needs: [plan, unit_tests, integration_tests]", jobs["package"])
         self.assertIn("cargo build --locked --release", jobs["package"])
         self.assertIn("bash .github/scripts/package-release.sh", jobs["package"])
+        self.assertIn(
+            "if: runner.os == 'Windows'\n"
+            "        shell: pwsh\n"
+            "        run: ./.github/scripts/package-windows.ps1",
+            jobs["package"],
+        )
         self.assertNotIn("IWE_MACOS_ONLY", source)
         self.assertNotIn("contents: write", source)
         self.assertNotIn("secrets.", jobs["package"])

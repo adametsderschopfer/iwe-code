@@ -83,6 +83,8 @@ Programs directory without administrator access. The installer creates a Start m
 offers a desktop shortcut. Uninstalling preserves workspace data. CI checks silent installation,
 registration, and removal on both Windows architectures.
 
+Windows packaging uses PowerShell and the system's `tar.exe` for update archives.
+
 Windows packages remain unsigned by default. Optional Microsoft Artifact Signing covers the
 application, installer, and uninstaller. See [Windows signing setup](windows-signing.md). Operating
 systems can require confirmation when opening downloaded packages.

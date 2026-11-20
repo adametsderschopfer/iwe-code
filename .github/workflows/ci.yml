@@ -186,8 +186,13 @@ jobs:
         shell: pwsh
         run: ./.github/scripts/setup-windows-installer.ps1
       - name: Package and verify application
+        if: runner.os != 'Windows'
         shell: bash
         run: bash .github/scripts/package-release.sh
+      - name: Package and verify Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./.github/scripts/package-windows.ps1
 
   website_format:
     name: Website formatting
