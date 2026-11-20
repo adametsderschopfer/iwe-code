@@ -2516,6 +2516,33 @@ fn moving_a_folder_retargets_editor_and_preserves_its_buffer() {
 }
 
 #[test]
+fn tree_previews_reuse_one_slot_and_become_permanent_on_open_or_edit() {
+    let mut app = app();
+    app.workspace.preferences.preview_tab = true;
+    let first = PathBuf::from("project/first.rs");
+    let second = PathBuf::from("project/second.rs");
+    let _ = app.preview_tree_file(first.clone());
+    let stale = app.preview().id;
+    let _ = app.preview_tree_file(second.clone());
+    assert_eq!(app.tabs.files.len(), 1);
+    assert!(app.preview_for_request(stale).is_none());
+    assert!(app.preview().temporary);
+    let _ = app.open_file(second.clone());
+    assert!(!app.preview().temporary);
+    let _ = app.preview_tree_file(first);
+    let id = app.preview().id;
+    let _ = app.finish_preview(id, Ok(Document::plain("draft".into())));
+    let _ = app.update(Message::Editor(crate::app::editor::Event::Replace(
+        id,
+        "edited".into(),
+    )));
+    assert!(!app.preview().temporary);
+    let _ = app.preview_tree_file(second);
+    assert!(!app.preview().temporary);
+    assert_eq!(app.tabs.files.len(), 2);
+}
+
+#[test]
 fn svg_modes_preserve_edits_and_reject_old_image_results() {
     let mut app = app();
     let image_id = open(&mut app, "drawing.SVG");

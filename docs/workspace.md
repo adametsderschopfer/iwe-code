@@ -38,6 +38,14 @@ repository, the badge preserves the selected history filter. If Git history is a
 branches block shows a blue outline for 700 milliseconds. Clicking again restarts that interval.
 Escape or clicking outside closes the repository list.
 
+Choose **Select Opened File** beside **Project Files** to expand its parent folders and reveal the
+selected local file. The control becomes available for local file tabs inside the project. Open **…
+→ Behavior → Enable Preview Tab** to enable single-click previews. A single click reuses one
+temporary tab. Italic text identifies the temporary tab. Double-click its file or edit the document
+to keep the tab. Clicking an existing permanent tab preserves it. Disabling previews makes existing
+temporary tabs permanent. IWE remembers this setting after restart. New installations and existing
+workspaces start with previews disabled.
+
 Right-click a file or folder in the project tree to open its context menu. Right-click empty space
 to work in the project root. Use **New** to create a file or folder. A new file opens in the editor.
 A new folder becomes selected.

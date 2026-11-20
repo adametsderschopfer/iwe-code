@@ -275,15 +275,15 @@ impl App {
     fn schedule_autosave(&mut self, id: u64) -> Task<Message> {
         self.editor.next_token += 1;
         let revision = self.editor.next_token;
-        let Some(buffer) = self
-            .tabs
-            .files
-            .iter_mut()
-            .find(|tab| tab.id == id)
-            .and_then(|tab| tab.editor.as_mut())
-        else {
+        let Some(tab) = self.tabs.files.iter_mut().find(|tab| tab.id == id) else {
             return Task::none();
         };
+        let Some(buffer) = &mut tab.editor else {
+            return Task::none();
+        };
+        if buffer.document.dirty() {
+            tab.temporary = false;
+        }
         buffer.autosave = revision;
         if buffer.error.is_some() || !buffer.document.dirty() {
             return Task::none();

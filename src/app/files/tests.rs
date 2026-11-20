@@ -475,3 +475,26 @@ fn refreshing_one_subtree_prunes_removed_children_and_preserves_similar_siblings
     );
     assert!(app.files.selected_path.is_none());
 }
+
+#[test]
+fn revealing_an_open_file_expands_uncached_parents_and_selects_the_file() {
+    let mut app = app();
+    let path = PathBuf::from("/project/src/deep/file.rs");
+    let _ = app.open_file(path.clone());
+    let _ = app.update_files(Event::RevealOpened);
+    assert!(app.expanded.contains(&PathBuf::from("/project/src/deep")));
+    assert_eq!(app.files.selected_path, Some(path.clone()));
+    directory(&mut app, "/project", vec![entry("/project/src", true)]);
+    directory(
+        &mut app,
+        "/project/src",
+        vec![entry("/project/src/deep", true)],
+    );
+    assert!(app.files.reveal.is_some());
+    directory(
+        &mut app,
+        "/project/src/deep",
+        vec![entry("/project/src/deep/file.rs", false)],
+    );
+    assert!(app.files.reveal.is_none());
+}

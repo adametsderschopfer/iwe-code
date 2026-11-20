@@ -17,6 +17,7 @@ pub(crate) mod modules;
 pub(crate) mod notifications;
 pub(crate) mod reorder;
 pub(crate) mod resize;
+pub(crate) mod reveal_file;
 pub(crate) mod screens;
 pub(crate) mod shortcuts;
 pub(crate) mod tab_label;

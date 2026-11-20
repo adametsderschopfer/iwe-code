@@ -11,6 +11,8 @@ use iced::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Icon {
+    Locate,
+    More,
     Check,
     Warning,
     CollapseLines,
@@ -141,6 +143,21 @@ impl Drawing {
                 line(&[(3., 10.), (17., 10.)]);
                 line(&[(6., 6.), (8., 6.)]);
                 line(&[(6., 13.), (8., 13.)]);
+            }
+            Icon::Locate => {
+                line(&[(10., 2.), (10., 6.)]);
+                line(&[(10., 14.), (10., 18.)]);
+                line(&[(2., 10.), (6., 10.)]);
+                line(&[(14., 10.), (18., 10.)]);
+                frame.stroke(&Path::circle(Point::new(10., 10.), 5.), stroke);
+            }
+            Icon::More => {
+                for x in [4., 10., 16.] {
+                    frame.fill(
+                        &Path::circle(Point::new(x, 10.), 1.5),
+                        self.1.resolve(theme),
+                    );
+                }
             }
             Icon::Check => {
                 line(&[(3., 10.), (8., 15.), (17., 5.)]);

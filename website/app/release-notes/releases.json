@@ -2561,6 +2561,16 @@
           "es": "Copiar una ruta o un hash de commit muestra la misma confirmación verde."
         },
         "sources": ["src/ui/tooltip.rs"]
+      },
+      {
+        "id": "project-tree-preview",
+        "category": "added",
+        "text": {
+          "en": "Reveal the open file in the project tree or preview files in a reusable tab.",
+          "ru": "Покажите открытый файл в дереве проекта или просматривайте файлы в одной временной вкладке.",
+          "es": "Localiza el archivo abierto en el árbol o previsualiza archivos en una pestaña reutilizable."
+        },
+        "sources": ["src/app/files.rs"]
       }
     ]
   }

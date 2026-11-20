@@ -214,6 +214,7 @@ pub(crate) enum PageDirection {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Preview {
+    pub temporary: bool,
     pub svg_source: bool,
     pub image: Option<iced::widget::image::Handle>,
     pub editor: Option<super::editor::Buffer>,
@@ -412,7 +413,7 @@ fn remember_project(
         else {
             continue;
         };
-        if source_root != root {
+        if preview.temporary || source_root != root {
             continue;
         }
         let Ok(path) = path.strip_prefix(root) else {
@@ -740,7 +741,37 @@ impl App {
         self.open_source(Source::Revision { root, path, id })
     }
 
+    pub(super) fn preview_tree_file(&mut self, path: PathBuf) -> Task<Message> {
+        let Some(root) = self.workspace.directory().cloned() else {
+            return Task::none();
+        };
+        self.navigation = super::Navigation::Files;
+        self.open_source_mode(
+            Source::Working {
+                root,
+                path,
+                compare: false,
+            },
+            self.workspace.preferences.preview_tab,
+        )
+    }
+
+    pub(super) fn keep_preview_tabs(&mut self) {
+        for tab in self.tabs.files.iter_mut().chain(
+            self.tabs
+                .stash
+                .iter_mut()
+                .flat_map(|(_, project)| project.files.iter_mut()),
+        ) {
+            tab.temporary = false;
+        }
+    }
+
     fn open_source(&mut self, source: Source) -> Task<Message> {
+        self.open_source_mode(source, false)
+    }
+
+    fn open_source_mode(&mut self, source: Source, temporary: bool) -> Task<Message> {
         let (path, title, revision) = match &source {
             Source::Remote {
                 path,
@@ -786,10 +817,21 @@ impl App {
                     .is_some_and(super::editor::Buffer::protected))
             && self.tabs.files[index].error.is_none()
         {
+            if !temporary {
+                self.tabs.files[index].temporary = false;
+            }
             return self.select_tab(self.tabs.files[index].id);
         }
 
+        let temporary = temporary && existing.is_none_or(|index| self.tabs.files[index].temporary);
         let index = existing.or_else(|| {
+            if temporary
+                && let Some(slot) = self.tabs.files.iter().position(|tab| {
+                    tab.temporary && tab.editor.as_ref().is_none_or(|buffer| !buffer.protected())
+                })
+            {
+                return Some(slot);
+            }
             (self.tabs.files.len() == 1 && self.tabs.files[0].source.is_none()).then_some(0)
         });
         if index.is_none() && !self.make_room_for_tab() {
@@ -802,6 +844,7 @@ impl App {
         self.modules.deployment.target = None;
         self.file_request += 1;
         let preview = Preview {
+            temporary,
             remote: matches!(source, Source::Remote { .. }),
             id: self.file_request,
             title,
@@ -1345,7 +1388,7 @@ impl App {
     fn remove_tab(&mut self, index: usize) {
         let closed = self.tabs.files.remove(index);
         let id = closed.id;
-        if closed.source.is_some() {
+        if closed.source.is_some() && !closed.temporary {
             // Bound cached documents while retaining recent closures in order.
             if self.tabs.closed.len() == 20 {
                 self.tabs.closed.remove(0);

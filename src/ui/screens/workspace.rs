@@ -171,6 +171,41 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
     );
     let base = super::header_repositories::overlay(app, base);
     let base = super::tab_menu::overlay(app, base);
+    let base = if let Some(point) = app.files.behavior_menu {
+        use crate::app::files::Event;
+        context_menu::overlay(
+            base,
+            point,
+            iced::Size::new(230., 80.),
+            || {
+                column![
+                    container(
+                        text(app.i18n.text(Key::TreeBehavior))
+                            .size(12)
+                            .style(theme::MUTED.text())
+                    )
+                    .padding([4, 8]),
+                    context_menu::row(
+                        row![
+                            text(app.i18n.text(Key::PreviewTab)).size(13),
+                            space().width(Length::Fill)
+                        ]
+                        .extend(
+                            app.workspace
+                                .preferences
+                                .preview_tab
+                                .then(|| icon(Icon::Check, theme::BLUE))
+                        )
+                    )
+                    .on_press(Message::Files(Event::TogglePreview)),
+                ]
+                .into()
+            },
+            Message::Files(Event::BehaviorMenu(None)),
+        )
+    } else {
+        base
+    };
     let base = crate::ui::branch_selection::watch(
         base,
         !app.modules.git.branch_selection.selected.is_empty(),
@@ -862,22 +897,50 @@ fn project_content(app: &App, width: f32) -> Element<'_, Message> {
         FilePanel::Project => Key::ProjectFiles,
         FilePanel::Changes => Key::WorkingChanges,
     });
-    let mut files = column![
+    use crate::app::files::Event as Files;
+    let mut heading = row![
         container(
-            container(
-                text(title)
-                    .size(13)
-                    .font(theme::semibold())
-                    .wrapping(text::Wrapping::None)
-            )
-            .id("file-panel-title")
+            text(title)
+                .size(13)
+                .font(theme::semibold())
+                .wrapping(text::Wrapping::None)
         )
-        .id("file-panel-header")
-        .height(theme::FILE_PANEL_HEADER_HEIGHT)
+        .id("file-panel-title")
         .width(Length::Fill)
-        .padding([0., theme::FILE_PANEL_CONTENT_INSET])
-        .clip(true)
-        .align_y(Alignment::Center),
+    ]
+    .align_y(Alignment::Center);
+    if app.file_panel == FilePanel::Project {
+        let select = button(icon(Icon::Locate, theme::MUTED))
+            .padding(3)
+            .on_press_maybe(
+                app.tree_target()
+                    .map(|_| Message::Files(Files::RevealOpened)),
+            )
+            .style(theme::icon_action(false));
+        let more = context_menu::anchored(
+            container(icon(Icon::More, theme::MUTED)).padding(3),
+            |point| Message::Files(Files::BehaviorMenu(Some(point))),
+        );
+        heading = heading
+            .push(tooltip::view(
+                select,
+                text(app.i18n.text(Key::SelectOpenedFile)).size(12),
+                tooltip::Position::Bottom,
+            ))
+            .push(tooltip::view(
+                more,
+                text(app.i18n.text(Key::TreeBehavior)).size(12),
+                tooltip::Position::Bottom,
+            ));
+    }
+    let mut files = column![
+        container(heading)
+            .id("file-panel-header")
+            .height(theme::FILE_PANEL_HEADER_HEIGHT)
+            .width(Length::Fill)
+            .padding([0., theme::FILE_PANEL_CONTENT_INSET])
+            .clip(true)
+            .align_y(Alignment::Center),
         divider(),
     ];
     if app.file_panel == FilePanel::Changes {
@@ -1226,7 +1289,7 @@ fn tree_width(app: &App, path: &Path, depth: usize) -> f32 {
     let width = 46.
         + depth as f32 * theme::FILE_TREE_INDENT
         + crate::ui::ellipsis::measured_width(&name, theme::FILE_TREE_TEXT_SIZE).ceil();
-    if depth <= 24 && app.expanded.contains(path) {
+    if app.expanded.contains(path) {
         app.tree
             .get(path)
             .into_iter()
@@ -1244,9 +1307,6 @@ fn file_tree<'a>(
     depth: usize,
     mut body: Column<'a, Message>,
 ) -> Column<'a, Message> {
-    if depth > 25 {
-        return body;
-    }
     if let Some(entries) = app.tree.get(directory) {
         for entry in entries {
             let expanded = app.expanded.contains(&entry.path);
@@ -1319,18 +1379,41 @@ fn file_tree<'a>(
                 hint.push('\n');
                 hint.push_str(&app.i18n.text(changed_tree::status_key(status)));
             }
+            let preview_mode = !entry.directory && app.workspace.preferences.preview_tab;
+            let item: Element<'_, Message> = if preview_mode {
+                widget::mouse_area(container(item).padding([0, 6]).width(Length::Fill).style(
+                    move |theme| {
+                        let style = crate::ui::theme::tree_item(active)(
+                            theme,
+                            iced::widget::button::Status::Active,
+                        );
+                        container::Style {
+                            background: style.background,
+                            text_color: Some(style.text_color),
+                            ..Default::default()
+                        }
+                    },
+                ))
+                .on_press(Message::Files(crate::app::files::Event::Preview(
+                    entry.path.clone(),
+                )))
+                .on_double_click(event)
+                .interaction(iced::mouse::Interaction::Pointer)
+                .into()
+            } else {
+                button(item)
+                    .on_press(event)
+                    .height(theme::FILE_TREE_ROW_HEIGHT)
+                    .padding([0, 6])
+                    .width(Length::Fill)
+                    .style(theme::tree_item(active))
+                    .into()
+            };
             body = body.push(context_menu::trigger(
                 tooltip::view(
-                    container(
-                        button(item)
-                            .on_press(event)
-                            .height(theme::FILE_TREE_ROW_HEIGHT)
-                            .padding([0, 6])
-                            .width(Length::Fill)
-                            .style(theme::tree_item(active)),
-                    )
-                    .id(format!("file-tree-{}", entry.path.to_string_lossy()))
-                    .width(Length::Fill),
+                    container(item)
+                        .id(format!("file-tree-{}", entry.path.to_string_lossy()))
+                        .width(Length::Fill),
                     text(hint).size(12),
                     tooltip::Position::FollowCursor,
                 ),
@@ -1453,6 +1536,14 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
                                 file_icons::file(Path::new(&preview.title))
                             },
                             text(label)
+                                .font(if preview.temporary {
+                                    iced::Font {
+                                        style: iced::font::Style::Italic,
+                                        ..theme::font()
+                                    }
+                                } else {
+                                    theme::font()
+                                })
                                 .size(theme::FILE_TAB_TEXT_SIZE)
                                 .shaping(text::Shaping::Advanced)
                                 .wrapping(text::Wrapping::None),

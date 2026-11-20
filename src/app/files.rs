@@ -20,6 +20,8 @@ pub(crate) struct State {
     pending: BTreeMap<PathBuf, u64>,
     pub loading: BTreeSet<PathBuf>,
     pub errors: BTreeMap<PathBuf, Failure>,
+    pub behavior_menu: Option<iced::Point>,
+    reveal: Option<PathBuf>,
     pub selected_path: Option<PathBuf>,
     pub menu: Option<Menu>,
     cache: VecDeque<Cached>,
@@ -54,6 +56,10 @@ struct Cached {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
+    Preview(PathBuf),
+    RevealOpened,
+    BehaviorMenu(Option<iced::Point>),
+    TogglePreview,
     OpenMenu(PathBuf, iced::Point),
     CopyOptions,
     CreateOptions,
@@ -75,6 +81,8 @@ impl App {
             return Task::batch(expanded.into_iter().map(|path| self.refresh_folder(path)));
         }
         if root != self.files.root {
+            self.files.reveal = None;
+            self.files.behavior_menu = None;
             self.files.operations = operations::State::default();
         }
         self.files.worker = None;
@@ -172,6 +180,17 @@ impl App {
 
     pub(super) fn update_files(&mut self, event: Event) -> Task<Message> {
         match event {
+            Event::Preview(path) => return self.preview_tree_file(path),
+            Event::RevealOpened => return self.select_opened_file(),
+            Event::BehaviorMenu(point) => self.files.behavior_menu = point,
+            Event::TogglePreview => {
+                self.files.behavior_menu = None;
+                self.workspace.preferences.preview_tab = !self.workspace.preferences.preview_tab;
+                if !self.workspace.preferences.preview_tab {
+                    self.keep_preview_tabs();
+                }
+                return self.save();
+            }
             Event::OpenMenu(path, point)
                 if self.space_draft.is_none()
                     && self.auth_dialog.is_none()
@@ -284,13 +303,25 @@ impl App {
                                                 && selected.starts_with(&entry.path))
                                     })
                             }) {
+                                if self.files.reveal == self.files.selected_path {
+                                    self.files.reveal = None;
+                                }
                                 self.files.selected_path = None;
                             }
                             self.files.errors.remove(&path);
                             self.tree.insert(path, entries);
                             self.search_everywhere.tree_changed();
+                            return self.scroll_to_opened_file();
                         }
                         Err(error) if self.expanded.contains(&path) => {
+                            if self
+                                .files
+                                .reveal
+                                .as_ref()
+                                .is_some_and(|target| target.starts_with(&path))
+                            {
+                                self.files.reveal = None;
+                            }
                             self.files.errors.insert(path, error);
                         }
                         Err(_) => {}
@@ -321,6 +352,74 @@ impl App {
                 return self.refresh_folder(path);
             }
             _ => {}
+        }
+        Task::none()
+    }
+
+    pub(crate) fn tree_target(&self) -> Option<&std::path::Path> {
+        let path = self.preview().working_paths()?.1;
+        if self.changes.status.status(path, false)
+            == Some(crate::domain::changes::FileStatus::Deleted)
+        {
+            return None;
+        }
+        path.strip_prefix(self.workspace.directory()?)
+            .ok()
+            .filter(|p| !p.as_os_str().is_empty())?;
+        Some(path)
+    }
+
+    fn select_opened_file(&mut self) -> Task<Message> {
+        let Some(path) = self.tree_target().map(std::path::Path::to_owned) else {
+            return Task::none();
+        };
+        let Some(root) = self.workspace.directory().cloned() else {
+            return Task::none();
+        };
+        self.files.selected_path = Some(path.clone());
+        self.files.reveal = Some(path.clone());
+        let mut tasks = Vec::new();
+        for parent in path
+            .ancestors()
+            .skip(1)
+            .take_while(|p| p.starts_with(&root))
+        {
+            self.expanded.insert(parent.to_owned());
+            if !self.tree.contains_key(parent) {
+                tasks.push(self.refresh_folder(parent.to_owned()));
+            }
+        }
+        tasks.push(self.scroll_to_opened_file());
+        Task::batch(tasks)
+    }
+
+    fn scroll_to_opened_file(&mut self) -> Task<Message> {
+        let Some(target) = &self.files.reveal else {
+            return Task::none();
+        };
+        if self.tree_target() != Some(target) {
+            self.files.reveal = None;
+            return Task::none();
+        }
+        let Some(root) = self.workspace.directory() else {
+            return Task::none();
+        };
+        let depth = target
+            .strip_prefix(root)
+            .map_or(0, |path| path.components().count().saturating_sub(1));
+        if target
+            .ancestors()
+            .take_while(|path| *path != root)
+            .all(|child| {
+                child
+                    .parent()
+                    .and_then(|parent| self.tree.get(parent))
+                    .is_some_and(|entries| entries.iter().any(|entry| entry.path == child))
+            })
+        {
+            let task = crate::ui::reveal_file::row(target, depth);
+            self.files.reveal = None;
+            return task;
         }
         Task::none()
     }
