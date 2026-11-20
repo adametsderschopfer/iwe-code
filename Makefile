@@ -2,7 +2,7 @@
 
 PYTHON ?= python3
 
-.PHONY: run build release test fmt fmt-check lint typecheck security check preflight
+.PHONY: run build release test fmt fmt-check lint typecheck security check preflight platform-check
 
 run:
 	cargo run --locked
@@ -40,3 +40,6 @@ preflight:
 	$(PYTHON) -m unittest discover -s .github/scripts/tests
 	actionlint
 	$(MAKE) build
+
+platform-check:
+	$(PYTHON) .github/scripts/local-platform-checks.py

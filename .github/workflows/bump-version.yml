@@ -317,11 +317,13 @@ jobs:
       - run: npm ci
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Generate static website
-        run: npm run generate
+      - name: Generate and verify static website
+        run: |
+          npm run generate
+          npm test
         env:
           GH_TOKEN: ${{ github.token }}
-          NUXT_APP_BASE_URL: ${{ steps.pages.outputs.base_path || format('/{0}', github.event.repository.name) }}/
+          NUXT_APP_BASE_URL: ${{ format('{0}/', steps.pages.outputs.base_path) }}
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:

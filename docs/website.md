@@ -8,8 +8,9 @@ Vue and TypeScript. Nuxt generates static HTML for GitHub Pages. This website-sp
 does not change the native application toolchain.
 
 The default address is
-[adametsderschopfer.github.io/iwe-code](https://adametsderschopfer.github.io/iwe-code/). The website
-does not configure a custom domain.
+[adametsderschopfer.github.io/iwe-code](https://adametsderschopfer.github.io/iwe-code/). The
+deployment reads the base path from GitHub Pages. It verifies generated pages and assets before
+publishing to a repository path or a custom domain.
 
 ## Local development
 
@@ -42,8 +43,8 @@ npm run test:browser
 ```
 
 Generation writes static files to `website/.output/public`. The generated-page tests require that
-output. Set `NUXT_APP_BASE_URL=/iwe-code/` when checking the GitHub Pages deployment path locally.
-Use your shell's environment syntax before generation and generated-page tests.
+output. Set `NUXT_APP_BASE_URL=/iwe-code/` to check the repository path. Set `NUXT_APP_BASE_URL=/`
+to check a custom domain at the root. Use the same value for generation and generated-page tests.
 
 Run root `make check` and `make build` before committing or pushing repository changes.
 

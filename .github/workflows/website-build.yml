@@ -28,15 +28,18 @@ jobs:
           cache: npm
           cache-dependency-path: website/package-lock.json
       - name: Configure GitHub Pages
+        id: pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
       - run: npm ci
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Generate static website
-        run: npm run generate
+      - name: Generate and verify static website
+        run: |
+          npm run generate
+          npm test
         env:
           GH_TOKEN: ${{ github.token }}
-          NUXT_APP_BASE_URL: ${{ format('/{0}/', github.event.repository.name) }}
+          NUXT_APP_BASE_URL: ${{ format('{0}/', steps.pages.outputs.base_path) }}
       - name: Upload website build
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:

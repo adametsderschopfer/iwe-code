@@ -19,6 +19,29 @@ release signing credentials and publishes no packages. Shared checks and website
 Integration tests cover the CLI, the local forwarding endpoint, external modules, and the MCP
 server. CI reports explicitly if the workspace has no integration test targets.
 
+## Local checks before committing
+
+On Apple Silicon, install MinGW-w64, Docker CLI, and a Linux container runtime. The default setup
+uses a dedicated Colima profile. It uses Rosetta for the x64 Linux container.
+
+```sh
+brew install mingw-w64 docker colima
+rustup target add aarch64-apple-darwin x86_64-apple-darwin i686-pc-windows-gnu x86_64-pc-windows-gnu
+colima start --profile iwe --vm-type vz --vz-rosetta --cpu 6 --memory 12 --disk 48 --activate=false
+make platform-check
+git config --local core.hooksPath .githooks
+git config --local iwe.localPlatformChecks true
+```
+
+`make platform-check` checks formatting and runs Clippy for the six local targets. Clippy compiles
+the application and test code for each target. MinGW-w64 selects Windows code for x64 and x86.
+GitHub Actions uses MSVC to verify the released Windows binaries and installers. The local Linux
+container checks x64 and x86 code. GitHub Actions runs the Linux test binaries and packages them.
+
+The pre-commit hook checks a copy of the staged files. Unstaged edits stay outside these checks. The
+hook starts the configured Colima profile when necessary. Set `IWE_DOCKER_CONTEXT` to use another
+Docker context that runs x64 Linux containers.
+
 ## Local push checks
 
 Install Python 3.11 or newer and actionlint for the preflight command. On Windows, run these

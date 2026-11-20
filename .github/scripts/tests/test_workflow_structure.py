@@ -95,3 +95,11 @@ class WorkflowStructureTests(unittest.TestCase):
         self.assertIn("actions/deploy-pages@", source)
         self.assertIn("needs: build", source)
         self.assertNotIn("contents: write", source)
+
+    def test_website_publication_uses_the_pages_base_path(self):
+        for workflow in ("bump-version.yml", "website-build.yml"):
+            with self.subTest(workflow=workflow):
+                source = (WORKFLOWS / workflow).read_text()
+                self.assertIn("id: pages", source)
+                self.assertIn("NUXT_APP_BASE_URL: ${{ format('{0}/', steps.pages.outputs.base_path) }}", source)
+                self.assertIn("npm run generate\n          npm test", source)

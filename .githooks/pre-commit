@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+if [ "$(git config --type=bool --get iwe.localPlatformChecks || true)" = true ]; then
+    "${PYTHON:-python3}" .github/scripts/local-platform-checks.py --staged
+fi

@@ -2476,10 +2476,10 @@
   },
   {
     "version": "1.5.3",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
+    "status": "released",
+    "publishedAt": "2026-11-20T19:20:20Z",
+    "tags": ["v1.5.3"],
+    "source": "0bacafd73ef6ef4de3e2cb8ed82bb506834f69ab",
     "items": [
       {
         "id": "restore-windows-linux-downloads",
@@ -2507,6 +2507,31 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "local-platform-checks-before-commit",
+        "category": "maintenance",
+        "text": {
+          "en": "Developers can check platform-specific Rust code on macOS before committing.",
+          "ru": "Разработчики могут проверить платформенный код Rust на macOS перед коммитом.",
+          "es": "Los desarrolladores pueden comprobar en macOS el código de Rust específico de cada plataforma antes de confirmar cambios."
+        },
+        "sources": [
+          ".githooks/pre-commit",
+          ".github/local-checks/Dockerfile",
+          ".github/scripts/local-platform-checks.py"
+        ]
+      },
+      {
+        "id": "github-pages-custom-domain-path",
+        "category": "fixed",
+        "text": {
+          "en": "The website loads its assets from the configured GitHub Pages address.",
+          "ru": "Сайт загружает свои файлы по адресу, указанному в GitHub Pages.",
+          "es": "El sitio carga sus archivos desde la dirección configurada en GitHub Pages."
+        },
+        "sources": [".github/workflows/bump-version.yml", ".github/workflows/website-build.yml"]
+      }
+    ]
   }
 ]
