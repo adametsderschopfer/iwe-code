@@ -525,3 +525,5 @@ settings-editing-group = Edición
 settings-tools-group = Herramientas
 settings-application-group = Aplicación
 settings-typography-group = Tipografía
+svg-edit-source = Editar SVG
+svg-show-image = Mostrar imagen

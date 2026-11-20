@@ -2472,3 +2472,50 @@ fn moving_a_folder_retargets_editor_and_preserves_its_buffer() {
     let _ = app.reopen_closed_tab();
     assert!(app.preview().path.is_none());
 }
+
+#[test]
+fn svg_modes_preserve_edits_and_reject_old_image_results() {
+    let mut app = app();
+    let image_id = open(&mut app, "drawing.SVG");
+    let handle = || iced::widget::image::Handle::from_rgba(1, 1, vec![0u8; 4]);
+    let _ = app.update(Message::ImageLoaded(app.generation, image_id, Ok(handle())));
+    let _ = app.update(Message::ToggleSvgSource(image_id));
+    let source_id = app.preview().id;
+    assert_ne!(image_id, source_id);
+    let _ = app.finish_preview(source_id, Ok(Document::plain("<svg/>".into())));
+    let _ = app.update(Message::ImageLoaded(app.generation, image_id, Ok(handle())));
+    assert!(app.preview().image.is_none());
+    assert_eq!(
+        app.editor_buffer().unwrap().document.text.as_str(),
+        "<svg/>"
+    );
+    app.preview_mut()
+        .editor
+        .as_mut()
+        .unwrap()
+        .document
+        .edit("<svg />".into());
+    let _ = app.update(Message::ToggleSvgSource(source_id));
+    assert_eq!(app.preview().id, source_id);
+    assert!(app.preview().svg_source);
+    app.preview_mut()
+        .editor
+        .as_mut()
+        .unwrap()
+        .document
+        .undo(false);
+    let _ = app.update(Message::ToggleSvgSource(source_id));
+    let new_id = app.preview().id;
+    let _ = app.update(Message::ImageLoaded(app.generation, new_id, Ok(handle())));
+    assert!(app.editor_buffer().is_none());
+    assert!(app.preview().image.is_some());
+    let _ = app.update(Message::ToggleSvgSource(new_id));
+    assert!(
+        app.preview_mut()
+            .editor
+            .as_mut()
+            .unwrap()
+            .document
+            .undo(true)
+    );
+}

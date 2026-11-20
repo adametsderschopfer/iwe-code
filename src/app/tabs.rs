@@ -214,6 +214,8 @@ pub(crate) enum PageDirection {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Preview {
+    pub svg_source: bool,
+    pub image: Option<iced::widget::image::Handle>,
     pub editor: Option<super::editor::Buffer>,
     pub remote: bool,
     pub pending_comparison: Option<(String, PathBuf)>,
@@ -243,6 +245,16 @@ fn working_under(tab: &Preview, source: &std::path::Path) -> bool {
 }
 
 impl Preview {
+    pub(crate) fn local_svg(&self) -> bool {
+        matches!(&self.source, Some(Source::Working { path, compare: false, .. })
+            if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("svg")))
+    }
+
+    fn needs_image(&self) -> bool {
+        matches!(&self.source, Some(Source::Working { path, compare: false, .. })
+            if !self.svg_source && crate::infrastructure::workspace::images::supported(path))
+    }
+
     pub(crate) fn label_revision(&self) -> Option<&str> {
         match &self.source {
             Some(Source::Revision { id, .. }) => Some(id),
@@ -443,6 +455,7 @@ fn trim_documents<'a>(
         {
             continue;
         }
+        preview.image = None;
         let Some(document) = &preview.document else {
             continue;
         };
@@ -812,8 +825,69 @@ impl App {
         ])
     }
 
+    pub(super) fn toggle_svg_source(&mut self, id: u64) -> Task<Message> {
+        let preview = self.preview();
+        if preview.id != id
+            || !preview.local_svg()
+            || preview.loading
+            || preview
+                .editor
+                .as_ref()
+                .is_some_and(super::editor::Buffer::protected)
+        {
+            return Task::none();
+        }
+        let Some(source) = preview.source.clone() else {
+            return Task::none();
+        };
+        self.file_request += 1;
+        let preview = &mut self.tabs.files[self.tabs.active];
+        preview.id = self.file_request;
+        preview.svg_source = !preview.svg_source;
+        preview.image = None;
+        preview.error = None;
+        if preview.svg_source && preview.document.is_some() {
+            return Task::none();
+        }
+        preview.loading = true;
+        preview.preparation = Preparation::Text;
+        self.read_preview(self.file_request, source)
+    }
+
     fn read_preview(&self, id: u64, source: Source) -> Task<Message> {
+        let svg_source = self
+            .tabs
+            .files
+            .iter()
+            .any(|tab| tab.id == id && tab.svg_source);
+        self.read_preview_mode(id, source, svg_source)
+    }
+
+    fn read_preview_mode(&self, id: u64, source: Source, svg_source: bool) -> Task<Message> {
         let generation = self.generation;
+        if let Source::Working {
+            root,
+            path,
+            compare: false,
+        } = &source
+            && !svg_source
+            && crate::infrastructure::workspace::images::supported(path)
+        {
+            let read = crate::infrastructure::workspace::images::read(root.clone(), path.clone());
+            return Task::perform(read, move |result| {
+                Message::ImageLoaded(
+                    generation,
+                    id,
+                    result.map(|image| {
+                        iced::widget::image::Handle::from_rgba(
+                            image.width(),
+                            image.height(),
+                            image.into_raw(),
+                        )
+                    }),
+                )
+            });
+        }
         Task::perform(source.read(), move |result| {
             Message::FilePrepared(generation, id, Preparation::Text, result)
         })
@@ -1336,7 +1410,8 @@ impl App {
             }
             self.file_request += 1;
             preview.id = self.file_request;
-            preview.loading |= preview.document.is_none() || preview.error.is_some();
+            preview.loading |=
+                preview.document.is_none() || preview.error.is_some() || preview.needs_image();
             preview.preparation = Preparation::Text;
             preview.error = None;
             let read = if preview.loading {
@@ -1356,7 +1431,7 @@ impl App {
                         Message::FilePrepared(generation, id, Preparation::Text, result)
                     })
                 } else {
-                    self.read_preview(preview.id, source)
+                    self.read_preview_mode(preview.id, source, preview.svg_source)
                 }
             } else {
                 Task::none()
@@ -1451,6 +1526,7 @@ impl App {
                 .iter()
                 .filter(|preview| {
                     preview.loading
+                        || (preview.needs_image() && preview.image.is_none())
                         || preview.source.is_some()
                             && (preview.document.is_none() || preview.error.is_some())
                 })
@@ -1491,7 +1567,13 @@ impl App {
         let (source, resume_page) = {
             let preview = self.preview_for_request(id)?;
             let source = preview.source.clone()?;
-            let settled = !preview.loading && preview.document.is_some() && preview.error.is_none();
+            let settled = !preview.loading
+                && preview.error.is_none()
+                && if preview.needs_image() {
+                    preview.image.is_some()
+                } else {
+                    preview.document.is_some()
+                };
             if settled {
                 return None;
             }

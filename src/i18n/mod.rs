@@ -226,6 +226,8 @@ message_keys! {
     ModuleSignatureInvalid => "module-signature-invalid",
     ModuleCrashed => "module-crashed",
     ModuleMessage => "module-message",
+    SvgEditSource => "svg-edit-source",
+    SvgShowImage => "svg-show-image",
     Terminal => "terminal",
     TerminalStarting => "terminal-starting",
     TerminalExited => "terminal-exited",

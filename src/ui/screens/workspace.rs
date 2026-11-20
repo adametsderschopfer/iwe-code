@@ -1535,6 +1535,21 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
     ]
     .spacing(theme::FILE_TAB_TOOL_GAP)
     .align_y(Alignment::Center);
+    let tab = app.preview();
+    if tab.local_svg() {
+        let label = if tab.svg_source {
+            Key::SvgShowImage
+        } else {
+            Key::SvgEditSource
+        };
+        let available =
+            !tab.loading && tab.editor.as_ref().is_none_or(|buffer| !buffer.protected());
+        bar = bar.push(
+            button(text(app.i18n.text(label)).size(12))
+                .style(theme::action(false))
+                .on_press_maybe(available.then_some(Message::ToggleSvgSource(tab.id))),
+        );
+    }
     if overflow {
         bar = bar.push(tooltip::view(
             context_menu::anchored(
@@ -1639,6 +1654,16 @@ fn preview(app: &App) -> Element<'_, Message> {
         center_message(app, Key::Loading)
     } else if let Some(error) = app.preview().error {
         center_message(app, error_key(error))
+    } else if let Some(image) = &app.preview().image {
+        container(
+            widget::image(image.clone())
+                .content_fit(iced::ContentFit::ScaleDown)
+                .width(Length::Fill)
+                .height(Length::Fill),
+        )
+        .padding(16)
+        .center(Length::Fill)
+        .into()
     } else if let Some(document) = &app.preview().document {
         if let Some(comparison) = document
             .comparison

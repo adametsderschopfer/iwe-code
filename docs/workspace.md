@@ -232,7 +232,15 @@ The code area uses a separate neutral background from surrounding panels. Dark a
 darker code background. Light appearance uses a white code background. Plain previews and both
 comparison views share this background, including their line-number gutters.
 
-The viewer displays UTF-8 text. Files larger than 512 KiB or 100,000 lines open in parts. Use
+Local PNG, JPEG, GIF, WebP, BMP, ICO, and SVG files open in the image viewer. The viewer fits each
+image inside the tab and preserves its proportions. Animated images show their first frame.
+Background workers decode up to two images concurrently. Raster inputs support up to 24 million
+pixels. Each file can contain up to 16 MiB. The displayed image has a maximum edge of 2,048 pixels.
+Use **Edit SVG** to change its source. After saving, **Show image** displays the updated drawing.
+SVG previews render text, shapes, and embedded raster images. External image references remain
+unloaded.
+
+The source viewer displays UTF-8 text. Files larger than 512 KiB or 100,000 lines open in parts. Use
 **Previous part**, **Next part**, and **Refresh** above the text to navigate or reload a part. Each
 part contains at most 512 KiB and 4,096 newline characters. Long lines can continue into the next
 part with the same line number. UTF-8 characters and CRLF pairs remain intact at boundaries. Binary

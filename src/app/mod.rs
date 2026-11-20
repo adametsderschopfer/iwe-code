@@ -362,6 +362,8 @@ pub(crate) enum Message {
     ReadFilePart(u64, tabs::PageDirection),
     OpenCommitFile(usize),
     FileLoaded(u64, u64, Result<Document, Failure>),
+    ToggleSvgSource(u64),
+    ImageLoaded(u64, u64, Result<iced::widget::image::Handle, Failure>),
     FilePrepared(u64, u64, tabs::Preparation, Result<Document, Failure>),
     SelectBranch(BranchKey),
     AllRepositories,
@@ -1311,6 +1313,22 @@ impl App {
             Message::InspectWindow(..) => return Task::none(),
             Message::OpenWorkingChange(path) => return self.open_working_change(path),
             Message::OpenCommitFile(index) => return self.open_commit_file(index),
+            Message::ToggleSvgSource(id) => return self.toggle_svg_source(id),
+            Message::ImageLoaded(generation, request, result) if generation == self.generation => {
+                if let Some(preview) = self.preview_for_request(request) {
+                    preview.loading = false;
+                    match result {
+                        Ok(handle) => {
+                            preview.image = Some(handle);
+                            preview.error = None;
+                        }
+                        Err(error) => {
+                            preview.image = None;
+                            preview.error = Some(error);
+                        }
+                    }
+                }
+            }
             Message::FilePrepared(generation, request, stage, result)
                 if generation == self.generation =>
             {

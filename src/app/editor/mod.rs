@@ -168,7 +168,10 @@ impl App {
             .collect()
     }
     pub(crate) fn editor_buffer(&self) -> Option<&Buffer> {
-        self.preview().editor.as_ref()
+        let tab = self.preview();
+        tab.editor
+            .as_ref()
+            .filter(|_| !tab.local_svg() || tab.svg_source)
     }
 
     pub(crate) fn editor_pending_tab(&self, id: u64) -> bool {
