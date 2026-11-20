@@ -11,24 +11,38 @@ GitHub Actions uses three workflows with English names.
 - **Build and Publish Website** manually generates the website from main, uploads an artifact, and
   publishes GitHub Pages.
 
-Application builds and platform checks run only on macOS by default. The release builds and unit
-tests use both macOS architectures. Set the repository variable `IWE_MACOS_ONLY` to `false` to
-restore Windows and Linux builds, tests, and packaging. Shared checks and website jobs run on Linux
-runners.
+Code Checks uses the release runners and architecture targets listed below for Clippy, Cargo type
+checks, unit tests, and integration tests. It builds and packages all six targets after those checks
+pass. Packaging uses the release scripts and tests both Windows installers. Code Checks uses no
+release signing credentials and publishes no packages. Shared checks and website jobs run on Linux.
 
-The application has no root integration test targets. CI reports their absence explicitly. Adjacent
-tests cover local Git repositories, persistence, previews, provider responses, translated layouts,
-graphics, and native material state.
+Integration tests cover the CLI, the local forwarding endpoint, external modules, and the MCP
+server. CI reports explicitly if the workspace has no integration test targets.
 
-Run the same checks locally with `make check` and `make build`. Run `make fmt` to format Rust,
-Markdown, JSON, and YAML files. Security checks use the complete lockfile and require network access
-to refresh RustSec advisories.
+## Local push checks
+
+Install Python 3.11 or newer and actionlint for the preflight command. On Windows, run these
+commands in Git Bash and set `PYTHON=python` if Python uses that command name.
+
+```sh
+make preflight
+git config --local core.hooksPath .githooks
+```
+
+The hook runs `make preflight` before sending a commit to main. Check out the outgoing commit and
+commit or stash local changes first. Preflight runs `make check`, release-script tests, and
+actionlint before `make build`. Run `make fmt` to apply the root formatters. Cargo audit checks the
+complete lockfile and requires network access to refresh RustSec advisories.
+
+Local checks use the current operating system. Use GitHub-hosted runners or equivalent local
+environments for the other platforms. The GitHub checks also cover pushes made without the local
+hook.
 
 GitHub Actions caches speed up repeated runs. Rust jobs restore the crate registry and compiled
 dependencies. They disable incremental compilation because every run starts from cached artifacts.
 The security job caches the cargo-audit binary. Website jobs cache npm packages and Playwright
-browsers. Release builds set platform link flags before the Rust setup step. This keeps each cache
-tied to one build configuration.
+browsers. Checks and release builds share the platform link settings. Package verification and
+release builds share cached dependencies for each target.
 
 ## Release packages
 
@@ -79,7 +93,7 @@ systems can require confirmation when opening downloaded packages.
 2. Open **Release New Version** in GitHub Actions and select main.
 3. Choose **Fixes — patch**, **New features — minor**, or **Major update — major**.
 4. Run the workflow. It updates Cargo.toml, Cargo.lock, and the release-note ledger.
-5. The workflow pushes the version commit and builds all packages from that commit.
+5. The workflow pushes the version commit and builds its packages.
 6. GitHub creates the tag when it publishes the release with all packages.
 7. Verify the GitHub release and the published website.
 
@@ -99,14 +113,15 @@ the version commit without triggering another Code Checks run.
 Website jobs explicitly require successful publication even when the release skips Windows
 packaging.
 
-The first version workflow job waits for the Code Checks run of the dispatched commit. Preparation
-stops when those checks fail, get cancelled, or stay absent for 45 minutes. New version preparation
-also stops if main advances before checkout. A build or packaging failure stops before publication.
+The first version workflow job waits for the main push checks for the dispatched commit. These
+checks include packaging on all six targets. Preparation stops if checks fail, cancel, or time out.
+The release workflow polls for up to 90 minutes. New version preparation also stops if main advances
+before checkout. Build or packaging failure stops publication.
 
-Retry failed release jobs after transient errors. A full rerun reuses its original version commit.
-The run identifier in the commit message links reruns to that commit. If code needs correction, push
-the correction and run a new version request with reviewed notes. Existing tags must point to the
-prepared commit. The workflow never moves an existing tag.
+Retry failed release jobs after transient errors. A full rerun reuses its original version commit
+and release tag. The commit message records the run identifier and release tag. If code needs
+correction, push the correction and run a new version request with reviewed notes. Existing tags
+must point to the prepared commit. The workflow never moves an existing tag.
 
 Start releases through Release New Version on main. Choose patch, minor, or major. Tag pushes do not
 start separate workflows. Retry failed jobs within the original run after transient build or
@@ -117,14 +132,15 @@ installation checks run when Windows packaging is enabled. All enabled builds an
 succeed before publication.
 
 The publication job signs one update manifest. It verifies the installation packages and update
-archives for the enabled targets, then adds SHA256SUMS. macOS-only releases use
-`macos-vMAJOR.MINOR.PATCH`. Releases for all targets use `vMAJOR.MINOR.PATCH`. GitHub CLI uploads
-the files to a draft. GitHub creates the tag on the prepared commit when it publishes that release.
-Configure `IWE_UPDATE_SIGNING_KEY` before publishing. See
-[application updates](updates.md#release-signing) for key handling. The version workflow and
-publication job can write to the repository. Build jobs have read-only access. Existing releases are
-not overwritten. If uploading fails, inspect the remaining draft before retrying publication. Main
-pushes cancel superseded branch checks. Manual version runs serialize their work.
+archives for the enabled targets, then adds SHA256SUMS. Releases include all targets by default and
+use `vMAJOR.MINOR.PATCH`. Set `IWE_MACOS_ONLY` to `true` to publish a macOS-only release with
+`macos-vMAJOR.MINOR.PATCH`. This variable does not change Code Checks. GitHub CLI uploads the files
+to a draft. GitHub creates the tag on the prepared commit when it publishes that release. Configure
+`IWE_UPDATE_SIGNING_KEY` before publishing. See [application updates](updates.md#release-signing)
+for key handling. The version workflow and publication job can write to the repository. Build jobs
+have read-only access. Existing releases are not overwritten. If uploading fails, inspect the
+remaining draft before retrying publication. Main pushes cancel superseded branch checks. Manual
+version runs serialize their work.
 
 Set repository variables IWE_GITHUB_CLIENT_ID and IWE_GITLAB_CLIENT_ID to embed public OAuth Client
 IDs in release builds. These values are public identifiers, not secrets. Missing values leave
@@ -134,10 +150,6 @@ registration.
 Linux builds and website browser tests share an APT setup script. If setup fails, the script
 replaces the configured Azure Ubuntu mirror with the official Ubuntu archive and retries. It
 preserves the Ubuntu release, security repositories, and signature checks.
-
-Local workflow validation uses actionlint and ShellCheck. Packaging checks do not publish releases
-or create remote tags. Actual Windows and Linux builds require their GitHub runners or equivalent
-local environments.
 
 ## Naming compatibility
 

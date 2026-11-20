@@ -16,17 +16,15 @@ jobs:
     name: Select platforms
     runs-on: ubuntu-24.04
     outputs:
-      checks: ${{ steps.plan.outputs.checks }}
       targets: ${{ steps.plan.outputs.targets }}
+      version: ${{ steps.plan.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - id: plan
         env:
-          IWE_MACOS_ONLY: ${{ vars.IWE_MACOS_ONLY }}
           REF_TYPE: branch
-          REF_NAME: ${{ github.ref_name }}
         run: python3 .github/scripts/release-plan.py
 
   format:
@@ -77,11 +75,11 @@ jobs:
       - run: python3 -m unittest discover -s .github/scripts/tests -v
 
   lint:
-    name: Lint (${{ matrix.os }})
+    name: Lint (${{ matrix.target }})
     needs: plan
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.checks) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.targets) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -90,21 +88,24 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           components: clippy
-      - run: cargo clippy --locked --all-targets --all-features -- -D warnings
+          target: ${{ matrix.target }}
+      - run: cargo clippy --locked --all-targets --all-features --target ${{ matrix.target }} -- -D warnings
 
   typecheck:
-    name: Type check (${{ matrix.os }})
+    name: Type check (${{ matrix.target }})
     needs: plan
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.checks) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.targets) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - uses: ./.github/actions/setup-rust
-      - run: cargo check --locked --all-targets --all-features
+        with:
+          target: ${{ matrix.target }}
+      - run: cargo check --locked --all-targets --all-features --target ${{ matrix.target }}
 
   unit_tests:
     name: Unit tests (${{ matrix.target }})
@@ -123,17 +124,19 @@ jobs:
       - run: cargo test --locked --all-features --target ${{ matrix.target }} --bin iwe
 
   integration_tests:
-    name: Integration tests (${{ matrix.os }})
+    name: Integration tests (${{ matrix.target }})
     needs: [plan, format, lint, security, typecheck, release_scripts]
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.checks) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.targets) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
       - uses: ./.github/actions/setup-rust
+        with:
+          target: ${{ matrix.target }}
       - name: Discover integration tests
         id: integration
         shell: pwsh
@@ -153,7 +156,38 @@ jobs:
           }
       - name: Run integration tests
         if: steps.integration.outputs.available == 'true'
-        run: cargo test --locked --workspace --all-features --test '*'
+        run: cargo test --locked --workspace --all-features --target ${{ matrix.target }} --test '*'
+
+  package:
+    name: Verify release package (${{ matrix.platform }})
+    needs: [plan, unit_tests, integration_tests]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.targets) }}
+    runs-on: ${{ matrix.os }}
+    env:
+      BUILD_TARGET: ${{ matrix.target }}
+      ASSET_PLATFORM: ${{ matrix.platform }}
+      RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+      IWE_GITHUB_CLIENT_ID: ${{ vars.IWE_GITHUB_CLIENT_ID }}
+      IWE_GITLAB_CLIENT_ID: ${{ vars.IWE_GITLAB_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+        with:
+          target: ${{ matrix.target }}
+          cache-group: release
+      - run: cargo build --locked --release --target ${{ matrix.target }}
+      - name: Prepare installer compiler
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./.github/scripts/setup-windows-installer.ps1
+      - name: Package and verify application
+        shell: bash
+        run: bash .github/scripts/package-release.sh
 
   website_format:
     name: Website formatting

@@ -7,10 +7,11 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tomllib
 
 
 is_tag = os.environ["REF_TYPE"] == "tag"
-macos_only = os.environ.get("IWE_MACOS_ONLY") != "false"
+macos_only = False
 if is_tag:
     match = re.fullmatch(r"(macos-)?v([0-9]+\.[0-9]+\.[0-9]+)", os.environ["REF_NAME"])
     if not match:
@@ -31,10 +32,10 @@ targets = [
     {"os": "ubuntu-22.04", "target": "x86_64-unknown-linux-gnu", "platform": "linux-x64"},
     {"os": "ubuntu-22.04", "target": "i686-unknown-linux-gnu", "platform": "linux-x86"},
 ]
-checks = ["macos-latest", "windows-latest", "ubuntu-24.04"]
 if macos_only:
     targets = [target for target in targets if target["platform"].startswith("macos-")]
-    checks = ["macos-latest"]
+with Path("Cargo.toml").open("rb") as manifest:
+    version = tomllib.load(manifest)["package"]["version"]
 with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-    output.write("checks=" + json.dumps({"os": checks}, separators=(",", ":")) + "\n")
     output.write("targets=" + json.dumps({"include": targets}, separators=(",", ":")) + "\n")
+    output.write(f"version={version}\n")

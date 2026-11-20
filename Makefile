@@ -1,6 +1,8 @@
 .DEFAULT_GOAL := check
 
-.PHONY: run build release test fmt fmt-check lint typecheck security check
+PYTHON ?= python3
+
+.PHONY: run build release test fmt fmt-check lint typecheck security check preflight
 
 run:
 	cargo run --locked
@@ -32,3 +34,9 @@ security:
 	cargo audit --file Cargo.lock
 
 check: fmt-check lint typecheck test security
+
+preflight:
+	$(MAKE) check
+	$(PYTHON) -m unittest discover -s .github/scripts/tests
+	actionlint
+	$(MAKE) build

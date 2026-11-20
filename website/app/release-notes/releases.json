@@ -2480,6 +2480,17 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "restore-windows-linux-downloads",
+        "category": "maintenance",
+        "text": {
+          "en": "This release includes Windows and Linux downloads again. Automated checks verify packages for every supported architecture.",
+          "ru": "В этот выпуск снова входят пакеты для Windows и Linux. Автоматические проверки проверяют пакеты для всех поддерживаемых архитектур.",
+          "es": "Esta versión vuelve a incluir descargas para Windows y Linux. Las pruebas automatizadas verifican los paquetes de todas las arquitecturas compatibles."
+        },
+        "sources": [".github/workflows/ci.yml", ".github/workflows/bump-version.yml"]
+      }
+    ]
   }
 ]

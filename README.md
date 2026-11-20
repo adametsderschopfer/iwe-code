@@ -117,6 +117,9 @@ make release
 build` creates `target/debug/iwe`. `make release` creates `target/release/iwe`. Windows executable
 names include `.exe`.
 
+Run `make preflight` to verify the local platform and the release workflow before pushing. See
+[local push checks](docs/ci.md#local-push-checks) to enable automatic checks for main.
+
 Without Make, use the Cargo and dprint commands defined in [Makefile](Makefile). See
 [the architecture](docs/architecture.md) and [the CI guide](docs/ci.md) for implementation details.
 

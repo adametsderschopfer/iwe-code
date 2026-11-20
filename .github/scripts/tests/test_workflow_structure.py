@@ -47,6 +47,9 @@ class WorkflowStructureTests(unittest.TestCase):
         self.assertIn("needs: [prepare, build]", jobs["windows_package"])
         self.assertIn("needs: [prepare, build, windows_package]", jobs["publish"])
         self.assertIn("bash .github/scripts/publish-release.sh", jobs["publish"])
+        self.assertIn("--branch main --event push", jobs["wait_checks"])
+        self.assertIn("Release-Tag: $tag", jobs["prepare"])
+        self.assertIn("%(trailers:key=Release-Tag,valueonly)", jobs["prepare"])
 
     def test_checks_only_run_on_main_pushes(self):
         source = (WORKFLOWS / "ci.yml").read_text()
@@ -58,6 +61,22 @@ class WorkflowStructureTests(unittest.TestCase):
         self.assertNotIn("./.github/workflows/ci.yml", release)
         self.assertNotIn("\n  checks:\n", release)
 
+    def test_every_release_target_passes_checks_before_packaging(self):
+        source = (WORKFLOWS / "ci.yml").read_text()
+        jobs = dict(re.findall(
+            r"^  ([a-z_]+):\n(.*?)(?=^  [a-z_]+:\n|\Z)",
+            source.split("jobs:\n", 1)[1], re.MULTILINE | re.DOTALL,
+        ))
+        for name in ("lint", "typecheck", "unit_tests", "integration_tests", "package"):
+            with self.subTest(job=name):
+                self.assertIn("fromJSON(needs.plan.outputs.targets)", jobs[name])
+                self.assertIn("--target ${{ matrix.target }}", jobs[name])
+        self.assertIn("needs: [plan, unit_tests, integration_tests]", jobs["package"])
+        self.assertIn("cargo build --locked --release", jobs["package"])
+        self.assertIn("bash .github/scripts/package-release.sh", jobs["package"])
+        self.assertNotIn("IWE_MACOS_ONLY", source)
+        self.assertNotIn("contents: write", source)
+        self.assertNotIn("secrets.", jobs["package"])
 
     def test_manual_website_build_uses_main_and_publishes(self):
         source = (WORKFLOWS / "website-build.yml").read_text()

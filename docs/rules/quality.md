@@ -41,11 +41,11 @@ advisory data. Investigate vulnerability failures. Do not ignore advisories mere
 CI runs formatting, lint, type checks, dependency security, and release-script checks before tests.
 Run automated checks only on main pushes. Keep the macOS, Windows, and Linux matrix definitions.
 Keep unit and integration jobs separate. Report absent integration targets explicitly. The release
-workflow waits for Code Checks on the dispatched commit. It then prepares the version and builds its
-packages. GitHub creates the tag when it publishes the release. Keep all six release target
-definitions. Require every enabled package before publication. Use needs dependencies. Do not bypass
-failures with always() or continue-on-error. See [the CI guide](../ci.md) for workflow triggers and
-recovery.
+workflow waits for Code Checks on the dispatched commit. Run platform checks and verify packaging on
+all six release targets. The release workflow prepares the version after the checks pass. It builds
+the packages from the prepared commit. GitHub creates the tag when it publishes the release. Require
+every enabled package before publication. Use needs dependencies. Do not bypass failures with
+always() or continue-on-error. See [the CI guide](../ci.md) for workflow triggers and recovery.
 
 Run static checks after all edits. Fix failures before committing or pushing. Use `make fmt` to
 apply formatting. Run formatting checks afterward. Use `make run` or `cargo run --locked` to start

@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       actions: read
-    timeout-minutes: 45
+    timeout-minutes: 95
     steps:
       - name: Wait for the Code Checks run of this commit
         env:
@@ -37,8 +37,9 @@ jobs:
         run: |
           set -euo pipefail
           # The dispatched commit must pass the platform checks before a tag exists.
-          for attempt in $(seq 1 90); do
-            result=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --json status,conclusion --limit 10)
+          for attempt in $(seq 1 180); do
+            result=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" \
+              --branch main --event push --json status,conclusion --limit 1)
             if echo "$result" | jq -e 'any(.[]; .status == "completed" and .conclusion != "success")' > /dev/null; then
               echo "Code checks did not pass for $GITHUB_SHA"
               exit 1
@@ -47,7 +48,7 @@ jobs:
               echo "Code checks passed for $GITHUB_SHA"
               exit 0
             fi
-            echo "Waiting for code checks ($attempt/90)..."
+            echo "Waiting for code checks ($attempt/180)..."
             sleep 30
           done
           echo "Timed out waiting for code checks for $GITHUB_SHA"
@@ -112,17 +113,22 @@ jobs:
         run: |
           set -euo pipefail
           python3 .github/scripts/release-notes.py --check --version "$version"
-          if [ -z "$existing" ]; then
+          if [ -n "$existing" ]; then
+            tag=$(git log -1 --format='%(trailers:key=Release-Tag,valueonly)')
+            test -n "$tag"
+          else
+            prefix=
+            if [[ "$IWE_MACOS_ONLY" == true ]]; then prefix=macos-; fi
+            tag="${prefix}v$version"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add Cargo.toml Cargo.lock website/app/release-notes/releases.json
-            git commit -m "Prepare version $version" -m "Release-Run: $GITHUB_RUN_ID"
+            git commit -m "Prepare version $version" -m "Release-Run: $GITHUB_RUN_ID
+          Release-Tag: $tag"
             git push origin HEAD:main
           fi
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          prefix=macos-
-          if [[ "$IWE_MACOS_ONLY" == false ]]; then prefix=; fi
-          echo "tag=${prefix}v$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
   plan:
     name: Validate version and select platforms
@@ -162,17 +168,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.sha }}
-      - name: Set macOS deployment target
-        if: runner.os == 'macOS'
-        shell: bash
-        run: echo 'MACOSX_DEPLOYMENT_TARGET=11.0' >> "$GITHUB_ENV"
-      - name: Link the Windows C runtime statically
-        if: runner.os == 'Windows'
-        shell: bash
-        run: echo 'RUSTFLAGS=-C target-feature=+crt-static' >> "$GITHUB_ENV"
       - uses: ./.github/actions/setup-rust
         with:
           target: ${{ matrix.target }}
+          cache-group: release
       - name: Verify release version
         shell: bash
         run: bash .github/scripts/release-version.sh
