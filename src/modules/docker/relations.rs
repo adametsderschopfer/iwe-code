@@ -16,7 +16,29 @@ pub(super) async fn inventory(
     root: &Path,
     kind: Kind,
 ) -> Result<Arc<Vec<Item>>, Error> {
-    let output = adapter::run(Some(context), &kind.list(), root, false, false).await?;
+    read_inventory(context, root, kind, &kind.list()).await
+}
+
+pub(super) async fn project_containers(
+    context: &str,
+    root: &Path,
+    project: &str,
+) -> Result<Arc<Vec<Item>>, Error> {
+    let mut args = Kind::Containers.list();
+    args.extend([
+        "--filter".into(),
+        format!("label=com.docker.compose.project={project}"),
+    ]);
+    read_inventory(context, root, Kind::Containers, &args).await
+}
+
+async fn read_inventory(
+    context: &str,
+    root: &Path,
+    kind: Kind,
+    args: &[String],
+) -> Result<Arc<Vec<Item>>, Error> {
+    let output = adapter::run(Some(context), args, root, false, false).await?;
     tokio::task::spawn_blocking(move || adapter::parse(kind, &output).map(Arc::new))
         .await
         .map_err(|_| Error::Unavailable)?

@@ -2736,9 +2736,9 @@
         "id": "docker-resource-graph",
         "category": "added",
         "text": {
-          "en": "Explore how containers connect to images, networks, volumes, and Compose projects in an interactive graph.",
-          "ru": "Просматривайте связи контейнеров с образами, сетями, томами и проектами Compose на интерактивном графе.",
-          "es": "Explora las conexiones entre contenedores, imágenes, redes, volúmenes y proyectos Compose en un grafo interactivo."
+          "en": "Open a Compose project's relationship graph from its context menu or properties to explore its containers, images, networks, and volumes.",
+          "ru": "Откройте схему связей из меню или свойств проекта Compose, чтобы увидеть его контейнеры, образы, сети и тома.",
+          "es": "Abre el diagrama desde el menú contextual o las propiedades de un proyecto Compose para explorar sus contenedores, imágenes, redes y volúmenes."
         },
         "sources": ["src/modules/docker/graph/mod.rs"]
       }

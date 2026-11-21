@@ -157,17 +157,10 @@ fn navigation<'a>(state: &State, i18n: &I18n) -> Element<'a, Event> {
             id,
             glyph(kind),
             i18n.text(kind.key()),
-            !state.graph_open && kind == state.kind,
+            kind == state.kind,
             state.busy.is_none().then_some(Event::Kind(kind)),
         ));
     }
-    links = links.push(context_menu::separator()).push(tool_rail::item(
-        "docker-graph-tab",
-        Icon::Relationships,
-        i18n.text(Key::DockerGraph),
-        state.graph_open,
-        state.busy.is_none().then_some(Event::Graph),
-    ));
     tool_rail::view("docker-navigation", "docker-navigation-scroll", links)
 }
 
@@ -511,6 +504,19 @@ fn properties<'a>(
         }
     }
     let mut buttons = row![].spacing(4);
+    if state.kind == Kind::Compose {
+        buttons = buttons.push(
+            button(text(i18n.text(Key::DockerGraph)).size(12))
+                .on_press_maybe(
+                    state
+                        .busy
+                        .is_none()
+                        .then(|| Event::ProjectGraph(item.id.clone())),
+                )
+                .padding([3, 6])
+                .style(style::button(theme::secondary)),
+        );
+    }
     for action in Action::actions(state.kind, item, terminal) {
         let label = text(i18n.text(action.key())).size(12);
         let label = if action == Action::Remove {
@@ -582,47 +588,43 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
                 .style(theme::separator)
         };
         let mut body = row![navigation(state, i18n), divider()].height(Length::Fill);
-        let body = if state.graph_open {
-            body.push(super::graph::panel(state, i18n)).into()
+        let available = (size.width - tool_rail::WIDTH - 1.).max(0.);
+        let split = selected.is_some() && !compact;
+        let limits = 188. ..=(available - 280.).max(188.);
+        let ratio = if state.kind == Kind::Containers {
+            0.30
         } else {
-            let available = (size.width - tool_rail::WIDTH - 1.).max(0.);
-            let split = selected.is_some() && !compact;
-            let limits = 188. ..=(available - 280.).max(188.);
-            let ratio = if state.kind == Kind::Containers {
-                0.30
-            } else {
-                0.50
-            };
-            let properties_width = state
-                .properties_width
-                .unwrap_or((available - 1.) * ratio)
-                .clamp(*limits.start(), *limits.end());
-            if selected.is_none() || !compact {
-                let width = if split {
-                    available - properties_width - 1.
-                } else {
-                    available
-                };
-                body = body.push(inventory(state, i18n, width));
-            }
-            if let Some(item) = selected {
-                let properties = properties(state, item, i18n, terminal, compact);
-                if split {
-                    body = body
-                        .push(divider())
-                        .push(container(properties).width(properties_width));
-                } else {
-                    body = body.push(properties);
-                }
-            }
-            crate::ui::resize::right(
-                body.into(),
-                split.then_some(properties_width),
-                size.width - properties_width - 1.,
-                limits,
-                |width, _| Event::ResizeProperties(width),
-            )
+            0.50
         };
+        let properties_width = state
+            .properties_width
+            .unwrap_or((available - 1.) * ratio)
+            .clamp(*limits.start(), *limits.end());
+        if selected.is_none() || !compact {
+            let width = if split {
+                available - properties_width - 1.
+            } else {
+                available
+            };
+            body = body.push(inventory(state, i18n, width));
+        }
+        if let Some(item) = selected {
+            let properties = properties(state, item, i18n, terminal, compact);
+            if split {
+                body = body
+                    .push(divider())
+                    .push(container(properties).width(properties_width));
+            } else {
+                body = body.push(properties);
+            }
+        }
+        let body = crate::ui::resize::right(
+            body.into(),
+            split.then_some(properties_width),
+            size.width - properties_width - 1.,
+            limits,
+            |width, _| Event::ResizeProperties(width),
+        );
         let mut panel = column![
             container(heading(state, i18n, size.width))
                 .width(Length::Fill)
@@ -678,6 +680,20 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
     if !state.open {
         return base;
     }
+    if let Some(project) = &state.project_graph {
+        return modal::bounded_overlay(
+            base,
+            move |height| {
+                container(super::graph::panel(project, state.busy.is_some(), i18n).map(map))
+                    .id("docker-project-graph")
+                    .height(height.min(500.))
+                    .into()
+            },
+            850.,
+            map(Event::Dismiss),
+            style::surface(theme::dialog),
+        );
+    }
     if let Some(draft) = &state.draft {
         return modal::bounded_overlay(
             base,
@@ -695,7 +711,21 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
             base,
             *point,
             move |available| {
-                let rows = iced::widget::Column::with_children(actions.iter().map(|action| {
+                let mut rows = column![];
+                if state.kind == Kind::Compose {
+                    let key = Key::DockerGraph;
+                    rows = rows
+                        .push(
+                            container(
+                                context_menu::row(context_menu::label(key, i18n.text(key)))
+                                    .style(style::button(context_menu::action_style(key, false)))
+                                    .on_press(map(Event::ProjectGraph(id.clone()))),
+                            )
+                            .id("docker-menu-project-graph"),
+                        )
+                        .push(context_menu::separator());
+                }
+                let rows = rows.extend(actions.iter().map(|action| {
                     let row = context_menu::row(context_menu::label(
                         action.key(),
                         i18n.text(action.key()),

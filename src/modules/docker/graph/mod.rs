@@ -21,6 +21,14 @@ pub(crate) struct Data {
     pub nodes: Vec<Node>,
     pub edges: Vec<(usize, usize)>,
 }
+#[derive(Debug, Default)]
+pub(super) struct Project {
+    pub name: String,
+    pub data: Arc<Data>,
+    pub viewport: Viewport,
+    pub error: Option<Error>,
+}
+
 impl Id {
     fn lane(&self) -> usize {
         match self.0 {
@@ -39,33 +47,29 @@ struct Resources {
 impl Resources {
     fn inventory(&mut self, kind: Kind, items: &[Item]) {
         for item in items {
-            let key = if kind == Kind::Images {
-                &item.detail
-            } else {
-                &item.id
-            };
             if kind == Kind::Networks {
-                self.network_ids.insert(item.name.clone(), key.clone());
+                self.network_ids.insert(item.name.clone(), item.id.clone());
             }
             self.names
-                .entry(Id(kind, key.clone()))
+                .entry(Id(kind, item.id.clone()))
                 .or_insert_with(|| item.name.clone());
         }
     }
-    fn attachments(&mut self, rows: &str) -> Result<(), Error> {
+    fn attachments(&mut self, rows: &str, project_name: &str) -> Result<(), Error> {
         for row in rows.lines() {
             let parts: Vec<_> = row.split('\t').collect();
             let [container, image, project, networks, volumes] = parts.as_slice() else {
                 return Err(Error::Invalid);
             };
-            let source = Id(Kind::Containers, (*container).into());
-            if !project.is_empty() {
-                let group = Id(Kind::Compose, (*project).into());
-                self.names
-                    .entry(group.clone())
-                    .or_insert_with(|| (*project).into());
-                self.edges.insert((group, source.clone()));
+            if *project != project_name {
+                continue;
             }
+            let source = Id(Kind::Containers, (*container).into());
+            let group = Id(Kind::Compose, project_name.into());
+            self.names
+                .entry(group.clone())
+                .or_insert_with(|| project_name.into());
+            self.edges.insert((group, source.clone()));
             self.edges
                 .insert((Id(Kind::Images, (*image).into()), source.clone()));
             for reference in networks.split_whitespace() {
@@ -85,6 +89,27 @@ impl Resources {
             }
         }
         Ok(())
+    }
+    // Container inspection identifies project attachments, even when another project shares them.
+    fn limit_to_attachments(&mut self, containers: &[Item]) {
+        let images: BTreeMap<_, _> = containers
+            .iter()
+            .map(|row| (row.id.as_str(), row.detail.as_str()))
+            .collect();
+        let attached: BTreeSet<_> = self.edges.iter().flat_map(|(a, b)| [a, b]).collect();
+        self.names.retain(|id, _| attached.contains(id));
+        for (from, to) in &self.edges {
+            if from.0 == Kind::Images
+                && let Some(name) = images.get(to.1.as_str())
+            {
+                self.names
+                    .entry(from.clone())
+                    .or_insert_with(|| (*name).to_owned());
+            }
+            if to.0 == Kind::Volumes {
+                self.names.entry(to.clone()).or_insert_with(|| to.1.clone());
+            }
+        }
     }
     fn layout(self, previous: &Data) -> Data {
         let mut slots = BTreeMap::new();
@@ -131,24 +156,17 @@ impl Resources {
 pub(super) async fn load(
     context: &str,
     root: &Path,
+    project: &str,
     previous: Arc<Data>,
 ) -> Result<Arc<Data>, Error> {
-    let (containers, images, networks, volumes) = tokio::try_join!(
-        relations::inventory(context, root, Kind::Containers),
-        relations::inventory(context, root, Kind::Images),
+    let (containers, networks) = tokio::try_join!(
+        relations::project_containers(context, root, project),
         relations::inventory(context, root, Kind::Networks),
-        relations::inventory(context, root, Kind::Volumes)
     )?;
-    let ids: Vec<_> = containers.iter().map(|c| c.id.as_str()).collect();
     let mut data = Resources::default();
-    for (kind, items) in [
-        (Kind::Containers, &containers),
-        (Kind::Images, &images),
-        (Kind::Networks, &networks),
-        (Kind::Volumes, &volumes),
-    ] {
-        data.inventory(kind, items);
-    }
+    data.inventory(Kind::Networks, &networks);
+    data.inventory(Kind::Containers, &containers);
+    let ids: Vec<_> = containers.iter().map(|c| c.id.as_str()).collect();
     // Request only identifiers and attachment names. Full inspection can include environment secrets.
     let format = concat!(
         "{{.Id}}\t{{.Image}}\t",
@@ -156,8 +174,12 @@ pub(super) async fn load(
         "\t{{range $name,$network := .NetworkSettings.Networks}}{{if $network.NetworkID}}id:{{$network.NetworkID}}{{else}}name:{{$name}}{{end}} {{end}}",
         "\t{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}} {{end}}{{end}}"
     );
-    relations::inspect_batches(context, root, &ids, format, |rows| data.attachments(rows)).await?;
+    relations::inspect_batches(context, root, &ids, format, |rows| {
+        data.attachments(rows, project)
+    })
+    .await?;
     tokio::task::spawn_blocking(move || {
+        data.limit_to_attachments(&containers);
         let graph = data.layout(&previous);
         if graph == *previous {
             previous

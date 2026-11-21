@@ -1,16 +1,16 @@
 //! Draw visible resources and keep the camera and manual node positions across refreshes.
-use super::{Data, Id, Node};
+use super::{Data, Id, Node, Project};
 use crate::{
     i18n::{I18n, Key},
-    modules::docker::{Event, Kind, State},
-    ui::{context_menu, icons::Icon, presentation::short, theme},
+    modules::docker::{Event, Kind},
+    ui::{context_menu, ellipsis, icons::Icon, presentation::short, theme},
 };
 use iced::{
     Alignment, Element, Length, Point, Rectangle, Renderer, Size, Theme, Vector, mouse,
     widget::{
         button,
         canvas::{self, Frame, Geometry, Path, Stroke},
-        column, container, row, space, text,
+        column, container, row, text,
     },
 };
 use std::collections::BTreeMap;
@@ -85,22 +85,21 @@ impl Viewport {
 }
 
 pub(in crate::modules::docker) fn panel<'a>(
-    state: &'a State,
+    project: &'a Project,
+    busy: bool,
     i18n: &'a I18n,
 ) -> Element<'a, Event> {
     let tool = |symbol, key, message| super::super::view::tool(i18n, symbol, key, Some(message));
-    let mut header = row![
-        text(i18n.text(Key::DockerGraph))
-            .font(theme::semibold())
-            .size(14),
-        space().width(Length::Fill)
-    ]
-    .align_y(Alignment::Center)
-    .spacing(4);
-    if let Some(key) = &state.diagram_view.selected {
+    let mut args = crate::i18n::FluentArgs::new();
+    args.set("project", project.name.as_str());
+    let title = ellipsis::text(i18n.format(Key::DockerProjectGraph, &args), 14.);
+    let mut header = row![container(title).width(Length::Fill)]
+        .align_y(Alignment::Center)
+        .spacing(4);
+    if let Some(key) = &project.viewport.selected {
         header = header.push(
             button(text(i18n.text(Key::DockerOpenResource)).size(12))
-                .on_press_maybe(state.busy.is_none().then(|| Event::OpenNode(key.clone())))
+                .on_press_maybe((!busy).then(|| Event::OpenNode(key.clone())))
                 .padding([3, 6])
                 .style(super::super::view::style::button(theme::secondary)),
         );
@@ -120,17 +119,27 @@ pub(in crate::modules::docker) fn panel<'a>(
             Icon::Locate,
             Key::DockerResetGraph,
             Event::Diagram(Interaction::Reset),
-        ));
-    let body: Element<'a, Event> = if let Some(error) = state.connection_error.or(state.error) {
+        ))
+        .push(super::super::view::tool(
+            i18n,
+            Icon::Refresh,
+            Key::DockerRefresh,
+            (!busy).then_some(Event::Refresh),
+        ))
+        .push(
+            container(tool(Icon::Close, Key::Dismiss, Event::Dismiss))
+                .id("docker-close-project-graph"),
+        );
+    let body: Element<'a, Event> = if let Some(error) = project.error {
         container(text(i18n.text(super::super::view::error_key(error))).size(13))
             .center(Length::Fill)
             .into()
-    } else if state.diagram.nodes.is_empty() {
+    } else if project.data.nodes.is_empty() {
         container(
-            text(i18n.text(if state.busy.is_some() {
+            text(i18n.text(if busy {
                 Key::Loading
             } else {
-                Key::DockerEmptyList
+                Key::DockerNoProjectContainers
             }))
             .size(13),
         )
@@ -139,8 +148,8 @@ pub(in crate::modules::docker) fn panel<'a>(
     } else {
         container(
             canvas::Canvas::new(Drawing {
-                data: &state.diagram,
-                camera: &state.diagram_view,
+                data: &project.data,
+                camera: &project.viewport,
                 i18n,
             })
             .width(Length::Fill)

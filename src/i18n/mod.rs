@@ -258,6 +258,8 @@ message_keys! {
     DockerComposeMissing => "docker-compose-missing",
     DockerProgress => "docker-progress",
     DockerGraph => "docker-graph",
+    DockerProjectGraph => "docker-project-graph",
+    DockerNoProjectContainers => "docker-no-project-containers",
     DockerOpenResource => "docker-open-resource",
     DockerZoomIn => "docker-zoom-in",
     DockerZoomOut => "docker-zoom-out",

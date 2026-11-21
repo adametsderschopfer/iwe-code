@@ -43,6 +43,7 @@ fn symbol(key: Key) -> Option<Icon> {
         GitNewBranch => Icon::Branch,
         GitUpdate | DockerRestart => Icon::Refresh,
         GitHistoryTag | DockerTag => Icon::Tag,
+        DockerGraph => Icon::Relationships,
         DockerConnect => Icon::Network,
         DockerStart | DockerResume => Icon::Play,
         DockerPause => Icon::Pause,

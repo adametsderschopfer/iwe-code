@@ -168,13 +168,11 @@ async fn live_resource_lifecycle() {
                 "",
             )
             .await;
-            let graph = graph::load(&context, root, Arc::default()).await.unwrap();
-            assert!(graph.edges.iter().any(|&(a, b)| graph.nodes[a].id
-                == graph::Id(Kind::Containers, container.id.clone())
-                && graph.nodes[b].id == graph::Id(Kind::Networks, item.id.clone())));
-            assert!(graph.edges.iter().any(|&(a, b)| graph.nodes[a].id
-                == graph::Id(Kind::Images, digest.clone())
-                && graph.nodes[b].id == graph::Id(Kind::Containers, container.id.clone())));
+            assert!(
+                invoke(root, &context, kind, Action::Inspect, Some(&item), "", "")
+                    .await
+                    .contains(&container.id)
+            );
             invoke(
                 root,
                 &context,
@@ -241,7 +239,9 @@ async fn live_resource_lifecycle() {
     let compose = root.join("fixture.yaml");
     std::fs::write(
         &compose,
-        format!("name: {name}\nservices:\n  probe:\n    image: {tag}\n"),
+        format!(
+            "name: {name}\nservices:\n  probe:\n    image: {tag}\n    container_name: {name}\n"
+        ),
     )
     .unwrap();
     invoke(
@@ -255,6 +255,24 @@ async fn live_resource_lifecycle() {
     )
     .await;
     let stack = resource(root, &context, Kind::Compose, &name).await;
+    let member = resource(root, &context, Kind::Containers, &name).await;
+    let network = resource(root, &context, Kind::Networks, &format!("{name}_default")).await;
+    let graph = graph::load(&context, root, &stack.name, Arc::default())
+        .await
+        .unwrap();
+    let member = graph::Id(Kind::Containers, member.id);
+    for (source, target) in [
+        (graph::Id(Kind::Compose, stack.name.clone()), member.clone()),
+        (graph::Id(Kind::Images, digest.clone()), member.clone()),
+        (member, graph::Id(Kind::Networks, network.id)),
+    ] {
+        assert!(
+            graph
+                .edges
+                .iter()
+                .any(|&(a, b)| graph.nodes[a].id == source && graph.nodes[b].id == target)
+        );
+    }
     for action in [
         Action::Inspect,
         Action::Logs,

@@ -65,7 +65,7 @@ pub(crate) enum Event {
     ShowRunning(bool),
     RunningLoaded(u64, Result<Arc<Vec<relations::Running>>, Error>),
     RunningPage(bool),
-    Graph,
+    ProjectGraph(String),
     GraphLoaded(u64, Result<Arc<graph::Data>, Error>),
     Diagram(graph::Interaction),
     OpenNode(graph::Id),
@@ -118,9 +118,7 @@ pub(crate) struct State {
     query: String,
     page: usize,
     properties_width: Option<f32>,
-    graph_open: bool,
-    diagram: Arc<graph::Data>,
-    diagram_view: graph::Viewport,
+    project_graph: Option<graph::Project>,
     show_running: bool,
     running: Option<Arc<Vec<relations::Running>>>,
     running_page: usize,
@@ -141,14 +139,14 @@ impl State {
     pub(crate) fn refresh_interval(&self) -> std::time::Duration {
         std::time::Duration::from_secs(if self.busy.is_some() {
             1
-        } else if self.graph_open {
+        } else if self.project_graph.is_some() {
             60
         } else {
             12
         })
     }
     pub(crate) fn has_dialog(&self) -> bool {
-        self.open && self.draft.is_some()
+        self.open && (self.draft.is_some() || self.project_graph.is_some())
     }
     pub(crate) fn reset(&mut self) {
         *self = Self {
@@ -189,6 +187,10 @@ impl State {
         self.completed = None;
     }
     fn list_failed(&mut self, error: Error) {
+        if let Some(project) = &mut self.project_graph {
+            project.error = Some(error);
+            return;
+        }
         if matches!(error, Error::Stopped | Error::Unavailable | Error::Missing) {
             self.connection_error = Some(error);
             self.items = Arc::default();
@@ -213,10 +215,12 @@ impl State {
         let kind = self.kind;
         let root = root.to_owned();
         let id = self.begin(Key::Loading);
-        if self.graph_open {
-            let previous = self.diagram.clone();
+        if let Some(project) = &mut self.project_graph {
+            project.error = None;
+            let name = project.name.clone();
+            let previous = project.data.clone();
             return Task::perform(
-                async move { graph::load(&context, &root, previous).await },
+                async move { graph::load(&context, &root, &name, previous).await },
                 move |r| Event::GraphLoaded(id, r),
             );
         }
@@ -243,7 +247,7 @@ impl State {
             return Task::none();
         };
         self.clear_selection();
-        self.graph_open = false;
+        self.project_graph = None;
         self.kind = kind;
         self.items = items;
         self.query.clear();
@@ -253,8 +257,7 @@ impl State {
         crate::ui::reveal_file::in_list("docker-rows".into(), "docker-selected-row".into(), 0.)
     }
     fn change_connection(&mut self, name: String) {
-        self.diagram = Arc::default();
-        self.diagram_view = Default::default();
+        self.project_graph = None;
         self.context = Some(name);
         self.connection_error = None;
         self.items = Arc::default();
@@ -271,6 +274,20 @@ impl State {
     }
 
     pub(crate) fn update(&mut self, event: Event, root: &Path, terminal: bool) -> Task<Event> {
+        if self.project_graph.is_some()
+            && !matches!(
+                event,
+                Event::Diagram(_)
+                    | Event::OpenNode(_)
+                    | Event::GraphLoaded(..)
+                    | Event::Linked(..)
+                    | Event::Refresh
+                    | Event::Tick
+                    | Event::Dismiss
+            )
+        {
+            return Task::none();
+        }
         match event {
             Event::Connected(id, result) if id == self.request => {
                 self.busy = None;
@@ -305,18 +322,23 @@ impl State {
                     Err(error) => self.list_failed(error),
                 }
             }
-            Event::Diagram(event) if self.graph_open => self.diagram_view.update(event),
-            Event::GraphLoaded(id, result) if id == self.request && self.graph_open => {
+            Event::Diagram(event) => {
+                if let Some(project) = &mut self.project_graph {
+                    project.viewport.update(event);
+                }
+            }
+            Event::GraphLoaded(id, result) if id == self.request => {
+                let Some(project) = &mut self.project_graph else {
+                    return Task::none();
+                };
                 self.busy = None;
                 match result {
-                    Ok(data) => {
-                        self.connection_error = None;
-                        if !Arc::ptr_eq(&data, &self.diagram) {
-                            self.diagram_view.reconcile(&data);
-                            self.diagram = data;
-                        }
+                    Ok(data) if !Arc::ptr_eq(&data, &project.data) => {
+                        project.viewport.reconcile(&data);
+                        project.data = data;
                     }
-                    Err(error) => self.list_failed(error),
+                    Ok(_) => {}
+                    Err(error) => project.error = Some(error),
                 }
             }
             Event::RunningLoaded(id, result) if id == self.request => {
@@ -369,6 +391,11 @@ impl State {
                 if let (Some(path), Some(draft)) = (path, &mut self.draft) {
                     draft.value = path;
                 }
+            }
+            Event::Dismiss if self.project_graph.is_some() => {
+                self.project_graph = None;
+                self.request += 1;
+                self.busy = None;
             }
             Event::Dismiss if self.busy.is_none() => {
                 self.menu = None;
@@ -427,13 +454,25 @@ impl State {
                 self.show_running = true;
                 return self.load_running(root);
             }
-            Event::Graph if !self.graph_open => {
-                self.graph_open = true;
+            Event::ProjectGraph(project)
+                if self.kind == Kind::Compose
+                    && self.context.is_some()
+                    && self.connection_error.is_none()
+                    && self.find(Some(&project)).is_some() =>
+            {
                 self.menu = None;
+                self.project_graph = Some(graph::Project {
+                    name: project,
+                    ..Default::default()
+                });
                 return self.list(root);
             }
             Event::OpenNode(key)
-                if self.graph_open && self.diagram_view.selected.as_ref() == Some(&key) =>
+                if self
+                    .project_graph
+                    .as_ref()
+                    .and_then(|p| p.viewport.selected.as_ref())
+                    == Some(&key) =>
             {
                 let Some(context) = self.context.clone() else {
                     return Task::none();
@@ -494,6 +533,10 @@ impl State {
             Event::Tick
                 if !self.open
                     || self.error.is_some()
+                    || self
+                        .project_graph
+                        .as_ref()
+                        .is_some_and(|p| p.error.is_some())
                     || self.menu.is_some()
                     || self.draft.is_some() => {}
             Event::Connections => return self.connections(root),
@@ -504,11 +547,7 @@ impl State {
                 self.change_connection(name);
                 return self.list(root);
             }
-            Event::Kind(kind) if self.graph_open || kind != self.kind => {
-                self.graph_open = false;
-                if self.kind == kind {
-                    return self.list(root);
-                }
+            Event::Kind(kind) if kind != self.kind => {
                 self.kind = kind;
                 self.items = Arc::default();
                 self.query.clear();

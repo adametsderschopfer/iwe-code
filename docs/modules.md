@@ -50,11 +50,12 @@ in the inventory. In image properties, open **Containers** to see running contai
 that image. Click a container in the tab to reveal it in the inventory. Use **Back to list** to
 return to the filtered results.
 
-Open **Relationships** below the resource icons to explore the selected connection. Lines connect
-containers to their images, networks, named volumes, and Compose projects. Drag the background to
-pan, drag a node to move it, or use the wheel to zoom. Select a node and choose **Open resource** to
-reveal its entry. The graph refreshes every minute and keeps node positions. **Reset view** restores
-its initial layout.
+In **Compose**, right-click a project and choose **Relationships**, or open **Relationships** from
+its **Properties**. The diagram shows the project's containers and their images, networks, and
+volumes. Shared resources appear once. Drag the background to pan, drag a node to move it, or use
+the wheel to zoom. Select a node and choose **Open resource** to reveal its entry. The diagram
+refreshes every minute and keeps node positions. **Reset view** restores its initial layout. Press
+**Escape** or click the close button to return to the same list and selection.
 
 | Section    | Operations                                                                                                 |
 | ---------- | ---------------------------------------------------------------------------------------------------------- |

@@ -56,6 +56,7 @@ fn all_catalogs_have_the_complete_key_set_and_resolve_without_errors() {
         for &key in Key::ALL {
             let mut args = FluentArgs::new();
             match key {
+                Key::DockerProjectGraph => args.set("project", "demo-stack"),
                 Key::DockerProgress => {
                     args.set("operation", "Docker");
                     args.set("seconds", 1);
@@ -196,6 +197,9 @@ fn all_catalogs_have_the_complete_key_set_and_resolve_without_errors() {
             let value =
                 format(&bundle, key, &args).expect("Translation must resolve without fallback");
             assert!(!value.trim().is_empty());
+            if key == Key::DockerProjectGraph {
+                assert!(value.contains("demo-stack"));
+            }
             if matches!(key, Key::GraphicsTrying) {
                 assert!(value.contains("Metal"));
             }
