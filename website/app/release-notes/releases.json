@@ -2631,6 +2631,16 @@
           "es": "Gestiona contenedores, imágenes, redes, volúmenes y proyectos Compose mediante conexiones Docker locales o remotas."
         },
         "sources": ["src/modules/docker/mod.rs"]
+      },
+      {
+        "id": "docker-panel-dividers",
+        "category": "changed",
+        "text": {
+          "en": "Docker navigation, resources, and properties share thin dividers across the panel.",
+          "ru": "Тонкие линии разделяют навигацию, список ресурсов и свойства по всей высоте панели Docker.",
+          "es": "Líneas finas separan la navegación, los recursos y las propiedades a lo largo del panel Docker."
+        },
+        "sources": ["src/modules/docker/view.rs"]
       }
     ]
   }

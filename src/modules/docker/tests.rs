@@ -368,7 +368,11 @@ fn resource_sections_reflow_and_keep_the_filter_when_returning_to_a_narrow_list(
         );
         let [nav, list, details] = ["docker-navigation", "docker-inventory", "docker-properties"]
             .map(|name| wide.find(Id::new(name)).unwrap().visible_bounds().unwrap());
-        assert!(nav.x + nav.width < list.x && list.x + list.width < details.x);
+        assert_eq!(nav.x, 0.);
+        assert_eq!(nav.x + nav.width + 1., list.x);
+        assert_eq!(list.x + list.width + 1., details.x);
+        assert_eq!(details.x + details.width, 850.);
+        assert_eq!(nav.y + nav.height, 280.);
         assert_eq!(nav.y, details.y);
         assert_eq!(nav.width, 42.);
         assert!(wide.find(i18n.text(Key::DockerActions)).is_ok());
@@ -511,7 +515,7 @@ fn container_form_keeps_its_actions_reachable_below_scrollable_settings() {
 }
 
 #[test]
-fn section_and_filter_borders_reach_all_four_corners_in_both_themes() {
+fn section_dividers_meet_the_header_and_filter_corners_stay_square_in_both_themes() {
     use crate::i18n::{I18n, Language};
     use iced::widget::Id;
 
@@ -537,7 +541,19 @@ fn section_and_filter_borders_reach_all_four_corners_in_both_themes() {
         let image = image::open(png).unwrap().into_rgba8();
         let scale = image.width() as f32 / 880.;
         let pixel = |x: f32, y: f32| *image.get_pixel((x * scale) as u32, (y * scale) as u32);
-        for id in ["docker-navigation", "docker-inventory", "docker-filter"] {
+        let nav = ui
+            .find(Id::new("docker-navigation"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        let x = nav.x + nav.width;
+        let line = pixel(x, nav.y + 1.);
+        assert_eq!(line, pixel(x, nav.y + nav.height - 1.));
+        assert_eq!(line, pixel(x + 2., nav.y - 1.));
+        assert_ne!(line, pixel(x - 1., nav.y + 1.));
+        assert_ne!(line, pixel(x + 1., nav.y + 1.));
+        let id = "docker-filter";
+        {
             let area = ui.find(Id::new(id)).unwrap().visible_bounds().unwrap();
             for y in [area.y + 0.5, area.y + area.height - 0.5] {
                 let edge = pixel(area.center_x(), y);

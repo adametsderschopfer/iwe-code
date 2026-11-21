@@ -39,8 +39,9 @@ Changing the panel selection only changes the connection used by IWE.
 
 Use the icons on the left to select a resource type. Hover over an icon to see its name. The
 adjacent list shows matching resources and their count. Select a row to open **Properties** with the
-available actions and command output. Each section scrolls independently. In a narrow panel,
-properties occupy the list area. Use **Back to list** to return to the filtered results.
+available actions and command output. Thin dividers separate the sections. Each section scrolls
+independently. In a narrow panel, properties occupy the list area. Use **Back to list** to return to
+the filtered results.
 
 | Section    | Operations                                                                                                 |
 | ---------- | ---------------------------------------------------------------------------------------------------------- |

@@ -83,11 +83,10 @@ fn section<'a>(
         context_menu::separator(),
         contents,
     ])
-    .padding(1)
     .id(id)
     .width(width)
     .height(Length::Fill)
-    .style(style::frame)
+    .style(theme::surface)
     .into()
 }
 
@@ -166,8 +165,7 @@ fn navigation<'a>(state: &State, i18n: &I18n) -> Element<'a, Event> {
         .id("docker-navigation")
         .width(NAVIGATION_WIDTH)
         .height(Length::Fill)
-        .padding(1)
-        .style(style::frame)
+        .style(theme::surface)
         .into()
 }
 
@@ -457,22 +455,29 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
     responsive(move |size| {
         let compact = size.width < COMPACT_WIDTH;
         let selected = state.selected();
-        let mut body = row![navigation(state, i18n)]
-            .spacing(GUTTER)
-            .height(Length::Fill);
+        let divider = || {
+            container(space())
+                .width(1)
+                .height(Length::Fill)
+                .style(theme::separator)
+        };
+        let mut body = row![navigation(state, i18n), divider()].height(Length::Fill);
         if selected.is_none() || !compact {
-            let width = size.width - NAVIGATION_WIDTH - 3. * GUTTER;
+            let width = size.width - NAVIGATION_WIDTH - 1.;
             body = body.push(inventory(
                 state,
                 i18n,
                 if selected.is_some() {
-                    (width - GUTTER) / 2.
+                    (width - 1.) / 2.
                 } else {
                     width
                 },
             ));
         }
         if let Some(item) = selected {
+            if !compact {
+                body = body.push(divider());
+            }
             body = body.push(properties(state, item, i18n, terminal, compact));
         }
         let mut panel = column![
@@ -482,7 +487,7 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
                 .padding([0., GUTTER])
                 .align_y(Alignment::Center),
             context_menu::separator(),
-            body.padding(GUTTER),
+            body,
         ];
         let status = if let Some(error) = state.error {
             Some((Icon::Warning, theme::RED, i18n.text(error_key(error))))
