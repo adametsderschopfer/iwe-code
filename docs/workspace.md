@@ -128,9 +128,11 @@ The sidebar uses compact rows and narrow gaps between spaces. Click a space head
 collapse or expand its projects. Spaces collapse independently. Collapsing a space keeps its
 selected project open. The edit button remains available.
 
-Context menus use compact rows and the same panel styling across the workspace. The project menu can
-open its folder, copy its path, or move the project to another space. Moving a project preserves its
-files and pinned status.
+Context menus use compact rows and the same panel styling across the workspace. Familiar actions
+have icons beside their labels. Red text marks actions that remove items or can discard changes.
+
+The project menu can open its folder, copy its path, or move the project to another space. Moving a
+project preserves its files and pinned status.
 
 Open the space menu to add a local folder, clone a repository, or collapse its project list. The
 menu also provides **Edit space** and **Delete space**. The edit form also places **Delete space**

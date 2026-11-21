@@ -6,7 +6,7 @@ use crate::{
         error_key,
         history::{Action, Dialog, Event, Input, Output, Reset, Target},
     },
-    ui::{context_menu, ellipsis, modal, theme},
+    ui::{context_menu, ellipsis, icons::Icon, modal, theme},
 };
 use iced::{
     Element, Length, Size,
@@ -55,8 +55,8 @@ fn key(action: Action) -> Key {
     }
 }
 
-fn menu_item<'a>(label: String, message: Message) -> Element<'a, Message> {
-    context_menu::row(ellipsis::text(label, context_menu::TEXT_SIZE))
+fn menu_item<'a>(app: View<'a>, action: Action, message: Message) -> Element<'a, Message> {
+    context_menu::action(key(action), app.i18n.text(key(action)))
         .on_press(message)
         .into()
 }
@@ -92,7 +92,8 @@ pub(super) fn branch_items<'a>(
         .into_iter()
         .map(|action| {
             menu_item(
-                app.i18n.text(key(action)),
+                app,
+                action,
                 event(Event::Choose(Target::Branch(target.clone()), action)),
             )
         })
@@ -132,7 +133,7 @@ pub(super) fn menu<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<'a,
     context_menu::overlay(
         base,
         *point,
-        Size::new(365., 620.),
+        Size::new(365. + context_menu::ICON_COLUMN_WIDTH, 620.),
         move || {
             let mut navigation = vec![Action::Children, Action::Snapshot];
             if !commit.parents.is_empty() {
@@ -187,7 +188,8 @@ pub(super) fn menu<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<'a,
                 for action in group {
                     content = content.push(
                         container(menu_item(
-                            app.i18n.text(key(action)),
+                            app,
+                            action,
                             event(Event::Choose(Target::Commit(target.clone()), action)),
                         ))
                         .id(format!("git-history-action-{action:?}")),
@@ -209,10 +211,19 @@ pub(super) fn menu<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<'a,
                     root: target.root.clone(),
                     reference: branch.reference.clone(),
                 };
-                content = content.push(menu_item(
-                    branch.name.clone(),
-                    Message::Git(crate::modules::git::actions::Message::Menu(key, *point)),
-                ));
+                content = content.push(
+                    context_menu::row(context_menu::icon_label(
+                        Some(if branch.kind == ReferenceKind::Tag {
+                            Icon::Tag
+                        } else {
+                            Icon::Branch
+                        }),
+                        branch.name.clone(),
+                    ))
+                    .on_press(Message::Git(
+                        crate::modules::git::actions::Message::Menu(key, *point),
+                    )),
+                );
             }
             content = content
                 .push(context_menu::separator())
@@ -370,10 +381,13 @@ fn form<'a>(app: View<'a>, dialog: &'a Dialog) -> (Column<'a, Message>, bool) {
 
 fn results<'a>(app: View<'a>, output: &'a Output) -> Column<'a, Message> {
     let mut body = Column::new().spacing(8);
+    let result = |label, message| {
+        context_menu::row(ellipsis::text(label, context_menu::TEXT_SIZE)).on_press(message)
+    };
     match output {
         Output::Navigate(ids) => {
             for id in ids {
-                body = body.push(menu_item(id.clone(), event(Event::Navigate(id.clone()))));
+                body = body.push(result(id.clone(), event(Event::Navigate(id.clone()))));
             }
             if ids.is_empty() {
                 body = body.push(text(app.i18n.text(Key::GitHistoryEmpty)));
@@ -381,10 +395,7 @@ fn results<'a>(app: View<'a>, output: &'a Output) -> Column<'a, Message> {
         }
         Output::Snapshot(paths) => {
             for path in paths {
-                body = body.push(menu_item(
-                    path.clone(),
-                    event(Event::ReadFile(path.clone())),
-                ));
+                body = body.push(result(path.clone(), event(Event::ReadFile(path.clone()))));
             }
             if paths.is_empty() {
                 body = body.push(text(app.i18n.text(Key::GitHistoryEmpty)));

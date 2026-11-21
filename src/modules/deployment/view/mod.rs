@@ -332,17 +332,16 @@ pub(crate) fn overlay<'a, Message: Clone + 'a>(
     context_menu::overlay(
         base,
         state.menu_point,
-        iced::Size::new(280., if entry.directory { 135. } else { 265. }),
+        iced::Size::new(
+            280. + context_menu::ICON_COLUMN_WIDTH,
+            if entry.directory { 135. } else { 265. },
+        ),
         move || {
             let mapped = state
                 .active_profile(profiles, project)
                 .is_some_and(|profile| profile.to_local(&entry.path).is_ok());
             let command = |key, event, enabled: bool| {
-                button(text(i18n.text(key)).size(context_menu::TEXT_SIZE))
-                    .padding(context_menu::ROW_PADDING)
-                    .width(Length::Fill)
-                    .style(theme::action(false))
-                    .on_press_maybe(enabled.then_some(event))
+                context_menu::action(key, i18n.text(key)).on_press_maybe(enabled.then_some(event))
             };
             let mut actions = column![
                 command(

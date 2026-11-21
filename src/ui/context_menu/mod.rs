@@ -1,5 +1,8 @@
 //! Anchor context menus to right-click positions without tracking every pointer movement.
 
+mod item;
+pub(crate) use item::{ICON_COLUMN_WIDTH, action, action_style, icon_label, label};
+
 use iced::{
     Element, Event, Length, Point, Rectangle, Renderer, Size, Theme, Vector,
     advanced::{

@@ -25,7 +25,7 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
         context_menu::overlay(
             base,
             *point,
-            Size::new(300., 350.),
+            Size::new(300. + context_menu::ICON_COLUMN_WIDTH, 350.),
             move || {
                 let item = |action| {
                     let enabled = git_actions::allowed(action, branch)
@@ -38,13 +38,11 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
                             .as_ref()
                             .is_some_and(|context| context.unfinished.is_none());
                     container(
-                        context_menu::row(ellipsis::text(
-                            label(app, action, &branch.name),
-                            context_menu::TEXT_SIZE,
-                        ))
-                        .on_press_maybe(
-                            enabled.then(|| Message::Git(GitMessage::Choose(action, key.clone()))),
-                        ),
+                        context_menu::action(action_key(action), label(app, action, &branch.name))
+                            .on_press_maybe(
+                                enabled
+                                    .then(|| Message::Git(GitMessage::Choose(action, key.clone()))),
+                            ),
                     )
                     .id(format!("git-action-{action:?}"))
                 };

@@ -2591,6 +2591,16 @@
           "es": "Haz clic derecho en el código para editar la selección, ir a definiciones o buscar usos en lenguajes compatibles."
         },
         "sources": ["src/app/editor/menu/mod.rs"]
+      },
+      {
+        "id": "action-menu-icons",
+        "category": "changed",
+        "text": {
+          "en": "Context menus show icons for common actions and red labels for destructive commands.",
+          "ru": "Контекстные меню показывают иконки частых действий и отмечают опасные команды красным текстом.",
+          "es": "Los menús contextuales muestran iconos para acciones habituales y etiquetas rojas para comandos destructivos."
+        },
+        "sources": ["src/ui/context_menu/item.rs"]
       }
     ]
   }

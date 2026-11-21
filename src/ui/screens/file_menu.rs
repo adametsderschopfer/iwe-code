@@ -16,10 +16,10 @@ use crate::{
     },
 };
 use iced::{
-    Alignment, Element, Length, Point,
+    Element, Length, Point,
     widget::{
-        button, column, container, mouse_area, opaque, responsive, row, scrollable, space, stack,
-        text, text_input,
+        button, column, container, mouse_area, opaque, responsive, row, scrollable, stack, text,
+        text_input,
     },
 };
 
@@ -33,7 +33,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         Key::CopyProjectPath
     };
     let popup = responsive(move |available| {
-        let width = 250_f32.min(available.width);
+        let width = (250. + context_menu::ICON_COLUMN_WIDTH).min(available.width);
         let protected = app.file_source_protected(&menu.path);
         let is_root = app.workspace.directory() == Some(&menu.path);
         let deployment = !is_root && app.module_enabled(crate::modules::ModuleId::Deployment);
@@ -42,26 +42,16 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
             + if deployment { 2 } else { 0 }
             + usize::from(!is_root);
         let height = (items as f32 * 27. + 12.).min(available.height);
-        let action = |key, event| {
-            context_menu::row(text(app.i18n.text(key)).size(context_menu::TEXT_SIZE))
-                .on_press_maybe(event)
-        };
+        let action =
+            |key, event| context_menu::action(key, app.i18n.text(key)).on_press_maybe(event);
         let command = |command| Some(operations::message(operations::Event::Command(command)));
         let arrow = |key, event| {
             mouse_area(
-                button(
-                    row![
-                        text(app.i18n.text(key)).size(context_menu::TEXT_SIZE),
-                        space().width(Length::Fill),
-                        icon(Icon::Right, theme::MUTED),
-                    ]
-                    .spacing(8)
-                    .align_y(Alignment::Center),
+                context_menu::row(
+                    context_menu::label(key, app.i18n.text(key))
+                        .push(icon(Icon::Right, theme::MUTED)),
                 )
-                .on_press(event)
-                .padding(context_menu::ROW_PADDING)
-                .width(Length::Fill)
-                .style(theme::action(false)),
+                .on_press(event),
             )
         };
         let child_width = 300_f32.min(available.width);
@@ -69,24 +59,13 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
             menu.point.x.clamp(0., (available.width - width).max(0.)),
             menu.point.y.clamp(0., (available.height - height).max(0.)),
         );
-        let main_path = mouse_area(
-            button(
-                row![
-                    text(app.i18n.text(Key::CopyPathMenu)).size(context_menu::TEXT_SIZE),
-                    space().width(Length::Fill),
-                    icon(Icon::Right, theme::MUTED),
-                ]
-                .spacing(8)
-                .align_y(Alignment::Center),
-            )
-            .on_press(Message::Files(Event::CopyPath(PathFormat::Absolute)))
-            .padding(context_menu::ROW_PADDING)
-            .width(Length::Fill)
-            .style(theme::action(false)),
+        let main_path = arrow(
+            Key::CopyPathMenu,
+            Message::Files(Event::CopyPath(PathFormat::Absolute)),
         )
         .on_enter(Message::Files(Event::CopyOptions));
         let deployment_action = |key, compare| {
-            context_menu::row(text(app.i18n.text(key)).size(context_menu::TEXT_SIZE)).on_press(
+            context_menu::action(key, app.i18n.text(key)).on_press(
                 crate::app::modules::deployment_message(crate::modules::deployment::Event::Run(
                     if compare {
                         crate::modules::deployment::Operation::Compare(menu.path.clone())

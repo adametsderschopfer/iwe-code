@@ -64,7 +64,10 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
     let overlay = context_menu::overlay(
         base,
         menu.point,
-        iced::Size::new(300., height + 2. * f32::from(context_menu::SURFACE_PADDING)),
+        iced::Size::new(
+            300. + context_menu::ICON_COLUMN_WIDTH,
+            height + 2. * f32::from(context_menu::SURFACE_PADDING),
+        ),
         move || {
             let mut rows = column![];
             let mut previous_section = None;
@@ -87,12 +90,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 }
                 previous_section = current;
                 let key = action.key();
-                let mut label = row![
-                    text(app.i18n.text(key)).size(13),
-                    space().width(Length::Fill)
-                ]
-                .spacing(8)
-                .align_y(iced::Alignment::Center);
+                let mut label = context_menu::label(key, app.i18n.text(key));
                 let shortcut = action.shortcut(app);
                 if !shortcut.is_empty() {
                     label = label.push(text(shortcut).size(12).style(theme::MUTED.text()));
@@ -101,7 +99,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                     context_menu::row(label)
                         .height(ROW_HEIGHT)
                         .on_press(message(Event::Choose(action)))
-                        .style(theme::action(index == menu.selected)),
+                        .style(context_menu::action_style(key, index == menu.selected)),
                 );
             }
             container(scrollable(rows).id(SCROLL_ID).height(Length::Shrink))

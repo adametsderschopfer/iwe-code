@@ -30,6 +30,9 @@ pub(crate) enum Icon {
     Plus,
     Minus,
     Duplicate,
+    Cut,
+    Paste,
+    Trash,
     Rename,
     Right,
     Down,
@@ -126,6 +129,34 @@ impl Drawing {
             Icon::Duplicate => {
                 line(&[(7., 7.), (17., 7.), (17., 18.), (7., 18.), (7., 7.)]);
                 line(&[(13., 4.), (13., 2.), (3., 2.), (3., 13.), (4., 13.)]);
+            }
+            Icon::Cut => {
+                line(&[(6., 12.), (16., 2.)]);
+                line(&[(6., 8.), (16., 18.)]);
+                for y in [5.5, 14.5] {
+                    frame.stroke(&Path::circle(Point::new(4.5, y), 2.5), stroke);
+                }
+            }
+            Icon::Paste => {
+                line(&[
+                    (7., 4.),
+                    (4., 4.),
+                    (4., 18.),
+                    (16., 18.),
+                    (16., 4.),
+                    (13., 4.),
+                ]);
+                frame.stroke(
+                    &Path::rectangle(Point::new(7., 2.), iced::Size::new(6., 4.)),
+                    stroke,
+                );
+            }
+            Icon::Trash => {
+                line(&[(3., 5.), (17., 5.)]);
+                line(&[(7., 5.), (7., 2.), (13., 2.), (13., 5.)]);
+                line(&[(5., 6.), (6., 18.), (14., 18.), (15., 6.)]);
+                line(&[(8., 8.), (8.5, 15.)]);
+                line(&[(12., 8.), (11.5, 15.)]);
             }
             Icon::Rename => {
                 line(&[
