@@ -619,10 +619,15 @@ fn sidebar_and_space_menu_open_project_choices_beside_the_selected_row() {
             }
             let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
             let anchor = ui
-                .click(add_project_id(0, from_context))
+                .find(add_project_id(0, from_context))
                 .unwrap()
                 .visible_bounds()
                 .unwrap();
+            let position = anchor.center();
+            ui.point_at(position);
+            ui.simulate([iced::Event::Mouse(iced::mouse::Event::CursorMoved {
+                position,
+            })]);
             for message in ui.into_messages() {
                 let _ = app.update(message);
             }
@@ -667,6 +672,26 @@ fn sidebar_and_space_menu_open_project_choices_beside_the_selected_row() {
                 assert!(app.picking);
             }
         }
+    }
+}
+
+#[test]
+fn clicking_add_project_opens_the_source_dialog_from_either_menu() {
+    for from_context in [false, true] {
+        let mut app = state(Language::English);
+        app.workspace.create_space("Target".into(), Vec::new());
+        if from_context {
+            let _ = app.update(AppMessage::SpaceMenu(0, iced::Point::new(40., 60.)));
+        }
+        let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+        ui.click(add_project_id(0, from_context)).unwrap();
+        for message in ui.into_messages() {
+            let _ = app.update(message);
+        }
+        let dialog = app.project_add.as_ref().unwrap();
+        assert_eq!(dialog.space, Some(0));
+        assert!(!dialog.cloning);
+        assert!(app.space_menu.is_none());
     }
 }
 
@@ -959,7 +984,20 @@ fn command_click_project_group_can_move_and_remove_memberships() {
             Point::new(80., 180.),
         ));
         let label = app.i18n.text(Key::ProjectMoveToSpace);
+        let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+        let anchor = ui
+            .find(Id::new("project-move-spaces"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        drop(ui);
         click_label(&mut app, label);
+        let _ = app.update(AppMessage::ProjectDestinationsAnchor(
+            0,
+            web.clone(),
+            Point::new(80., 180.),
+            Some(anchor),
+        ));
         click(&mut app, Id::new("project-destination-1"));
         assert_eq!(app.workspace.selected_space, Some(1));
         assert_eq!(app.workspace.directory(), Some(&api));

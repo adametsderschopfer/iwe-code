@@ -35,7 +35,6 @@ fn symbol(key: Key) -> Option<Icon> {
         FindFile | FindFiles | EditorUsages | DockerInspect => Icon::Search,
         GoToDefinition | GitHistoryTip => Icon::Locate,
         PinProject | UnpinProject => Icon::Pin,
-        SidebarMenuBack => Icon::Back,
         DeploymentSettings => Icon::Settings,
         DeploymentCompare | DeploymentCompareLocal => Icon::SplitDiff,
         DeploymentUpload | GitPush | GitBulkPush | GitHistoryPushTag => Icon::Upload,

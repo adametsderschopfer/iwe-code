@@ -639,7 +639,6 @@ message_keys! {
     ChooseFile => "choose-file",
     ChooseFileDescription => "choose-file-description",
     Code => "code",
-    SidebarMenuBack => "sidebar-menu-back",
     ProjectOpenFolder => "project-open-folder",
     ProjectMoveToSpace => "project-move-to-space",
     SpaceAddLocalProject => "space-add-local-project",

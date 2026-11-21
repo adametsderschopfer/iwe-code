@@ -37,8 +37,22 @@ impl State {
 pub(crate) struct Menu {
     pub path: PathBuf,
     pub point: iced::Point,
-    pub copy_open: bool,
-    pub create_open: bool,
+    pub submenu: Option<(Submenu, Option<iced::Rectangle>)>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Submenu {
+    New,
+    CopyPath,
+}
+
+impl Submenu {
+    pub(crate) fn id(self) -> iced::widget::Id {
+        match self {
+            Self::New => "file-menu-new".into(),
+            Self::CopyPath => "file-menu-copy-path".into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -61,8 +75,9 @@ pub(crate) enum Event {
     BehaviorMenu(Option<iced::Point>),
     TogglePreview,
     OpenMenu(PathBuf, iced::Point),
-    CopyOptions,
-    CreateOptions,
+    Options(Submenu),
+    OptionsAnchor(Submenu, PathBuf, iced::Point, Option<iced::Rectangle>),
+    CloseOptions(Submenu),
     CopyPath(PathFormat),
     DismissMenu,
     Index(u64, project_index::Event),
@@ -214,21 +229,41 @@ impl App {
                     self.files.menu = Some(Menu {
                         path,
                         point,
-                        copy_open: false,
-                        create_open: false,
+                        submenu: None,
                     });
                 }
             }
-            Event::CopyOptions => {
-                if let Some(menu) = &mut self.files.menu {
-                    menu.copy_open = true;
-                    menu.create_open = false;
+            Event::Options(kind) => {
+                if let Some(menu) = &mut self.files.menu
+                    && menu.submenu.is_none_or(|(current, _)| current != kind)
+                {
+                    menu.submenu = Some((kind, None));
+                    let path = menu.path.clone();
+                    let point = menu.point;
+                    return iced::widget::selector::find(kind.id()).map(move |target| {
+                        Message::Files(Event::OptionsAnchor(
+                            kind,
+                            path.clone(),
+                            point,
+                            target.and_then(|item| item.visible_bounds()),
+                        ))
+                    });
                 }
             }
-            Event::CreateOptions => {
-                if let Some(menu) = &mut self.files.menu {
-                    menu.create_open = true;
-                    menu.copy_open = false;
+            Event::OptionsAnchor(kind, path, point, anchor) => {
+                if let Some(menu) = &mut self.files.menu
+                    && menu.path == path
+                    && menu.point == point
+                    && menu.submenu == Some((kind, None))
+                {
+                    menu.submenu = anchor.map(|bounds| (kind, Some(bounds)));
+                }
+            }
+            Event::CloseOptions(kind) => {
+                if let Some(menu) = &mut self.files.menu
+                    && menu.submenu.is_some_and(|(active, _)| active == kind)
+                {
+                    menu.submenu = None;
                 }
             }
             Event::DismissMenu => self.files.menu = None,

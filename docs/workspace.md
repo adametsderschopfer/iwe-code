@@ -93,9 +93,9 @@ Drag a space heading to change the space order. A line marks the drop position. 
 immediately. The open project and collapsed spaces keep their state. Dragging project rows still
 changes only their order within that space.
 
-In the **Spaces** sidebar, **Add project** opens a menu to the right of its row. Choose **Open local
-folder** to select folders or **Clone repository** to enter a repository URL. The space context menu
-offers the same choices beside its **Add project** item. Press Escape to return to the space menu,
+Hover over **Add project** in the **Spaces** sidebar or space context menu to see both choices.
+Choose **Open local folder** to select folders or **Clone repository** to enter a repository URL.
+Click **Add project** itself to open the project dialog. Press Escape to return to the space menu,
 or click outside both menus to close them. At the window edge, the choices open to the left. Cloning
 accepts HTTPS and SSH repository URLs. The dialog derives the repository folder name from the URL.
 Before a valid URL is entered, the destination field shows the suggested parent folder. Entering a
@@ -134,11 +134,14 @@ The sidebar uses compact rows and narrow gaps between spaces. Click a space head
 collapse or expand its projects. Spaces collapse independently. Collapsing a space keeps its
 selected project open. The edit button remains available.
 
-Context menus use compact rows and the same panel styling across the workspace. Familiar actions
-have icons beside their labels. Red text marks actions that remove items or can discard changes.
+Context menus open submenus beside the hovered row. The submenu touches the parent menu and has
+square corners along their shared edge. Moving to another row or outside both menus closes the
+submenu. Familiar actions have icons beside their labels. Red text marks actions that remove items
+or can discard changes.
 
-The project menu can open its folder, copy its path, or move the project to another space. Moving a
-project preserves its files and pinned status.
+The project menu can open its folder, copy its path, or move the project to another space. Hover
+over **Move to space** to see available spaces. Moving a project preserves its files and pinned
+status.
 
 Hold Command on macOS or Ctrl on Windows and Linux while clicking projects to change the selection.
 The first modified click starts with the open project. Click a selected project again with the

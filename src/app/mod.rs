@@ -321,12 +321,14 @@ pub(crate) enum Message {
     SpaceMenu(usize, iced::Point),
     OpenSpaceAddMenu(usize),
     SpaceAddAnchor(usize, Option<iced::Point>, Option<iced::Rectangle>),
-    CloseSpaceAddMenu,
+    CloseSpaceAddMenu(usize),
     CloseSpaceMenu,
     TogglePinned,
     RemoveProjectFromSpace,
     CloseProjectMenu,
+    CloseProjectDestinations,
     ProjectMenuPage(spaces::ProjectMenuPage),
+    ProjectDestinationsAnchor(usize, PathBuf, iced::Point, Option<iced::Rectangle>),
     ToggleProjectSelection(usize, PathBuf),
     ProjectFolder(bool),
     ProjectFolderOpened(bool),
@@ -802,6 +804,42 @@ impl App {
                 }
                 self.project_menu = Some((space, path, point));
             }
+            Message::ProjectMenuPage(spaces::ProjectMenuPage::Destinations(None)) => {
+                if let Some((space, path, point)) = self.project_menu.clone()
+                    && self.project_menu_page == spaces::ProjectMenuPage::Actions
+                {
+                    self.project_menu_page = spaces::ProjectMenuPage::Destinations(None);
+                    return iced::widget::selector::find(iced::widget::Id::new(
+                        "project-move-spaces",
+                    ))
+                    .map(move |row| {
+                        Message::ProjectDestinationsAnchor(
+                            space,
+                            path.clone(),
+                            point,
+                            row.and_then(|item| item.visible_bounds()),
+                        )
+                    });
+                }
+            }
+            Message::ProjectDestinationsAnchor(space, path, point, anchor)
+                if self.project_menu.as_ref() == Some(&(space, path.clone(), point))
+                    && self.project_menu_page == spaces::ProjectMenuPage::Destinations(None) =>
+            {
+                self.project_menu_page = if anchor.is_some() {
+                    spaces::ProjectMenuPage::Destinations(anchor)
+                } else {
+                    spaces::ProjectMenuPage::Actions
+                };
+            }
+            Message::CloseProjectDestinations
+                if matches!(
+                    self.project_menu_page,
+                    spaces::ProjectMenuPage::Destinations(_)
+                ) =>
+            {
+                self.project_menu_page = spaces::ProjectMenuPage::Actions;
+            }
             Message::ProjectMenuPage(page) if self.project_menu.is_some() => {
                 self.project_menu_page = page
             }
@@ -854,6 +892,10 @@ impl App {
                     let parent = self.space_menu.and_then(|(owner, menu)| {
                         (owner == index).then(|| menu.parent()).flatten()
                     });
+                    if matches!(self.space_menu, Some((owner, spaces::Menu::AddProject { .. })) if owner == index)
+                    {
+                        return Task::none();
+                    }
                     self.space_menu = Some((
                         index,
                         spaces::Menu::AddProject {
@@ -889,7 +931,8 @@ impl App {
                     None => parent.map(|point| (index, spaces::Menu::Context(point))),
                 };
             }
-            Message::CloseSpaceAddMenu => {
+            Message::CloseSpaceAddMenu(owner) if matches!(self.space_menu, Some((index, spaces::Menu::AddProject { .. })) if index == owner) =>
+            {
                 self.space_menu = self.space_menu.and_then(|(index, menu)| {
                     menu.parent()
                         .map(|point| (index, spaces::Menu::Context(point)))

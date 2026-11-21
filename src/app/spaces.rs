@@ -3,10 +3,10 @@ use crate::{domain::workspace::ProjectSelection, infrastructure::workspace};
 use iced::{Task, widget::operation};
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum ProjectMenuPage {
     Actions,
-    Destinations,
+    Destinations(Option<iced::Rectangle>),
     ConfirmRemoval,
 }
 

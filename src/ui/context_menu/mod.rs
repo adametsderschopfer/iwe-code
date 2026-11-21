@@ -23,6 +23,7 @@ pub(crate) fn trigger<'a, Message: 'a>(
         on_key: None,
         window_anchor: None,
         popup_position: None,
+        leave_submenu: None,
         anchored: false,
         fallback: false,
     })
@@ -39,6 +40,7 @@ pub(crate) fn window_anchor<'a, Message: 'a>(
         on_key: None,
         window_anchor: Some(map),
         popup_position: None,
+        leave_submenu: None,
         anchored: false,
         fallback: false,
     })
@@ -55,6 +57,7 @@ pub(crate) fn positioned<'a, Message: 'a>(
         on_key: None,
         window_anchor: None,
         popup_position: None,
+        leave_submenu: None,
         anchored: false,
         fallback: false,
     })
@@ -70,6 +73,7 @@ pub(crate) fn fallback<'a, Message: 'a>(
         on_key: None,
         window_anchor: None,
         popup_position: None,
+        leave_submenu: None,
         anchored: false,
         fallback: true,
     })
@@ -85,6 +89,7 @@ pub(crate) fn anchored<'a, Message: 'a>(
         on_key: None,
         window_anchor: None,
         popup_position: None,
+        leave_submenu: None,
         anchored: true,
         fallback: false,
     })
@@ -119,6 +124,7 @@ fn key_handler<'a, Message: 'a>(
         on_key: Some((focused_only, handler)),
         window_anchor: None,
         popup_position: None,
+        leave_submenu: None,
         anchored: false,
         fallback: false,
     })
@@ -140,12 +146,18 @@ pub(crate) fn dismiss_on_escape<'a, Message: Clone + 'a>(
     })
 }
 
+struct SubmenuExit<'a, Message> {
+    standalone: bool,
+    dismiss: Box<dyn Fn() -> Message + 'a>,
+}
+
 struct Trigger<'a, Message> {
     content: Element<'a, Message>,
     on_open: Option<Box<dyn Fn(Point, Point) -> Message + 'a>>,
     on_key: Option<(bool, KeyHandler<'a, Message>)>,
     window_anchor: Option<fn(Message, Point) -> Message>,
     popup_position: Option<Placement>,
+    leave_submenu: Option<SubmenuExit<'a, Message>>,
     anchored: bool,
     fallback: bool,
 }
@@ -199,6 +211,35 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
+        if let Some(Placement::Beside { anchor, .. }) = self.popup_position
+            && let Some(exit) = &self.leave_submenu
+        {
+            if exit.standalone
+                && matches!(event, Event::Mouse(mouse::Event::ButtonPressed(_)))
+                && !cursor.is_over(anchor)
+                && !cursor.is_over(layout.bounds())
+            {
+                shell.publish((exit.dismiss)());
+                shell.capture_event();
+                return;
+            }
+            let outside = match event {
+                Event::Mouse(mouse::Event::CursorMoved { position }) => {
+                    !inside_submenu(anchor, layout.bounds(), *position)
+                }
+                Event::Mouse(mouse::Event::CursorLeft) => true,
+                Event::Mouse(mouse::Event::WheelScrolled { .. }) => {
+                    !cursor.is_over(layout.bounds())
+                }
+                Event::Window(iced::window::Event::RedrawRequested(_)) => cursor
+                    .position()
+                    .is_some_and(|point| !inside_submenu(anchor, layout.bounds(), point)),
+                _ => false,
+            };
+            if outside {
+                shell.publish((exit.dismiss)());
+            }
+        }
         if let Event::Keyboard(event) = event
             && let Some((focused_only, handler)) = &self.on_key
             && let Some(message) = handler(event)
@@ -363,15 +404,45 @@ pub(crate) fn text_row<'a, Message: Clone + 'a>(
         .wrapping(iced::widget::text::Wrapping::None))
 }
 
+pub(crate) fn branch<'a, Message: Clone + 'a>(
+    id: iced::widget::Id,
+    key: crate::i18n::Key,
+    title: String,
+    selected: bool,
+    hover: Option<Message>,
+    press: Option<Message>,
+) -> Element<'a, Message> {
+    let control = row(label(key, title).push(super::icons::sized_icon(
+        super::icons::Icon::Right,
+        super::theme::MUTED,
+        12.,
+    )))
+    .style(super::theme::action(selected))
+    .on_press_maybe(press);
+    let area = mouse_area(container(control).id(id));
+    match hover {
+        Some(message) => area.on_enter(message).into(),
+        None => area.into(),
+    }
+}
+
 pub(crate) fn surface<'a, Message: 'a>(
     content: Element<'a, Message>,
     width: f32,
+) -> Element<'a, Message> {
+    styled_surface(content, width, super::theme::tooltip)
+}
+
+fn styled_surface<'a, Message: 'a>(
+    content: Element<'a, Message>,
+    width: f32,
+    style: impl Fn(&Theme) -> container::Style + 'a,
 ) -> Element<'a, Message> {
     opaque(
         container(content)
             .padding(SURFACE_PADDING)
             .width(width)
-            .style(super::theme::tooltip),
+            .style(style),
     )
 }
 
@@ -389,7 +460,7 @@ fn popup_origin(anchor: f32, extent: f32, available: f32) -> f32 {
 #[derive(Clone, Copy)]
 enum Placement {
     Cursor(Point),
-    Beside(Rectangle),
+    Beside { anchor: Rectangle, x: f32 },
 }
 
 impl Placement {
@@ -399,24 +470,53 @@ impl Placement {
                 popup_origin(point.x, panel.width, available.width),
                 popup_origin(point.y, panel.height, available.height),
             ),
-            Self::Beside(anchor) => {
-                let right = anchor.x + anchor.width + 4.;
-                let left = anchor.x - panel.width - 4.;
-                let max_x = (available.width - panel.width).max(0.);
-                let x = if right <= max_x || (left < 0. && right - max_x <= -left) {
-                    right
-                } else {
-                    left
-                };
-                Point::new(
-                    x.clamp(0., max_x),
-                    anchor
-                        .y
-                        .clamp(0., (available.height - panel.height).max(0.)),
-                )
-            }
+            Self::Beside { anchor, x } => Point::new(
+                x,
+                anchor
+                    .y
+                    .clamp(0., (available.height - panel.height).max(0.)),
+            ),
         }
     }
+}
+
+#[derive(Clone, Copy)]
+enum Side {
+    Left,
+    Right,
+}
+
+impl Side {
+    fn place(anchor: Rectangle, width: f32, available: f32) -> (Self, Placement) {
+        let right = anchor.x + anchor.width;
+        let left = anchor.x - width;
+        let max_x = (available - width).max(0.);
+        let (side, x) = if right <= max_x || (left < 0. && right - max_x <= -left) {
+            (Self::Right, right)
+        } else {
+            (Self::Left, left)
+        };
+        (
+            side,
+            Placement::Beside {
+                anchor,
+                x: x.clamp(0., max_x),
+            },
+        )
+    }
+
+    fn style(self, theme: &Theme) -> container::Style {
+        let mut style = super::theme::tooltip(theme);
+        style.border.radius = match self {
+            Self::Right => style.border.radius.left(0.),
+            Self::Left => style.border.radius.right(0.),
+        };
+        style
+    }
+}
+
+fn inside_submenu(anchor: Rectangle, panel: Rectangle, point: Point) -> bool {
+    anchor.contains(point) || panel.contains(point)
 }
 
 pub(crate) fn overlay<'a, Message: Clone + 'a>(
@@ -441,38 +541,79 @@ pub(crate) fn overlay_with<'a, Message: Clone + 'a>(
     content: impl Fn(f32) -> Element<'a, Message> + 'a,
     dismiss: Message,
 ) -> Element<'a, Message> {
-    modal(base, panel(Placement::Cursor(position), content), dismiss)
+    modal(
+        base,
+        panel(
+            move |width| (Placement::Cursor(position), content(width)),
+            None,
+        ),
+        dismiss,
+    )
 }
 
 pub(crate) fn beside<'a, Message: Clone + 'a>(
     base: Element<'a, Message>,
-    anchor: Rectangle,
+    active: Option<(Rectangle, Message)>,
     width: f32,
     content: impl Fn() -> Element<'a, Message> + 'a,
-    dismiss: Message,
     has_parent: bool,
 ) -> Element<'a, Message> {
-    let popup = panel(Placement::Beside(anchor), move |available| {
-        surface(content(), width.min(available))
-    });
-    if has_parent {
-        dismiss_on_escape(stack![base, popup], dismiss)
-    } else {
-        modal(base, popup, dismiss)
+    let mut layers = stack![base];
+    if let Some((anchor, dismiss)) = &active {
+        let padding = if has_parent {
+            f32::from(SURFACE_PADDING)
+        } else {
+            0.
+        };
+        let anchor = Rectangle {
+            x: anchor.x - padding,
+            width: anchor.width + padding * 2.,
+            ..*anchor
+        };
+
+        layers = layers.push(panel(
+            move |available| {
+                let width = width.min(available);
+                let (side, placement) = Side::place(anchor, width, available);
+                (
+                    placement,
+                    styled_surface(content(), width, move |theme| side.style(theme)),
+                )
+            },
+            Some((!has_parent, dismiss.clone())),
+        ));
     }
+    on_key(layers, move |event| {
+        if matches!(
+            event,
+            keyboard::Event::KeyPressed {
+                key: keyboard::Key::Named(keyboard::key::Named::Escape),
+                ..
+            }
+        ) {
+            active.as_ref().map(|(_, dismiss)| dismiss.clone())
+        } else {
+            None
+        }
+    })
 }
 
-fn panel<'a, Message: 'a>(
-    placement: Placement,
-    content: impl Fn(f32) -> Element<'a, Message> + 'a,
+fn panel<'a, Message: Clone + 'a>(
+    place: impl Fn(f32) -> (Placement, Element<'a, Message>) + 'a,
+    leave: Option<(bool, Message)>,
 ) -> Element<'a, Message> {
     responsive(move |available| {
+        let (placement, content) = place(available.width);
         Element::new(Trigger {
-            content: content(available.width),
+            content,
             on_open: None,
             on_key: None,
             window_anchor: None,
             popup_position: Some(placement),
+            leave_submenu: leave.clone().map(|(standalone, message)| SubmenuExit {
+                standalone,
+                dismiss: Box::new(move || message.clone()),
+            }),
             anchored: false,
             fallback: false,
         })

@@ -80,12 +80,67 @@ fn a_short_menu_stays_next_to_its_anchor_near_the_window_bottom() {
 fn side_menu_fits_at_the_right_and_bottom_window_edges() {
     let available = Size::new(640., 320.);
     let panel = Size::new(220., 78.);
-    for (anchor, expected) in [
-        (Point::new(100., 90.), Point::new(204., 90.)),
-        (Point::new(520., 284.), Point::new(296., 242.)),
+    for (anchor, expected, opens_right) in [
+        (Point::new(100., 90.), Point::new(200., 90.), true),
+        (Point::new(520., 284.), Point::new(300., 242.), false),
     ] {
-        let placement = Placement::Beside(Rectangle::new(anchor, Size::new(100., 26.)));
+        let (side, placement) = Side::place(
+            Rectangle::new(anchor, Size::new(100., 26.)),
+            panel.width,
+            available.width,
+        );
+        for theme in [Theme::Light, Theme::Dark] {
+            let radius = super::super::theme::tooltip(&theme).border.radius;
+            assert_eq!(
+                side.style(&theme).border.radius,
+                if opens_right {
+                    radius.left(0.)
+                } else {
+                    radius.right(0.)
+                }
+            );
+        }
         assert_eq!(placement.origin(panel, available), expected);
+    }
+}
+
+#[test]
+fn pointer_can_cross_the_shared_edge_and_leave_a_submenu_on_either_side() {
+    use iced::widget::Id;
+    for x in [50., 350.] {
+        let anchor = Rectangle::new(Point::new(x, 60.), Size::new(100., 25.));
+        let base = container(space())
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into();
+        let view = beside(
+            base,
+            Some((anchor, Message::Close)),
+            120.,
+            || {
+                container(button("Child").on_press(Message::Background))
+                    .id("child")
+                    .into()
+            },
+            true,
+        );
+        let mut ui = iced_test::Simulator::with_size(iced::Settings::default(), (500., 250.), view);
+        let child = ui.find(Id::new("child")).unwrap().visible_bounds().unwrap();
+        let edge_x = if child.x > x {
+            x + anchor.width + f32::from(SURFACE_PADDING)
+        } else {
+            x - f32::from(SURFACE_PADDING)
+        };
+        for position in [
+            anchor.center(),
+            Point::new(edge_x, anchor.center_y()),
+            child.center(),
+            Point::new(anchor.center_x(), anchor.y + anchor.height + 2.),
+        ] {
+            ui.point_at(position);
+            ui.simulate([Event::Mouse(mouse::Event::CursorMoved { position })]);
+        }
+        assert_eq!(ui.into_messages().collect::<Vec<_>>(), [Message::Close]);
     }
 }
 

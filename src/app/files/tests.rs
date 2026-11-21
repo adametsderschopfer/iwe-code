@@ -376,6 +376,61 @@ fn collapsing_a_folder_keeps_descendants_collapsed_when_reopened() {
 }
 
 #[test]
+fn switching_file_menu_rows_rejects_stale_submenu_events() {
+    let mut app = app();
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().to_path_buf();
+    app.workspace
+        .create_space("Menus".into(), vec![path.clone()]);
+    let point = iced::Point::new(80., 100.);
+    let _ = app.update_files(Event::OpenMenu(path.clone(), point));
+    for kind in [Submenu::New, Submenu::CopyPath] {
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+        let bounds = ui.find(kind.id()).unwrap().visible_bounds().unwrap();
+        let position = bounds.center();
+        ui.point_at(position);
+        ui.simulate([iced::Event::Mouse(iced::mouse::Event::CursorMoved {
+            position,
+        })]);
+        for message in ui.into_messages() {
+            let _ = app.update(message);
+        }
+        let _ = app.update_files(Event::OptionsAnchor(
+            kind,
+            path.clone(),
+            point,
+            Some(bounds),
+        ));
+        assert_eq!(
+            app.files.menu.as_ref().unwrap().submenu,
+            Some((kind, Some(bounds)))
+        );
+    }
+    let _ = app.update_files(Event::CloseOptions(Submenu::New));
+    assert!(matches!(
+        app.files.menu.as_ref().unwrap().submenu,
+        Some((Submenu::CopyPath, _))
+    ));
+    let mut ui =
+        iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+    let position = ui
+        .find(app.i18n.text(Key::FileReveal).as_str())
+        .unwrap()
+        .visible_bounds()
+        .unwrap()
+        .center();
+    ui.point_at(position);
+    ui.simulate([iced::Event::Mouse(iced::mouse::Event::CursorMoved {
+        position,
+    })]);
+    for message in ui.into_messages() {
+        let _ = app.update(message);
+    }
+    assert!(app.files.menu.as_ref().unwrap().submenu.is_none());
+}
+
+#[test]
 fn root_and_file_menus_expose_only_applicable_commands() {
     use iced::Event as UiEvent;
     use iced::mouse;

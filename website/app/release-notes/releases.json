@@ -2901,6 +2901,26 @@
           "es": "El editor de espacios coloca la acción de eliminar a la izquierda y las de cancelar y guardar a la derecha."
         },
         "sources": ["src/ui/screens/space_form.rs"]
+      },
+      {
+        "id": "context-submenu-hover",
+        "category": "changed",
+        "text": {
+          "en": "Hover over a menu row to open its submenu. The panels share a straight edge. Moving to another row closes the submenu.",
+          "ru": "Наведите указатель на пункт меню, чтобы открыть подменю. Панели соприкасаются по прямому краю. Переход на другой пункт закрывает подменю.",
+          "es": "Coloca el puntero sobre una opción para abrir su submenú. Los paneles comparten un borde recto. Al pasar a otra opción, el submenú se cierra."
+        },
+        "sources": ["src/ui/context_menu/mod.rs", "src/ui/screens/file_menu.rs"]
+      },
+      {
+        "id": "project-menu-hover-choices",
+        "category": "changed",
+        "text": {
+          "en": "Hover over Add project to choose a folder or clone a repository. Click Add project to open its dialog. Move to space now shows destinations beside the menu.",
+          "ru": "Наведите указатель на «Добавить проект», чтобы выбрать папку или клонировать репозиторий. Нажатие открывает диалог. При переносе проекта список пространств открывается сбоку.",
+          "es": "Coloca el puntero sobre Añadir proyecto para elegir una carpeta o clonar un repositorio. Haz clic para abrir el diálogo. Al mover un proyecto, los espacios aparecen junto al menú."
+        },
+        "sources": ["src/ui/screens/workspace.rs"]
       }
     ]
   }

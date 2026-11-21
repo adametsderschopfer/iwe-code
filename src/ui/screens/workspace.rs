@@ -690,23 +690,37 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                     .padding([3, 9]),
                 );
             }
-            group_body = group_body.push(
-                container(
-                    button(
-                        row![
-                            icon(Icon::Plus, theme::MUTED),
-                            text(app.i18n.text(Key::AddProject)).size(12).width(Length::Fill),
-                            sized_icon(Icon::Right, theme::MUTED, 12.),
-                        ]
-                        .spacing(8)
-                        .align_y(Alignment::Center),
-                    )
-                    .on_press_maybe((!app.picking).then_some(Message::OpenSpaceAddMenu(space_index)))
-                    .style(theme::action(matches!(app.space_menu, Some((index, spaces::Menu::AddProject { parent: None, .. })) if index == space_index)))
-                    .padding([4, 9])
-                    .width(Length::Fill),
-                ).id(spaces::add_project_id(space_index, false)),
-            );
+            let selected = matches!(app.space_menu, Some((index, spaces::Menu::AddProject { parent: None, .. })) if index == space_index);
+            let open =
+                Message::ProjectAdd(crate::app::project_add::Message::Open(Some(space_index)));
+            let control = button(
+                row![
+                    icon(Icon::Plus, theme::MUTED),
+                    text(app.i18n.text(Key::AddProject))
+                        .size(12)
+                        .width(Length::Fill),
+                    sized_icon(Icon::Right, theme::MUTED, 12.),
+                ]
+                .spacing(8)
+                .align_y(Alignment::Center),
+            )
+            .on_press_maybe((!app.picking).then_some(open))
+            .style(theme::action(selected))
+            .padding([4, 9])
+            .width(Length::Fill);
+            let add = mouse_area(container(control).id(spaces::add_project_id(space_index, false)));
+            let add = if !app.picking
+                && app
+                    .space_menu
+                    .is_none_or(|(_, menu)| menu.parent().is_none())
+                && app.project_menu.is_none()
+                && app.files.menu.is_none()
+            {
+                add.on_enter(Message::OpenSpaceAddMenu(space_index))
+            } else {
+                add
+            };
+            group_body = group_body.push(add);
             groups = groups.push(group_body);
         }
         let groups: Element<'_, Message> = if app.picking
@@ -1121,53 +1135,31 @@ fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Mes
     let count = selection.len();
     let destinations = selection.destinations(&app.workspace);
     let can_edit = !app.modules.git.git_actions.pending && !app.picking;
-    let height = if app.project_menu_page == ProjectMenuPage::Destinations {
-        ((destinations.len() + 1) as f32 * 28. + 16.).min(212.)
-    } else {
-        185.
+    let has_destinations = !destinations.is_empty();
+    let anchor = match app.project_menu_page {
+        ProjectMenuPage::Destinations(anchor) => anchor,
+        _ => None,
     };
-    context_menu::overlay(
+    let parent = context_menu::overlay(
         base,
         *point,
-        iced::Size::new(252. + context_menu::ICON_COLUMN_WIDTH, height),
+        iced::Size::new(252. + context_menu::ICON_COLUMN_WIDTH, 185.),
         move || {
             let item =
                 |key, message| context_menu::action(key, app.i18n.text(key)).on_press(message);
-            if app.project_menu_page == ProjectMenuPage::Destinations {
-                let mut choices = column![item(
-                    Key::SidebarMenuBack,
-                    Message::ProjectMenuPage(ProjectMenuPage::Actions)
-                )];
-                for &index in &destinations {
-                    let space = &app.workspace.spaces[index];
-                    choices = choices.push(
-                        container(
-                            context_menu::row(context_menu::icon_label(None, space.name.clone()))
-                                .on_press_maybe(
-                                    can_edit.then_some(Message::TransferProject(index)),
-                                ),
-                        )
-                        .id(format!("project-destination-{index}")),
-                    );
-                }
-                return container(
-                    iced::widget::scrollable(choices)
-                        .height(Length::Shrink)
-                        .style(theme::scroll),
-                )
-                .max_height(196.)
-                .into();
-            }
             let transfer = || -> Element<'_, Message> {
-                let control = context_menu::action(
+                let open = (can_edit && has_destinations).then_some(Message::ProjectMenuPage(
+                    ProjectMenuPage::Destinations(None),
+                ));
+                let control = context_menu::branch(
+                    "project-move-spaces".into(),
                     Key::ProjectMoveToSpace,
                     app.i18n.text(Key::ProjectMoveToSpace),
-                )
-                .on_press_maybe(
-                    (can_edit && !destinations.is_empty())
-                        .then_some(Message::ProjectMenuPage(ProjectMenuPage::Destinations)),
+                    anchor.is_some(),
+                    open.clone(),
+                    open,
                 );
-                if destinations.is_empty() {
+                if !has_destinations {
                     tooltip::view(
                         control,
                         text(app.i18n.text(Key::NoProjectDestination)).size(12),
@@ -1175,7 +1167,7 @@ fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Mes
                     )
                     .into()
                 } else {
-                    control.into()
+                    control
                 }
             };
             if count > 1 {
@@ -1254,6 +1246,32 @@ fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Mes
                 .into()
         },
         Message::CloseProjectMenu,
+    );
+    context_menu::beside(
+        parent,
+        anchor.map(|row| (row, Message::CloseProjectDestinations)),
+        252.,
+        move || {
+            let choices = Column::with_children(destinations.iter().map(|&index| {
+                container(
+                    context_menu::row(context_menu::icon_label(
+                        None,
+                        app.workspace.spaces[index].name.clone(),
+                    ))
+                    .on_press_maybe(can_edit.then_some(Message::TransferProject(index))),
+                )
+                .id(format!("project-destination-{index}"))
+                .into()
+            }));
+            container(
+                scrollable(choices)
+                    .height(Length::Shrink)
+                    .style(theme::scroll),
+            )
+            .max_height(196.)
+            .into()
+        },
+        true,
     )
 }
 
@@ -1278,18 +1296,16 @@ fn space_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Messa
                 let item =
                     |key, message| context_menu::action(key, app.i18n.text(key)).on_press(message);
                 let mut items = column![
-                    container(
-                        context_menu::row(
-                            context_menu::label(Key::AddProject, app.i18n.text(Key::AddProject))
-                                .push(sized_icon(Icon::Right, theme::MUTED, 12.))
-                        )
-                        .style(theme::action(matches!(
-                            menu,
-                            spaces::Menu::AddProject { .. }
+                    context_menu::branch(
+                        spaces::add_project_id(index, true),
+                        Key::AddProject,
+                        app.i18n.text(Key::AddProject),
+                        matches!(menu, spaces::Menu::AddProject { .. }),
+                        Some(Message::OpenSpaceAddMenu(index)),
+                        Some(Message::ProjectAdd(crate::app::project_add::Message::Open(
+                            Some(index)
                         )))
-                        .on_press(Message::OpenSpaceAddMenu(index))
-                    )
-                    .id(spaces::add_project_id(index, true)),
+                    ),
                     container(item(Key::EditSpace, Message::Space(Space::Edit(index))))
                         .id("space-menu-edit"),
                 ];
@@ -1334,17 +1350,14 @@ fn space_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Messa
     } else {
         background
     };
-    let spaces::Menu::AddProject {
-        anchor: Some(anchor),
-        ..
-    } = menu
-    else {
-        return layers.push(menu_layer).into();
+    let anchor = match menu {
+        spaces::Menu::AddProject { anchor, .. } => anchor,
+        spaces::Menu::Context(_) => None,
     };
     layers
         .push(context_menu::beside(
             menu_layer,
-            anchor,
+            anchor.map(|row| (row, Message::CloseSpaceAddMenu(index))),
             228.,
             move || {
                 let action = |symbol, key, clone, id| {
@@ -1368,7 +1381,6 @@ fn space_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Messa
                 ]
                 .into()
             },
-            Message::CloseSpaceAddMenu,
             parent.is_some(),
         ))
         .into()
