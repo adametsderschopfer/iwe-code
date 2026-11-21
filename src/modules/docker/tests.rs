@@ -297,6 +297,195 @@ async fn live_resource_lifecycle() {
 }
 
 #[test]
+fn log_dialog_keeps_the_context_target_and_rejects_late_reads() {
+    use crate::i18n::{I18n, Language};
+    use iced::widget::{Id, space};
+    let root = Path::new(".");
+    let items = adapter::parse(
+        Kind::Containers,
+        r#"[{"ID":"a","Names":"first"},{"ID":"b","Names":"second"}]"#,
+    )
+    .unwrap();
+    let mut state = State {
+        open: true,
+        context: Some("local".into()),
+        items: Arc::new(items),
+        selected: Some("a".into()),
+        query: "s".into(),
+        ..Default::default()
+    };
+    state.filter();
+    let i18n = I18n::new(Language::Russian);
+    let _ = state.update(Event::Menu("b".into(), Point::new(10., 30.)), root, true);
+    let mut menu = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        (720., 500.),
+        overlay(
+            &state,
+            &i18n,
+            true,
+            space()
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .into(),
+            |e| e,
+        ),
+    );
+    menu.click(i18n.text(Key::DockerLogs)).unwrap();
+    for e in menu.into_messages() {
+        let _ = state.update(e, root, true);
+    }
+    assert!(state.has_dialog());
+    let dialog = state.output.as_ref().unwrap();
+    assert_eq!(dialog.request.name, "second");
+    assert_eq!(dialog.request.action, Action::Logs);
+    assert!(matches!(dialog.content, output::Content::Loading { .. }));
+    let id = state.request;
+    let _ = state.update(Event::Tick, root, true);
+    let _ = state.update(Event::Refresh, root, true);
+    assert_eq!(state.request, id);
+    let error = Error::Stopped;
+    let _ = state.update(Event::OutputLoaded(id, Err(error)), root, true);
+    let mut window = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        (640., 430.),
+        overlay(
+            &state,
+            &i18n,
+            true,
+            space()
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .into(),
+            |e| e,
+        ),
+    );
+    assert!(window.find(i18n.text(view::error_key(error))).is_ok());
+    window.click(Id::new("docker-output-refresh")).unwrap();
+    for event in window.into_messages() {
+        let _ = state.update(event, root, true);
+    }
+    assert!(state.request > id);
+    assert_eq!(state.output.as_ref().unwrap().request.name, "second");
+    let retry = state.request;
+    let _ = state.update(Event::Dismiss, root, true);
+    assert!(!state.has_dialog());
+    let _ = state.update(Event::Act(Action::Inspect), root, true);
+    let _ = state.update(
+        Event::OutputLoaded(retry, Ok(Arc::new(Output::new("obsolete".into())))),
+        root,
+        true,
+    );
+    assert_eq!(state.output.as_ref().unwrap().request.name, "first");
+    assert!(matches!(
+        state.output.as_ref().unwrap().content,
+        output::Content::Loading { .. }
+    ));
+    let _ = state.update(Event::Search("background".into()), root, true);
+    let _ = state.update(Event::Dismiss, root, true);
+    assert_eq!(state.query, "s");
+    assert_eq!(state.selected.as_deref(), Some("a"));
+    assert!(state.connection_error.is_none() && state.error.is_none() && state.busy.is_none());
+}
+
+#[test]
+fn properties_open_localized_scrollable_output_with_bounded_pages() {
+    use crate::i18n::{I18n, Language};
+    use iced::widget::{Id, space};
+    let root = Path::new(".");
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let i18n = I18n::new(language);
+        let items = adapter::parse(Kind::Compose, r#"[{"Name":"demo"}]"#).unwrap();
+        let mut state = State {
+            open: true,
+            kind: Kind::Compose,
+            context: Some("local".into()),
+            items: Arc::new(items),
+            selected: Some("demo".into()),
+            ..Default::default()
+        };
+        for action in [Action::Inspect, Action::Logs] {
+            let mut properties = iced_test::Simulator::with_size(
+                iced::Settings::default(),
+                (800., 480.),
+                panel(&state, &i18n, true),
+            );
+            properties.click(i18n.text(action.key())).unwrap();
+            for e in properties.into_messages() {
+                let _ = state.update(e, root, true);
+            }
+            let id = state.request;
+            let _ = state.update(
+                Event::OutputLoaded(id, Ok(Arc::new(Output::new(String::new())))),
+                root,
+                true,
+            );
+            let mut window = iced_test::Simulator::with_size(
+                iced::Settings::default(),
+                (410., 280.),
+                overlay(
+                    &state,
+                    &i18n,
+                    true,
+                    space()
+                        .width(iced::Length::Fill)
+                        .height(iced::Length::Fill)
+                        .into(),
+                    |e| e,
+                ),
+            );
+            let empty = if action == Action::Logs {
+                Key::DockerNoLogs
+            } else {
+                Key::DockerNoDetails
+            };
+            assert!(
+                window
+                    .find(i18n.text(empty))
+                    .unwrap()
+                    .visible_bounds()
+                    .is_some()
+            );
+            window.click(Id::new("docker-output-refresh")).unwrap();
+            for e in window.into_messages() {
+                let _ = state.update(e, root, true);
+            }
+            let text = "entry\n".repeat(100) + "last line";
+            let _ = state.update(
+                Event::OutputLoaded(state.request, Ok(Arc::new(Output::new(text)))),
+                root,
+                true,
+            );
+            for _ in 0..2 {
+                let _ = state.update(Event::OutputPage(true), root, true);
+            }
+            let mut window = iced_test::Simulator::with_size(
+                iced::Settings::default(),
+                (410., 280.),
+                overlay(
+                    &state,
+                    &i18n,
+                    true,
+                    space()
+                        .width(iced::Length::Fill)
+                        .height(iced::Length::Fill)
+                        .into(),
+                    |e| e,
+                ),
+            );
+            assert!(window.find("2 / 2").unwrap().visible_bounds().is_some());
+            assert!(window.find("last line").unwrap().visible_bounds().is_some());
+            window.click(Id::new("docker-output-close")).unwrap();
+            for e in window.into_messages() {
+                let _ = state.update(e, root, true);
+            }
+            assert!(!state.has_dialog());
+            assert_eq!(state.selected.as_deref(), Some("demo"));
+        }
+    }
+}
+
+#[test]
 fn large_output_pages_preserve_unicode_and_every_line() {
     let value = "ав".repeat(20_000) + "\n" + &"message\n".repeat(207);
     let out = Output::new(value.clone());

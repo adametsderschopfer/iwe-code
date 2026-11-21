@@ -1,6 +1,7 @@
 //! Present available Docker operations, their results and confirmations.
 
 mod form;
+mod output;
 pub(super) mod style;
 
 use super::{Action, Error, Event, Kind, PAGE, State};
@@ -531,41 +532,13 @@ fn properties<'a>(
                 .style(style::button(theme::secondary)),
         );
     }
-    let mut details = column![
+    let details = column![
         summary.padding(GUTTER),
         context_menu::separator(),
         column![caption(i18n.text(Key::DockerActions)), buttons.wrap()]
             .spacing(5)
             .padding(GUTTER)
     ];
-    if let Some(output) = &state.detail {
-        let mut toolbar = row![caption(i18n.text(Key::DockerOutput))].align_y(Alignment::Center);
-        if output.offsets.len() > 1 {
-            toolbar = toolbar.push(pagination(
-                state.output_page,
-                output.offsets.len(),
-                i18n,
-                Event::OutputPage,
-            ));
-        }
-        let value = output.page(state.output_page).unwrap_or_default();
-        let output = if value.is_empty() {
-            text(i18n.text(Key::DockerEmpty))
-        } else {
-            text(value)
-        };
-        details = details.push(context_menu::separator()).push(
-            column![
-                toolbar,
-                output
-                    .font(iced::Font::MONOSPACE)
-                    .size(12)
-                    .wrapping(text::Wrapping::WordOrGlyph)
-            ]
-            .padding(GUTTER)
-            .spacing(5),
-        );
-    }
     section(
         "docker-properties",
         header.into(),
@@ -679,6 +652,20 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
 ) -> Element<'a, M> {
     if !state.open {
         return base;
+    }
+    if let Some(dialog) = &state.output {
+        return modal::bounded_overlay(
+            base,
+            move |height| {
+                container(output::contents(dialog, i18n).map(map))
+                    .id("docker-output-dialog")
+                    .height(height.min(500.))
+                    .into()
+            },
+            850.,
+            map(Event::Dismiss),
+            style::surface(theme::dialog),
+        );
     }
     if let Some(project) = &state.project_graph {
         return modal::bounded_overlay(

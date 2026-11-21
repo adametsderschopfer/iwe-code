@@ -53,7 +53,8 @@ docker-environment = Environment (e.g. MODE=dev)
 docker-command = Command and arguments (optional)
 docker-details = Properties
 docker-actions = Actions
-docker-output = Output
+docker-no-logs = No log entries yet.
+docker-no-details = Docker returned no details.
 docker-runtime = Runtime options
 docker-back = Back to list
 docker-status = Status

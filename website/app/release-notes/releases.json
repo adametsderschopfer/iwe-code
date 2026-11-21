@@ -2741,6 +2741,16 @@
           "es": "Abre el diagrama desde el menú contextual o las propiedades de un proyecto Compose para explorar sus contenedores, imágenes, redes y volúmenes."
         },
         "sources": ["src/modules/docker/graph/mod.rs"]
+      },
+      {
+        "id": "docker-resource-output-dialogs",
+        "category": "added",
+        "text": {
+          "en": "Open logs and inspection results in separate dialogs. Refresh or page through the output while preserving the selected resource.",
+          "ru": "Открывайте логи и результаты инспектирования в отдельных окнах. Обновляйте и листайте вывод, сохраняя выбранный ресурс.",
+          "es": "Abre los registros y los resultados de inspección en diálogos independientes. Actualiza o recorre las páginas sin perder la selección."
+        },
+        "sources": ["src/modules/docker/output.rs"]
       }
     ]
   }

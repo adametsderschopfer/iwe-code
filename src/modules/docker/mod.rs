@@ -4,6 +4,7 @@ mod adapter;
 mod container;
 mod graph;
 mod model;
+mod output;
 mod relations;
 mod view;
 use crate::i18n::Key;
@@ -81,7 +82,8 @@ pub(crate) enum Event {
     Browse,
     Picked(u64, Option<String>),
     Submit,
-    Finished(u64, Action, Result<Arc<Output>, Error>),
+    Finished(u64, Action, Result<(), Error>),
+    OutputLoaded(u64, Result<Arc<Output>, Error>),
     Shell(u64, Vec<String>),
     Hide,
     OutputPage(bool),
@@ -130,8 +132,7 @@ pub(crate) struct State {
     busy: Option<Key>,
     error: Option<Error>,
     connection_error: Option<Error>,
-    detail: Option<Arc<Output>>,
-    output_page: usize,
+    output: Option<output::Dialog>,
     completed: Option<Action>,
 }
 
@@ -146,7 +147,7 @@ impl State {
         })
     }
     pub(crate) fn has_dialog(&self) -> bool {
-        self.open && (self.draft.is_some() || self.project_graph.is_some())
+        self.open && (self.draft.is_some() || self.project_graph.is_some() || self.output.is_some())
     }
     pub(crate) fn reset(&mut self) {
         *self = Self {
@@ -180,8 +181,6 @@ impl State {
         self.show_running = false;
         self.running = None;
         self.running_page = 0;
-        self.detail = None;
-        self.output_page = 0;
         self.menu = None;
         self.draft = None;
         self.completed = None;
@@ -274,6 +273,9 @@ impl State {
     }
 
     pub(crate) fn update(&mut self, event: Event, root: &Path, terminal: bool) -> Task<Event> {
+        if self.output.is_some() {
+            return self.update_output(event, root);
+        }
         if self.project_graph.is_some()
             && !matches!(
                 event,
@@ -366,23 +368,14 @@ impl State {
                     Err(error @ (Error::Stopped | Error::Missing)) => self.list_failed(error),
                     Err(error) => {
                         self.error = Some(error);
-                        self.draft = form
-                            .filter(|form| !matches!(form.action, Action::Inspect | Action::Logs));
+                        self.draft = form;
                     }
-                    Ok(output) => {
+                    Ok(()) => {
                         self.completed = Some(action);
-                        self.draft = None;
                         if action == Action::AddContext {
                             return self.connections(root);
                         }
-                        if action.writes() {
-                            return self.list(root);
-                        }
-                        self.clear_selection();
-                        self.completed = Some(action);
-                        self.selected = form.and_then(|draft| draft.target);
-                        self.detail = Some(output);
-                        self.output_page = 0;
+                        return self.list(root);
                     }
                 }
             }
@@ -414,17 +407,6 @@ impl State {
                     (self.page + 1).min(self.filtered.len().saturating_sub(1) / PAGE)
                 } else {
                     self.page.saturating_sub(1)
-                };
-            }
-            Event::OutputPage(next) => {
-                self.output_page = if next {
-                    (self.output_page + 1).min(
-                        self.detail
-                            .as_ref()
-                            .map_or(0, |out| out.offsets.len().saturating_sub(1)),
-                    )
-                } else {
-                    self.output_page.saturating_sub(1)
                 };
             }
             Event::RunningPage(next) => {
@@ -584,6 +566,9 @@ impl State {
                 {
                     return Task::none();
                 }
+                if matches!(action, Action::Inspect | Action::Logs) {
+                    return self.open_output(action, target.as_deref(), root);
+                }
                 self.error = None;
                 self.draft = Some(Draft {
                     action,
@@ -596,12 +581,7 @@ impl State {
                     target,
                     container: Default::default(),
                 });
-                if !action.confirm()
-                    && matches!(
-                        action,
-                        Action::Inspect | Action::Logs | Action::Start | Action::Resume
-                    )
-                {
+                if matches!(action, Action::Start | Action::Resume) {
                     return self.submit(root);
                 }
             }
@@ -697,10 +677,10 @@ impl State {
                     &args,
                     &root,
                     action.writes(),
-                    action == Action::Logs,
+                    false,
                 )
                 .await
-                .map(|output| Arc::new(Output::new(output)))
+                .map(|_| ())
             },
             move |result| Event::Finished(id, action, result),
         )
