@@ -124,6 +124,8 @@ fn selection_copies_cells_without_escape_sequences_or_wide_continuations() {
     parser.process("\x1b[32mab界\r\ncd".as_bytes());
     let screen = Screen {
         screen: parser.screen(),
+        search: &Search::default(),
+        pending_focus: None,
         request: 1,
         revision: 0,
         size: 14.,
@@ -172,6 +174,8 @@ async fn terminal_redraw_reuses_geometry_and_invalidates_each_visual_change() {
     parser.process(b"cached screen");
     let mut screen = Screen {
         screen: parser.screen(),
+        search: &Search::default(),
+        pending_focus: None,
         request: 1,
         revision: 0,
         size: 14.,
@@ -241,6 +245,8 @@ fn terminal_canvas_sends_keys_only_after_a_focus_click() {
     let parser = vt100::Parser::new(24, 80, 0);
     let screen = Screen {
         screen: parser.screen(),
+        search: &Search::default(),
+        pending_focus: None,
         request: 42,
         revision: 0,
         size: 14.,
@@ -288,6 +294,8 @@ fn terminal_line_spacing_changes_grid_dimensions() {
     let parser = vt100::Parser::new(10, 20, 0);
     let mut screen = Screen {
         screen: parser.screen(),
+        search: &Search::default(),
+        pending_focus: None,
         request: 1,
         revision: 0,
         size: 14.,
@@ -302,4 +310,183 @@ fn terminal_line_spacing_changes_grid_dimensions() {
     let (larger_rows, larger_columns) = screen.dimensions(bounds);
     assert!(larger_rows < rows);
     assert_eq!(larger_columns, columns);
+}
+
+fn press(key: keyboard::Key, code: keyboard::key::Code, modifiers: Modifiers) -> iced::Event {
+    iced::Event::Keyboard(keyboard::Event::KeyPressed {
+        modified_key: key.clone(),
+        key,
+        physical_key: keyboard::key::Physical::Code(code),
+        location: keyboard::Location::Standard,
+        modifiers,
+        repeat: false,
+        text: None,
+    })
+}
+
+#[test]
+fn search_floats_inside_the_screen_and_only_intercepts_clicks_on_its_panel() {
+    use crate::i18n::Language;
+    use iced::widget::Id;
+
+    let i18n = I18n::new(Language::English);
+    let preferences = Default::default();
+    for width in [320., 900.] {
+        let mut terminal = TerminalState::default();
+        let _ = terminal.update(Event::Start, Some(std::path::Path::new("project")));
+        let request = terminal.active.unwrap();
+        let mut closed = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            (width, 300.),
+            view(&terminal, &i18n, &preferences, true),
+        );
+        let screen = closed
+            .find(Id::new("terminal-screen"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        drop(closed);
+        let _ = terminal.update(Event::Search(request, SearchAction::Open), None);
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            (width, 300.),
+            view(&terminal, &i18n, &preferences, true),
+        );
+        assert_eq!(
+            ui.find(Id::new("terminal-screen")).unwrap().visible_bounds(),
+            Some(screen)
+        );
+        let panel = ui
+            .find(Id::new("terminal-search-panel"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        assert_eq!(panel.y, screen.y + 6.);
+        assert_eq!(panel.x + panel.width, screen.x + screen.width - 8.);
+        assert_eq!(panel.width, 360_f32.min(screen.width - 16.));
+        let press = iced::Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left));
+        let release = iced::Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left));
+        ui.point_at(Point::new(panel.x + 2., panel.y + 2.));
+        ui.simulate([press.clone(), release.clone()]);
+        ui.point_at(Point::new(screen.x + 2., screen.y + screen.height - 2.));
+        ui.simulate([press, release]);
+        let count = ui
+            .into_messages()
+            .filter(|event| matches!(event, Event::Focus(id) if *id == request))
+            .count();
+        assert_eq!(count, 1);
+    }
+}
+
+#[test]
+fn focused_terminal_captures_find_and_preserves_shell_ctrl_f() {
+    let parser = vt100::Parser::new(24, 80, 2);
+    let search = Search::default();
+    let screen = Screen {
+        screen: parser.screen(),
+        search: &search,
+        pending_focus: None,
+        request: 42,
+        revision: 0,
+        size: 14.,
+        line_height: 1.4,
+        font: theme::code_font(),
+        interactive: true,
+        running: true,
+    };
+    let mut ui = iced_test::Simulator::new(container(focus::view(screen)).id("test-screen"));
+    ui.click(iced::widget::Id::new("test-screen")).unwrap();
+    let find = if cfg!(target_os = "macos") {
+        Modifiers::LOGO
+    } else {
+        Modifiers::CTRL | Modifiers::SHIFT
+    };
+    let key = Key::Character("а".into());
+    ui.simulate([press(key.clone(), keyboard::key::Code::KeyF, find)]);
+    ui.simulate([press(key, keyboard::key::Code::KeyF, Modifiers::CTRL)]);
+    let events = ui.into_messages().collect::<Vec<_>>();
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::Search(42, SearchAction::Open)))
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::Input(42, bytes) if bytes == &[6]))
+    );
+}
+
+#[test]
+fn search_keys_reach_only_the_focused_search_field_in_each_language() {
+    use crate::i18n::Language;
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let i18n = I18n::new(language);
+        let search = Search::default();
+        let controls = search::bar(&i18n, 42, &search, true);
+        let mut ui = iced_test::Simulator::new(iced::widget::column![
+            controls,
+            theme::compact_field("other", "")
+                .id("other")
+                .on_input(|_| Event::Start),
+        ]);
+        ui.click(iced::widget::Id::from(super::super::state::search_id(42)))
+            .unwrap();
+        for modifier in [Modifiers::NONE, Modifiers::SHIFT] {
+            ui.simulate([press(
+                Key::Named(Named::Enter),
+                keyboard::key::Code::Enter,
+                modifier,
+            )]);
+        }
+        ui.tap_key(Key::Named(Named::Escape));
+        ui.click(iced::widget::Id::new("other")).unwrap();
+        ui.tap_key(Key::Named(Named::Enter));
+        let events = ui.into_messages().collect::<Vec<_>>();
+        assert!(
+            matches!(
+                &events[..],
+                [
+                    Event::Search(42, SearchAction::Move(true)),
+                    Event::Search(42, SearchAction::Move(false)),
+                    Event::Search(42, SearchAction::Close),
+                ]
+            ),
+            "{events:?}"
+        );
+    }
+}
+
+#[test]
+fn a_new_canvas_accepts_keys_after_its_first_redraw_without_a_mouse_click() {
+    let parser = vt100::Parser::new(24, 80, 2);
+    let search = Search::default();
+    let screen = Screen {
+        screen: parser.screen(),
+        search: &search,
+        pending_focus: Some(FocusTarget::Screen),
+        request: 92,
+        revision: 0,
+        size: 14.,
+        line_height: 1.4,
+        font: theme::code_font(),
+        interactive: true,
+        running: true,
+    };
+    let mut ui = iced_test::Simulator::new(focus::view(screen));
+    ui.simulate([iced::Event::Window(window::Event::RedrawRequested(
+        iced::time::Instant::now(),
+    ))]);
+    ui.tap_key(Key::Character("x".into()));
+    let events = ui.into_messages().collect::<Vec<_>>();
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::FocusReady(92, FocusTarget::Screen)))
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::Input(92, bytes) if bytes == b"x"))
+    );
 }

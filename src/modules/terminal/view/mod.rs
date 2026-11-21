@@ -1,10 +1,17 @@
 //! Render the terminal screen and capture input only while its canvas has focus.
 
+mod focus;
 mod input;
+mod search;
 mod tabs;
 pub(crate) use tabs::tab_menu;
 
-use super::{Event, State as TerminalState, Status, style};
+use super::state::FocusTarget;
+use super::{
+    Event, State as TerminalState, Status,
+    search::{Action as SearchAction, Search},
+    style,
+};
 use crate::{
     i18n::{I18n, Key},
     ui::{icons::Icon, theme},
@@ -14,7 +21,7 @@ use iced::{
     mouse,
     widget::{
         canvas::{self, Action, Frame, Geometry},
-        column, container, row, text,
+        column, container, row, stack, text,
     },
     window,
 };
@@ -31,7 +38,7 @@ pub(crate) fn view<'a>(
     let interactive = interactive
         && tabs::menu(terminal).is_none()
         && !active.is_some_and(|tab| tab.editing_title());
-    let mut content = column![
+    let content = column![
         container(
             row![
                 strip,
@@ -61,32 +68,30 @@ pub(crate) fn view<'a>(
         Status::Exited => Some(Key::TerminalExited),
         Status::Running => None,
     };
-    if let Some(key) = status {
-        content = content.push(
-            container(text(i18n.text(key)).size(12).style(theme::MUTED.text())).padding([6, 12]),
-        );
+    // Keep the canvas in the same widget slot when startup finishes.
+    let status = status.map(|key| {
+        container(text(i18n.text(key)).size(12).style(theme::MUTED.text())).padding([6, 12])
+    });
+    let screen = container(focus::view(Screen {
+        screen: tab.parser.screen(),
+        request: tab.request,
+        revision: tab.revision,
+        size: f32::from(preferences.terminal_size),
+        line_height: f32::from(preferences.terminal_line_height) / 100.,
+        font: theme::selected_code_font(preferences.terminal_font),
+        interactive,
+        running: tab.running(),
+        search: &tab.search,
+        pending_focus: tab.pending_focus,
+    }))
+    .id("terminal-screen")
+    .width(Length::Fill)
+    .height(Length::Fill);
+    let mut output = stack![screen];
+    if tab.search.open {
+        output = output.push(search::bar(i18n, tab.request, &tab.search, interactive));
     }
-    content
-        .push(
-            container(
-                canvas::Canvas::new(Screen {
-                    screen: tab.parser.screen(),
-                    request: tab.request,
-                    revision: tab.revision,
-                    size: f32::from(preferences.terminal_size),
-                    line_height: f32::from(preferences.terminal_line_height) / 100.,
-                    font: theme::selected_code_font(preferences.terminal_font),
-                    interactive,
-                    running: tab.running(),
-                })
-                .width(Length::Fill)
-                .height(Length::Fill),
-            )
-            .id("terminal-screen")
-            .width(Length::Fill)
-            .height(Length::Fill),
-        )
-        .into()
+    content.push(status).push(output).into()
 }
 
 fn icon_control<'a>(
@@ -103,6 +108,8 @@ fn icon_control<'a>(
 
 struct Screen<'a> {
     screen: &'a vt100::Screen,
+    search: &'a Search,
+    pending_focus: Option<FocusTarget>,
     request: u64,
     revision: u64,
     size: f32,
@@ -128,6 +135,17 @@ pub(crate) struct State {
     cache: canvas::Cache,
     #[cfg(test)]
     paints: Cell<usize>,
+}
+
+impl State {
+    fn switch_to(&mut self, request: u64) {
+        if self.request != Some(request) {
+            *self = Self {
+                request: Some(request),
+                ..Self::default()
+            };
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -167,7 +185,9 @@ impl Screen<'_> {
             |row| {
                 (
                     row,
-                    (((position.x - style::PADDING) / cell.width).max(0.) as u16).min(cols - 1),
+                    self.search.first_column(self.screen)
+                        + (((position.x - style::PADDING) / cell.width).max(0.) as u16)
+                            .min(cols - 1),
                 )
             },
         )
@@ -180,9 +200,10 @@ impl Screen<'_> {
         let (start, end) = (anchor.min(end), anchor.max(end));
         let mut lines = Vec::new();
         let (_, cols) = self.screen.size();
+        let left = self.search.first_column(self.screen);
         for row in start.0..=end.0 {
-            let first = if row == start.0 { start.1 } else { 0 };
-            let last = if row == end.0 { end.1 } else { cols - 1 };
+            let first = if row == start.0 { start.1 } else { left };
+            let last = if row == end.0 { end.1 } else { left + cols - 1 };
             let mut line = String::new();
             for col in first..=last {
                 if let Some(cell) = self.screen.cell(row, col) {
@@ -209,12 +230,7 @@ impl canvas::Program<Event> for Screen<'_> {
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> Option<Action<Event>> {
-        if state.request != Some(self.request) {
-            *state = State {
-                request: Some(self.request),
-                ..State::default()
-            };
-        }
+        state.switch_to(self.request);
         if state.scrollback != self.screen.scrollback() {
             state.anchor = None;
             state.selection = None;
@@ -222,6 +238,11 @@ impl canvas::Program<Event> for Screen<'_> {
         }
         match event {
             canvas::Event::Window(window::Event::RedrawRequested(_)) => {
+                // Apply focus only after the menu has closed and the new widget tree has mounted.
+                if let Some(target) = self.pending_focus {
+                    state.focused = target == FocusTarget::Screen;
+                    return Some(Action::publish(Event::FocusReady(self.request, target)));
+                }
                 let dimensions = self.dimensions(bounds);
                 if state.dimensions != dimensions {
                     state.dimensions = dimensions;
@@ -268,6 +289,18 @@ impl canvas::Program<Event> for Screen<'_> {
                 text,
                 ..
             }) if state.focused && self.interactive => {
+                if search::shortcut(key, *physical_key, *modifiers) {
+                    return Some(
+                        Action::publish(Event::Search(self.request, SearchAction::Open))
+                            .and_capture(),
+                    );
+                }
+                if self.search.open && *key == keyboard::Key::Named(keyboard::key::Named::Escape) {
+                    return Some(
+                        Action::publish(Event::Search(self.request, SearchAction::Close))
+                            .and_capture(),
+                    );
+                }
                 if crate::ui::shortcuts::zoom_delta(key, *physical_key, *modifiers).is_some() {
                     return None;
                 }
@@ -546,19 +579,30 @@ impl Screen<'_> {
             .anchor
             .zip(state.selection)
             .map(|(a, b)| (a.min(b), a.max(b)));
+        let left = self.search.first_column(self.screen);
         for row in 0..rows.min(dimensions.0) {
-            for col in 0..cols.min(dimensions.1) {
+            for col in left..left + cols.min(dimensions.1) {
                 let Some(cell) = self.screen.cell(row, col) else {
                     continue;
                 };
                 let position = Point::new(
-                    style::PADDING + f32::from(col) * cell_size.width,
+                    style::PADDING + f32::from(col - left) * cell_size.width,
                     style::PADDING + f32::from(row) * cell_size.height,
                 );
                 let mut fg = style::color(cell.fgcolor(), theme::TEXT.resolve(theme), theme);
                 let mut bg = style::color(cell.bgcolor(), default_bg, theme);
                 if cell.inverse() {
                     std::mem::swap(&mut fg, &mut bg);
+                }
+                if let Some(current) = self.search.highlight(self.screen, row, col) {
+                    (fg, bg) = if current {
+                        (theme::code_background(theme), theme::YELLOW.resolve(theme))
+                    } else {
+                        (
+                            theme::TEXT.resolve(theme),
+                            theme::CODE_SELECTION.resolve(theme),
+                        )
+                    };
                 }
                 if selection.is_some_and(|(start, end)| (row, col) >= start && (row, col) <= end) {
                     bg = theme::CODE_SELECTION.resolve(theme);

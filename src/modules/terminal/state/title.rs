@@ -1,6 +1,6 @@
 //! Keep automatic names stable for the lifetime of each tab.
 
-use super::{Event, State, Tab};
+use super::{Event, FocusTarget, State, Tab};
 use crate::i18n::{FluentArgs, I18n, Key};
 use iced::{Point, Task};
 use std::{borrow::Cow, collections::HashSet};
@@ -85,6 +85,7 @@ impl State {
     pub(crate) fn dismiss_title_edit(&mut self) {
         for tab in &mut self.tabs {
             tab.title.control = TitleControl::Closed;
+            tab.pending_focus = None;
         }
     }
 
@@ -102,9 +103,7 @@ impl State {
                 tab.title.control =
                     TitleControl::Editing(tab.title.custom.clone().unwrap_or_default());
                 self.active = Some(request);
-                let id = format!("terminal-rename-{request}");
-                return iced::widget::operation::focus(id.clone())
-                    .chain(iced::widget::operation::select_all(id));
+                return tab.focus_after_layout(FocusTarget::Rename);
             }
             TitleAction::Edit(text) if tab.editing_title() => {
                 tab.title.control = TitleControl::Editing(text);
@@ -113,9 +112,14 @@ impl State {
                 if let TitleControl::Editing(text) = std::mem::take(&mut tab.title.control) {
                     tab.title.custom = (!text.trim().is_empty()).then_some(text);
                 }
+                return tab.focus_screen();
             }
             TitleAction::Dismiss => {
+                let editing = tab.editing_title();
                 tab.title.control = TitleControl::Closed;
+                if editing {
+                    return tab.focus_screen();
+                }
             }
             _ => {}
         }

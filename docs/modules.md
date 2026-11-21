@@ -221,6 +221,20 @@ container names. IWE adds a number to repeated container titles, such as `api (2
 Right-click a tab and choose **Rename**. Press **Enter** to save or **Escape** to cancel. Clear the
 name and press **Enter** to restore the automatic name.
 
+### Find terminal output
+
+Focus the terminal and press **Command+F** on macOS or **Ctrl+Shift+F** on Windows and Linux. The
+search field opens in the upper-right corner of the terminal output. Windows and Linux shells still
+receive **Ctrl+F**. Type text to search the tab's screen and retained history. IWE highlights
+matches and shows the current match number and total. Press **Enter** for the next match or
+**Shift+Enter** for the previous match. IWE scrolls the selected match into view. Press **Escape**
+to close search and type in the terminal again.
+
+Each tab remembers its search text. The results include incoming output and exclude lines that leave
+the history.
+
+### Terminal controls and project switching
+
 On macOS, Command+C copies selected text and Command+V pastes text. With no selection, copying uses
 the visible screen. Windows and Linux use Ctrl+Shift+C and Ctrl+Shift+V. Ctrl+C remains available to
 the shell on every platform. Clicking the terminal clears source-text and branch selections.
@@ -260,10 +274,11 @@ shell is downloaded or installed. Unix builds use `portable-pty`; Windows builds
 avoid the cursor-inheritance handshake, which would stall a terminal without a cursor-position
 reply. The application uses safe Rust interfaces for both adapters.
 
-The terminal has no search, clickable links,
-program-controlled mouse reporting, or input-method composition interface. Tests verify process
-input, output, resizing, cleanup, preferences, translated settings, and session guards. Native
-checks on one platform do not verify the other platforms.
+Tests verify process input, output, resizing, cleanup, preferences, translated settings, and session
+guards. Native checks on one platform do not verify the other platforms.
+
+The terminal supports text selection with the mouse. It does not support clickable links,
+program-controlled mouse reporting, or input-method composition.
 
 ## Source organization
 

@@ -8,3 +8,5 @@ terminal-new-tab = New terminal
 terminal-close-tab = Close tab and end session
 terminal-hide = Hide terminal panel
 terminal-paste-too-large = This text is too long to paste. Paste a smaller selection.
+terminal-find = Find in terminal
+terminal-match-count = { $current } of { $total }

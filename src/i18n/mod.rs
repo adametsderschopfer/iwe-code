@@ -405,6 +405,8 @@ message_keys! {
     TerminalFailed => "terminal-failed",
     TerminalRenameTab => "terminal-rename-tab",
     TerminalTab => "terminal-tab",
+    TerminalFind => "terminal-find",
+    TerminalMatchCount => "terminal-match-count",
     TerminalNewTab => "terminal-new-tab",
     TerminalCloseTab => "terminal-close-tab",
     TerminalHide => "terminal-hide",

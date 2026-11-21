@@ -277,3 +277,27 @@ async fn live_command_accepts_input_and_collects_output_in_a_background_project(
     .unwrap();
     assert_eq!(state.tab_mut(request).unwrap().status, Status::Exited);
 }
+
+#[test]
+fn mounted_focus_requests_apply_once_and_reject_obsolete_controls() {
+    let mut state = State::default();
+    let first = add(&mut state);
+    let _ = state.active_tab_mut().unwrap().focus_screen();
+    let _ = state.update(Event::Search(first, SearchAction::Open), None);
+    let _ = state.update(Event::FocusReady(first, FocusTarget::Screen), None);
+    assert_eq!(
+        state.active_tab().unwrap().pending_focus,
+        Some(FocusTarget::Search)
+    );
+    let second = add(&mut state);
+    let _ = state.active_tab_mut().unwrap().focus_screen();
+    let _ = state.update(Event::FocusReady(first, FocusTarget::Search), None);
+    assert_eq!(
+        state.active_tab().unwrap().pending_focus,
+        Some(FocusTarget::Screen)
+    );
+    let _ = state.update(Event::FocusReady(second, FocusTarget::Screen), None);
+    assert_eq!(state.active_tab().unwrap().pending_focus, None);
+    let _ = state.update(Event::FocusReady(second, FocusTarget::Screen), None);
+    assert_eq!(state.active_tab().unwrap().pending_focus, None);
+}

@@ -88,6 +88,10 @@ fn all_catalogs_have_the_complete_key_set_and_resolve_without_errors() {
                 Key::TerminalTab => {
                     args.set("number", 1);
                 }
+                Key::TerminalMatchCount => {
+                    args.set("current", 1);
+                    args.set("total", 3);
+                }
                 Key::PipelineStageTitle | Key::PipelineJobTitle => {
                     args.set("name", "build");
                 }

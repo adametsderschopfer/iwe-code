@@ -1,5 +1,6 @@
 //! Keep the terminal runtime, interface, and shell adapter together.
 
+mod search;
 mod session;
 mod state;
 mod style;

@@ -3,7 +3,10 @@
 mod title;
 pub(crate) use title::{TabTitle, TitleAction, TitleControl};
 
-use super::session::{Lifetime, MAX_INPUT, Output, Session};
+use super::{
+    search::{Action as SearchAction, Search},
+    session::{Lifetime, MAX_INPUT, Output, Session},
+};
 use iced::{Subscription, Task};
 use std::{
     collections::BTreeMap,
@@ -18,6 +21,13 @@ pub(crate) enum Status {
     Running,
     Exited,
     Failed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FocusTarget {
+    Screen,
+    Search,
+    Rename,
 }
 
 #[derive(Default)]
@@ -71,6 +81,8 @@ pub(crate) struct Tab {
     pub program: Option<Program>,
     pub status: Status,
     pub parser: vt100::Parser<Replies>,
+    pub search: Search,
+    pub pending_focus: Option<FocusTarget>,
     pub revision: u64,
     session: Option<Arc<Session>>,
     lifetime: Lifetime,
@@ -90,9 +102,36 @@ impl Tab {
             program,
             status: Status::Starting,
             parser: vt100::Parser::new_with_callbacks(24, 80, 2000, Replies::default()),
+            search: Search::default(),
+            pending_focus: None,
             revision: 0,
             session: None,
             lifetime,
+        }
+    }
+
+    pub(crate) fn focus_screen(&mut self) -> Task<Event> {
+        self.focus_after_layout(FocusTarget::Screen)
+    }
+
+    fn focus_after_layout(&mut self, target: FocusTarget) -> Task<Event> {
+        self.pending_focus = Some(target);
+        Task::none()
+    }
+
+    fn apply_focus(&mut self, target: FocusTarget) -> Task<Event> {
+        if self.pending_focus != Some(target) {
+            return Task::none();
+        }
+        self.pending_focus = None;
+        use iced::widget::operation;
+        match target {
+            FocusTarget::Screen => operation::focus(screen_id(self.request)),
+            FocusTarget::Search => operation::focus(search_id(self.request)),
+            FocusTarget::Rename => {
+                let id = format!("terminal-rename-{}", self.request);
+                operation::focus(id.clone()).chain(operation::select_all(id))
+            }
         }
     }
 
@@ -167,6 +206,8 @@ pub(crate) enum Event {
     Hide,
     PasteRejected(u64),
     Focus(u64),
+    FocusReady(u64, FocusTarget),
+    Search(u64, SearchAction),
     Output(u64, Vec<Output>),
     Input(u64, Vec<u8>),
     Resize(u64, u16, u16),
@@ -182,6 +223,11 @@ impl State {
         self.tabs
             .iter()
             .find(|tab| Some(tab.request) == self.active)
+    }
+
+    pub(crate) fn active_tab_mut(&mut self) -> Option<&mut Tab> {
+        let active = self.active?;
+        self.tabs.iter_mut().find(|tab| tab.request == active)
     }
 
     pub(crate) fn subscription(&self) -> Subscription<Event> {
@@ -318,6 +364,16 @@ impl State {
                     );
                 }
             }
+            Event::FocusReady(request, target) if self.active == Some(request) && self.open => {
+                if let Some(tab) = self.active_tab_mut() {
+                    return tab.apply_focus(target);
+                }
+            }
+            Event::Search(request, action) if self.active == Some(request) && self.open => {
+                if let Some(tab) = self.tabs.iter_mut().find(|tab| tab.request == request) {
+                    return tab.search_action(action);
+                }
+            }
             Event::Copy(text) => return iced::clipboard::write(text),
             Event::Cut(request, text, bytes) => {
                 let Some(tab) = self.tab_mut(request) else {
@@ -347,6 +403,28 @@ impl State {
 }
 
 impl Tab {
+    fn search_action(&mut self, action: SearchAction) -> Task<Event> {
+        self.revision = self.revision.wrapping_add(1);
+        let screen = self.parser.screen_mut();
+        match action {
+            SearchAction::Open => {
+                self.search.open(screen);
+                return self.focus_after_layout(FocusTarget::Search);
+            }
+            _ if !self.search.open => {}
+            SearchAction::Query(query) => self.search.set_query(query, screen),
+            SearchAction::Move(forward) => {
+                self.search.navigate(forward, screen);
+                return self.focus_after_layout(FocusTarget::Search);
+            }
+            SearchAction::Close => {
+                self.search.close();
+                return self.focus_screen();
+            }
+        }
+        Task::none()
+    }
+
     fn update(&mut self, event: Event) -> Task<Event> {
         let state = self;
         match event {
@@ -370,9 +448,10 @@ impl Tab {
                 if !events.is_empty() {
                     state.revision = state.revision.wrapping_add(1);
                 }
+                let previous_offset = state.parser.screen().scrollback();
                 for event in events {
                     match event {
-                        Output::Bytes(bytes) => state.parser.process(&bytes),
+                        Output::Bytes(bytes) => state.search.process(&mut state.parser, &bytes),
                         Output::Closed => {
                             state.session = None;
                             state.status = Status::Exited;
@@ -388,6 +467,9 @@ impl Tab {
                 if !replies.is_empty() {
                     state.send(replies);
                 }
+                state
+                    .search
+                    .refresh(state.parser.screen_mut(), previous_offset);
             }
             Event::Input(request, bytes) if request == state.request => state.send(bytes),
             Event::Resize(request, rows, cols) if request == state.request => {
@@ -395,6 +477,8 @@ impl Tab {
                 if state.parser.screen().size() != (rows, cols) {
                     state.revision = state.revision.wrapping_add(1);
                     state.parser.screen_mut().set_size(rows, cols);
+                    let screen = state.parser.screen_mut();
+                    state.search.refresh(screen, screen.scrollback());
                     if let Some(session) = &state.session
                         && session.resize(rows, cols).is_err()
                     {
@@ -442,6 +526,14 @@ impl Tab {
 
 #[derive(Default)]
 pub(crate) struct Replies(Vec<u8>);
+
+pub(super) fn search_id(request: u64) -> String {
+    format!("terminal-find-{request}")
+}
+
+pub(super) fn screen_id(request: u64) -> String {
+    format!("terminal-canvas-{request}")
+}
 
 struct Stream {
     request: u64,

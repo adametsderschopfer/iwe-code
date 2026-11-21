@@ -2803,6 +2803,16 @@
         "sources": ["src/modules/terminal/state/title.rs"]
       },
       {
+        "id": "terminal-output-search",
+        "category": "added",
+        "text": {
+          "en": "Find text in each terminal tab’s screen and history. Jump between highlighted matches as new output arrives.",
+          "ru": "Ищите текст на экране терминала и в истории вкладки. Переходите между подсвеченными совпадениями по мере поступления вывода.",
+          "es": "Busca texto en la pantalla y el historial de cada pestaña. Recorre las coincidencias resaltadas mientras llegan nuevos datos."
+        },
+        "sources": ["src/modules/terminal/search/mod.rs"]
+      },
+      {
         "id": "skip-disabled-editor-focus",
         "category": "fixed",
         "text": {

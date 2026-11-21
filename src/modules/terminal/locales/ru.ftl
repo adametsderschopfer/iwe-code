@@ -8,3 +8,5 @@ terminal-new-tab = Новый терминал
 terminal-close-tab = Закрыть вкладку и завершить сессию
 terminal-hide = Скрыть панель терминала
 terminal-paste-too-large = Текст слишком длинный для вставки. Выберите меньший фрагмент.
+terminal-find = Найти в терминале
+terminal-match-count = { $current } из { $total }

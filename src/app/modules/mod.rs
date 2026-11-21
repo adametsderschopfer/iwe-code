@@ -255,7 +255,13 @@ impl App {
     fn update_terminal(&mut self, event: terminal::Event) -> Task<Message> {
         match event {
             terminal::Event::Focus(request) => {
-                if self.modules.terminal.open && self.modules.terminal.active == Some(request) {
+                if self.modules.terminal.open
+                    && let Some(tab) = self
+                        .modules
+                        .terminal
+                        .active_tab_mut()
+                        .filter(|tab| tab.request == request)
+                {
                     self.modules.git.branch_selection.selected.clear();
                     for preview in &mut self.tabs.files {
                         if let Some(document) = &preview.document {
@@ -264,6 +270,7 @@ impl App {
                                 .update(crate::ui::code::selection::Action::Clear, document);
                         }
                     }
+                    return tab.focus_screen().map(terminal_message);
                 }
                 return Task::none();
             }
