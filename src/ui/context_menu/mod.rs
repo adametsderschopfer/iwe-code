@@ -21,6 +21,23 @@ pub(crate) fn trigger<'a, Message: 'a>(
         content: content.into(),
         on_open: Some(Box::new(move |point, _| on_open(point))),
         on_key: None,
+        window_anchor: None,
+        popup_position: None,
+        anchored: false,
+        fallback: false,
+    })
+}
+
+/// Resolve popup anchors before a scrollable translates the pointer into content coordinates.
+pub(crate) fn window_anchor<'a, Message: 'a>(
+    content: Element<'a, Message>,
+    map: fn(Message, Point) -> Message,
+) -> Element<'a, Message> {
+    Element::new(Trigger {
+        content,
+        on_open: None,
+        on_key: None,
+        window_anchor: Some(map),
         popup_position: None,
         anchored: false,
         fallback: false,
@@ -36,6 +53,7 @@ pub(crate) fn positioned<'a, Message: 'a>(
         content: content.into(),
         on_open: Some(Box::new(on_open)),
         on_key: None,
+        window_anchor: None,
         popup_position: None,
         anchored: false,
         fallback: false,
@@ -50,6 +68,7 @@ pub(crate) fn fallback<'a, Message: 'a>(
         content: content.into(),
         on_open: Some(Box::new(move |point, _| on_open(point))),
         on_key: None,
+        window_anchor: None,
         popup_position: None,
         anchored: false,
         fallback: true,
@@ -64,6 +83,7 @@ pub(crate) fn anchored<'a, Message: 'a>(
         content: content.into(),
         on_open: Some(Box::new(move |point, _| on_open(point))),
         on_key: None,
+        window_anchor: None,
         popup_position: None,
         anchored: true,
         fallback: false,
@@ -81,6 +101,7 @@ pub(crate) fn on_key<'a, Message: 'a>(
         content: content.into(),
         on_open: None,
         on_key: Some(Box::new(handler)),
+        window_anchor: None,
         popup_position: None,
         anchored: false,
         fallback: false,
@@ -107,6 +128,7 @@ struct Trigger<'a, Message> {
     content: Element<'a, Message>,
     on_open: Option<Box<dyn Fn(Point, Point) -> Message + 'a>>,
     on_key: Option<KeyHandler<'a, Message>>,
+    window_anchor: Option<fn(Message, Point) -> Message>,
     popup_position: Option<Placement>,
     anchored: bool,
     fallback: bool,
@@ -180,6 +202,19 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
                 viewport,
             );
         };
+        if let Some(map) = self.window_anchor
+            && matches!(
+                event,
+                Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Right))
+            )
+            && let Some(point) = cursor.position()
+        {
+            let mut messages = Vec::new();
+            let mut child_shell = Shell::new(&mut messages);
+            update_child(&mut child_shell);
+            shell.merge(child_shell, |message| map(message, point));
+            return;
+        }
         if self.fallback {
             update_child(shell);
             if shell.is_event_captured() {
@@ -404,6 +439,7 @@ fn panel<'a, Message: 'a>(
             content: content(available.width),
             on_open: None,
             on_key: None,
+            window_anchor: None,
             popup_position: Some(placement),
             anchored: false,
             fallback: false,

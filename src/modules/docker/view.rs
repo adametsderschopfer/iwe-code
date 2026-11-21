@@ -310,12 +310,17 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
                 .center(Length::Fill),
         );
     } else {
-        content = content.push(
+        content = content.push(context_menu::window_anchor(
             scrollable(rows)
                 .id("docker-rows")
                 .height(Length::Fill)
-                .style(style::scroll),
-        );
+                .style(style::scroll)
+                .into(),
+            |event, point| match event {
+                Event::Menu(id, _) => Event::Menu(id, point),
+                event => event,
+            },
+        ));
     }
     if state.filtered.len() > PAGE {
         content = content.push(context_menu::separator()).push(pagination(

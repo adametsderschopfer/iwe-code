@@ -942,3 +942,51 @@ fn selecting_active_docker_tabs_and_rows_preserves_the_current_view() {
         assert_eq!(state.query, "app");
     }
 }
+
+#[test]
+fn scrolled_resource_popups_use_the_window_pointer_and_the_clicked_row() {
+    use crate::i18n::{I18n, Language};
+    use iced::{mouse, widget::Id};
+    let json = (0..35)
+        .map(|i| format!(r#"{{"ID":"id{i:02}","Names":"row{i:02}","State":"running"}}"#))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let mut state = State {
+        open: true,
+        items: Arc::new(adapter::parse(Kind::Containers, &json).unwrap()),
+        ..Default::default()
+    };
+    state.filter();
+    let i18n = I18n::new(Language::English);
+    let mut ui = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        (680., 350.),
+        panel(&state, &i18n, true),
+    );
+    let bounds = ui
+        .find(Id::new("docker-rows"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    let point = Point::new(bounds.center_x(), bounds.y + 80.);
+    ui.point_at(point);
+    ui.simulate([iced::Event::Mouse(mouse::Event::WheelScrolled {
+        delta: mouse::ScrollDelta::Pixels { x: 0., y: -160. },
+    })]);
+    let (expected, point) = (0..35)
+        .find_map(|i| {
+            let area = ui.find(format!("row{i:02}")).ok()?.visible_bounds()?;
+            (area.y > bounds.y + 25. && area.y < bounds.y + 120.)
+                .then(|| (format!("id{i:02}"), area.center()))
+        })
+        .unwrap();
+    assert_ne!(expected, "id00");
+    ui.point_at(point);
+    ui.simulate([iced::Event::Mouse(mouse::Event::ButtonPressed(
+        mouse::Button::Right,
+    ))]);
+    assert!(
+        ui.into_messages()
+            .any(|event| matches!(event,Event::Menu(id,anchor) if id==expected && anchor==point))
+    );
+}

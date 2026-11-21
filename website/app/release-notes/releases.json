@@ -2701,6 +2701,16 @@
           "es": "Pulsar la pestaña o el recurso activo de Docker conserva el filtro, la página y las propiedades."
         },
         "sources": ["src/modules/docker/mod.rs"]
+      },
+      {
+        "id": "docker-scroll-menu-position",
+        "category": "changed",
+        "text": {
+          "en": "Docker resource menus open at the pointer even after scrolling the list.",
+          "ru": "Меню ресурса Docker открывается у курсора после прокрутки списка.",
+          "es": "Los menús de recursos de Docker se abren junto al puntero incluso después de desplazar la lista."
+        },
+        "sources": ["src/ui/context_menu/mod.rs"]
       }
     ]
   }
