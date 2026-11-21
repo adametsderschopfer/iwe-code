@@ -2691,6 +2691,16 @@
           "es": "Abre la imagen exacta de un contenedor o consulta sus contenedores en ejecución en una pestaña."
         },
         "sources": ["src/modules/docker/relations.rs"]
+      },
+      {
+        "id": "docker-repeat-selection",
+        "category": "changed",
+        "text": {
+          "en": "Clicking the active Docker tab or resource preserves its filter, page, and properties.",
+          "ru": "Повторный клик по активной вкладке или ресурсу Docker сохраняет фильтр, страницу и свойства.",
+          "es": "Pulsar la pestaña o el recurso activo de Docker conserva el filtro, la página y las propiedades."
+        },
+        "sources": ["src/modules/docker/mod.rs"]
       }
     ]
   }

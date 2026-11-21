@@ -376,7 +376,9 @@ impl State {
                 self.error = None;
             }
             _ if self.busy.is_some() => {}
-            Event::ShowRunning(true) if self.kind == Kind::Images && self.selected().is_some() => {
+            Event::ShowRunning(true)
+                if !self.show_running && self.kind == Kind::Images && self.selected().is_some() =>
+            {
                 self.show_running = true;
                 return self.load_running(root);
             }
@@ -421,7 +423,9 @@ impl State {
                     || self.draft.is_some() => {}
             Event::Connections => return self.connections(root),
             Event::Tick | Event::Refresh => return self.list(root),
-            Event::Context(name) if self.contexts.contains(&name) => {
+            Event::Context(name)
+                if self.context.as_ref() != Some(&name) && self.contexts.contains(&name) =>
+            {
                 self.context = Some(name);
                 self.connection_error = None;
                 self.items = Arc::default();
@@ -429,7 +433,7 @@ impl State {
                 self.filter();
                 return self.list(root);
             }
-            Event::Kind(kind) => {
+            Event::Kind(kind) if kind != self.kind => {
                 self.kind = kind;
                 self.items = Arc::default();
                 self.query.clear();
@@ -441,7 +445,10 @@ impl State {
                 self.menu = Some((id, point));
             }
             Event::BackToList => self.clear_selection(),
-            Event::Select(id) if self.items.iter().any(|item| item.id == id) => {
+            Event::Select(id)
+                if self.selected.as_ref() != Some(&id)
+                    && self.items.iter().any(|item| item.id == id) =>
+            {
                 self.clear_selection();
                 self.selected = Some(id);
             }

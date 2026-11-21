@@ -914,3 +914,31 @@ fn following_a_container_image_reveals_its_page_and_links_back_to_running_contai
     );
     assert!(state.running.is_none());
 }
+
+#[test]
+fn selecting_active_docker_tabs_and_rows_preserves_the_current_view() {
+    let rows = adapter::parse(Kind::Images, r#"{"ID":"s","Repository":"app","Tag":"v2"}"#).unwrap();
+    let mut state = State {
+        kind: Kind::Images,
+        selected: Some("app:v2".into()),
+        items: Arc::new(rows),
+        context: Some("remote".into()),
+        contexts: vec!["remote".into()],
+        show_running: true,
+        query: "app".into(),
+        request: 12,
+        ..Default::default()
+    };
+    for event in [
+        Event::Context("remote".into()),
+        Event::Kind(Kind::Images),
+        Event::Select("app:v2".into()),
+        Event::ShowRunning(true),
+    ] {
+        let _ = state.update(event, Path::new("."), true);
+        assert_eq!(state.request, 12);
+        assert!(state.show_running && state.busy.is_none());
+        assert_eq!(state.selected.as_deref(), Some("app:v2"));
+        assert_eq!(state.query, "app");
+    }
+}
