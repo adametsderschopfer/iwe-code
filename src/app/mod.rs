@@ -113,9 +113,7 @@ fn application(
             iced::time::every(std::time::Duration::from_secs(60))
                 .map(|_| Message::Update(updates::Event::Automatic(updates::Trigger::Periodic))),
             window::events().filter_map(|(id, event)| match event {
-                window::Event::Unfocused => Some(Message::BranchSelection(
-                    branch_selection::Event::Unfocused(id),
-                )),
+                window::Event::Unfocused => Some(Message::WindowUnfocused(id)),
                 window::Event::Focused => Some(Message::WindowFocused(id)),
                 _ => None,
             }),
@@ -133,9 +131,7 @@ fn application(
             external::subscription(),
             iced::event::listen_with(|event, status, id| {
                 if let iced::Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) = event {
-                    Some(Message::BranchSelection(
-                        branch_selection::Event::Modifiers(id, modifiers),
-                    ))
+                    Some(Message::WindowModifiers(id, modifiers))
                 } else if let iced::Event::Keyboard(event) = event {
                     Some(Message::Shortcut(shortcuts::Event::Key(id, event, status)))
                 } else {
@@ -221,7 +217,9 @@ pub(crate) struct App {
     pub file_panel_visible: bool,
     spaces_sidebar_transition: Option<(std::time::Instant, f32)>,
     pub explain: explain::State,
-    pub sidebar_menu_choices: bool,
+    pub project_menu_page: spaces::ProjectMenuPage,
+    pub project_selection: Option<crate::domain::workspace::ProjectSelection>,
+    pub project_modifiers: keyboard::Modifiers,
     pub project_menu: Option<(usize, PathBuf, iced::Point)>,
     pub space_menu: Option<(usize, spaces::Menu)>,
     pub repository_menu: Option<iced::Point>,
@@ -279,6 +277,8 @@ pub(crate) enum Message {
     Editor(editor::Event),
     WindowOpened(window::Id),
     WindowFocused(window::Id),
+    WindowModifiers(window::Id, keyboard::Modifiers),
+    WindowUnfocused(window::Id),
     Window(windows::Event),
     WindowShortcut(window::Id, Box<Message>),
     #[cfg(target_os = "macos")]
@@ -324,7 +324,8 @@ pub(crate) enum Message {
     TogglePinned,
     RemoveProjectFromSpace,
     CloseProjectMenu,
-    SidebarMenuChoices(bool),
+    ProjectMenuPage(spaces::ProjectMenuPage),
+    ToggleProjectSelection(usize, PathBuf),
     ProjectFolder(bool),
     ProjectFolderOpened(bool),
     TransferProject(usize),
@@ -465,7 +466,9 @@ impl App {
             file_panel_visible: true,
             spaces_sidebar_transition: None,
             explain: explain::State::default(),
-            sidebar_menu_choices: false,
+            project_menu_page: spaces::ProjectMenuPage::Actions,
+            project_selection: None,
+            project_modifiers: keyboard::Modifiers::empty(),
             project_menu: None,
             space_menu: None,
             repository_menu: None,
@@ -653,6 +656,8 @@ impl App {
                             | crate::modules::terminal::Event::Focus(_)
                     ))
                     | Message::SelectProject(_, _)
+                    | Message::ToggleProjectSelection(..)
+                    | Message::TransferProject(_)
                     | Message::RevealGitBranches
                     | Message::RevealRepositoryBranches(_)
                     | Message::RemoveProjectFromSpace
@@ -733,12 +738,25 @@ impl App {
             Message::SearchEverywhere(event) => return self.update_search_everywhere(event),
             Message::TextSearch(event) => return self.update_text_search(event),
             Message::Git(message) => return self.update_git(message),
-            Message::BranchSelection(event) => {
-                if matches!(&event, branch_selection::Event::Unfocused(id) if self.windows.settings == Some(*id))
-                {
+            Message::WindowModifiers(id, modifiers) => {
+                if self.window_id == Some(id) {
+                    self.project_modifiers = modifiers;
+                }
+                return self
+                    .update_branch_selection(branch_selection::Event::Modifiers(id, modifiers));
+            }
+            Message::WindowUnfocused(id) => {
+                if self.window_id == Some(id) {
+                    self.project_modifiers = keyboard::Modifiers::empty();
+                }
+                if self.windows.settings == Some(id) {
                     self.window_zoom_preview = None;
                 }
-                return self.update_branch_selection(event);
+                return self.update_branch_selection(branch_selection::Event::Unfocused(id));
+            }
+            Message::BranchSelection(event) => return self.update_branch_selection(event),
+            Message::ToggleProjectSelection(space, path) => {
+                self.toggle_project_selection(space, path);
             }
             Message::ProjectMenu(space, path, point)
                 if self.space_draft.is_none()
@@ -749,11 +767,22 @@ impl App {
                 self.space_menu = None;
                 self.modules.git.git_actions.close_menu();
                 self.files.menu = None;
-                self.sidebar_menu_choices = false;
+                self.project_menu_page = spaces::ProjectMenuPage::Actions;
+                if !self
+                    .project_selection
+                    .as_ref()
+                    .is_some_and(|set| set.contains(space, &path))
+                {
+                    self.project_selection = None;
+                }
                 self.project_menu = Some((space, path, point));
             }
-            Message::SidebarMenuChoices(show) => self.sidebar_menu_choices = show,
-            Message::TransferProject(destination) => return self.transfer_project(destination),
+            Message::ProjectMenuPage(page) if self.project_menu.is_some() => {
+                self.project_menu_page = page
+            }
+            Message::TransferProject(destination) => {
+                return self.change_selected_projects(Some(destination));
+            }
             Message::ProjectFolder(copy) => {
                 if let Some((_, path, _)) = self.project_menu.take() {
                     if copy {
@@ -793,7 +822,7 @@ impl App {
                 self.modules.git.git_actions.close_menu();
                 self.modules.git.git_actions.bulk.menu = None;
                 self.files.menu = None;
-                self.sidebar_menu_choices = false;
+                self.project_menu_page = spaces::ProjectMenuPage::Actions;
                 if let Message::SpaceMenu(_, point) = message {
                     self.space_menu = Some((index, spaces::Menu::Context(point)));
                 } else {
@@ -861,7 +890,7 @@ impl App {
                 self.settings_tab = SettingsTab::About;
                 return self.update(Message::Navigate(Navigation::Settings));
             }
-            Message::RemoveProjectFromSpace => return self.remove_project_from_space(),
+            Message::RemoveProjectFromSpace => return self.change_selected_projects(None),
             Message::TogglePinned => {
                 if let Some((space, path, _)) = self.project_menu.take()
                     && let Some(project) = self.workspace.spaces.get_mut(space).and_then(|group| {
@@ -1099,7 +1128,12 @@ impl App {
                 if self.files.menu.take().is_some() {
                     return Task::none();
                 }
-                self.project_menu = None;
+                if self.project_menu.take().is_some() {
+                    return Task::none();
+                }
+                if self.project_selection.take().is_some() {
+                    return Task::none();
+                }
                 if self.modules.git.git_actions.menu.is_some()
                     || self.modules.git.git_actions.history.menu.is_some()
                     || self.modules.git.git_actions.bulk.menu.is_some()
@@ -1124,6 +1158,7 @@ impl App {
                 return self.update_auth(auth::Message::Cancel);
             }
             Message::SelectProject(space, project) => {
+                self.project_selection = None;
                 self.navigation = Navigation::Projects;
                 if self.workspace.selected_space == Some(space)
                     && self.workspace.selected_project == Some(project)
@@ -1151,6 +1186,7 @@ impl App {
                 self.file_panel = panel;
             }
             Message::ToggleSpacesSidebar if self.loaded => {
+                self.project_selection = None;
                 self.space_menu = None;
                 self.project_menu = None;
                 let now = std::time::Instant::now();
@@ -1902,6 +1938,7 @@ impl App {
         self.line_navigation = None;
         self.modules.git.git_actions.close_menu();
         self.project_menu = None;
+        self.project_selection = None;
         self.space_menu = None;
         let directory = self.workspace.directory().cloned();
         self.modules

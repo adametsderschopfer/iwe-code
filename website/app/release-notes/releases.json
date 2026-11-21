@@ -2611,6 +2611,16 @@
           "es": "Añade una carpeta local o clona un repositorio desde el menú lateral de Añadir proyecto."
         },
         "sources": ["src/app/spaces.rs"]
+      },
+      {
+        "id": "spaces-project-selection",
+        "category": "added",
+        "text": {
+          "en": "Move selected projects between spaces or remove them together.",
+          "ru": "Переносите выбранные проекты между пространствами или убирайте их вместе.",
+          "es": "Mueve proyectos seleccionados entre espacios o quítalos juntos."
+        },
+        "sources": ["src/app/spaces.rs"]
       }
     ]
   }

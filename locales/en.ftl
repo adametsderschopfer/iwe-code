@@ -296,6 +296,10 @@ file-count = { $count ->
 pinned-projects = Pinned
 pin-project = Pin project
 unpin-project = Unpin project
+projects-selected = Selected projects: { $count }
+remove-selected-projects = Remove selected projects
+no-project-destination = No space can receive these projects without duplicate folders.
+remove-projects-hint = Remove these projects from their spaces? Their folders and files will stay on disk.
 remove-project-from-space = Remove project from space
 all-repositories = All repositories
 

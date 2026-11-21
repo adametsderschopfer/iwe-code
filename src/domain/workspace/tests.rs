@@ -325,8 +325,12 @@ fn transferring_a_project_preserves_selection_and_pin() {
     assert!(workspace.select_project(0, 0));
     workspace.spaces[0].projects[0].pinned = true;
 
-    assert!(!workspace.transfer_project(0, &second, 1));
-    assert!(workspace.transfer_project(0, &first, 1));
+    assert!(
+        !workspace.move_or_remove_projects(&ProjectSelection::single(0, second.clone()), Some(1))
+    );
+    assert!(
+        workspace.move_or_remove_projects(&ProjectSelection::single(0, first.clone()), Some(1))
+    );
     assert_eq!(workspace.directory(), Some(&first));
     assert_eq!(workspace.selected_space, Some(1));
     assert!(workspace.spaces[1].projects[1].pinned);
@@ -348,4 +352,47 @@ fn typography_preferences_restore_defaults_and_clamp_independently() {
         serde_json::from_str(&serde_json::to_string(&workspace).unwrap()).unwrap();
     assert_eq!(restored.preferences.window_zoom, 200);
     assert_eq!(restored.preferences.code_font, CodeFont::JetBrainsMono);
+}
+
+#[test]
+fn batch_project_moves_validate_every_entry_and_keep_source_order() {
+    let mut workspace = Workspace::default();
+    workspace.create_space("First".into(), ["c", "a", "b"].map(PathBuf::from).to_vec());
+    workspace.create_space("Second".into(), ["d", "copy"].map(PathBuf::from).to_vec());
+    workspace.create_space("Conflict".into(), vec![PathBuf::from("a")]);
+    workspace.create_space("Target".into(), vec![PathBuf::from("existing")]);
+    workspace.select_project(0, 1);
+    workspace.spaces[0].projects[0].pinned = true;
+    let mut selected = ProjectSelection::single(0, "a".into());
+    selected.toggle(0, "c".into());
+    selected.toggle(1, "d".into());
+    selected.toggle(3, "existing".into());
+    let before = serde_json::to_value(&workspace).unwrap();
+    assert!(!workspace.move_or_remove_projects(&selected, Some(2)));
+    let mut stale = selected.clone();
+    stale.toggle(0, "missing".into());
+    assert!(!workspace.move_or_remove_projects(&stale, Some(3)));
+    assert!(!workspace.move_or_remove_projects(&stale, None));
+    let mut duplicate = selected.clone();
+    duplicate.toggle(2, "a".into());
+    assert!(duplicate.destinations(&workspace).is_empty());
+    assert_eq!(serde_json::to_value(&workspace).unwrap(), before);
+
+    assert!(workspace.move_or_remove_projects(&selected, Some(3)));
+    assert_eq!(
+        workspace.spaces[3]
+            .projects
+            .iter()
+            .map(|p| p.name.as_str())
+            .collect::<Vec<_>>(),
+        ["existing", "c", "a", "d"]
+    );
+    assert!(workspace.spaces[3].projects[1].pinned);
+    assert_eq!(
+        (workspace.selected_space, workspace.selected_project),
+        (Some(3), Some(2))
+    );
+    assert_eq!(workspace.spaces[0].projects[0].name, "b");
+    assert_eq!(workspace.spaces[1].projects[0].name, "copy");
+    assert_eq!(workspace.spaces[2].projects[0].name, "a");
 }

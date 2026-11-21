@@ -42,6 +42,53 @@ impl Project {
     }
 }
 
+/// Sidebar selection identifies each membership by its space and directory.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ProjectSelection(BTreeMap<usize, BTreeSet<PathBuf>>);
+
+impl ProjectSelection {
+    pub(crate) fn single(space: usize, path: PathBuf) -> Self {
+        Self(BTreeMap::from([(space, BTreeSet::from([path]))]))
+    }
+
+    pub(crate) fn contains(&self, space: usize, path: &Path) -> bool {
+        self.0.get(&space).is_some_and(|paths| paths.contains(path))
+    }
+
+    pub(crate) fn toggle(&mut self, space: usize, path: PathBuf) {
+        let paths = self.0.entry(space).or_default();
+        if !paths.remove(&path) {
+            paths.insert(path);
+        } else if paths.is_empty() {
+            self.0.remove(&space);
+        }
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.0.values().map(BTreeSet::len).sum()
+    }
+
+    pub(crate) fn destinations(&self, workspace: &Workspace) -> Vec<usize> {
+        let paths: BTreeSet<_> = self.0.values().flatten().collect();
+        if paths.len() != self.len() {
+            return Vec::new();
+        }
+        workspace
+            .spaces
+            .iter()
+            .enumerate()
+            .filter_map(|(index, space)| {
+                let incoming = self.0.keys().any(|&source| source != index);
+                let conflict = space
+                    .projects
+                    .iter()
+                    .any(|p| paths.contains(&p.directory) && !self.contains(index, &p.directory));
+                (incoming && !conflict).then_some(index)
+            })
+            .collect()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Space {
     pub name: String,
@@ -421,37 +468,58 @@ impl Workspace {
         true
     }
 
-    pub(crate) fn transfer_project(&mut self, source: usize, path: &Path, target: usize) -> bool {
-        if source == target
-            || self.spaces.get(target).is_none_or(|space| {
-                space
-                    .projects
-                    .iter()
-                    .any(|project| project.directory == path)
-            })
+    /// Move the selected entries together, or remove their memberships when no destination is given.
+    pub(crate) fn move_or_remove_projects(
+        &mut self,
+        selection: &ProjectSelection,
+        destination: Option<usize>,
+    ) -> bool {
+        if selection.0.is_empty()
+            || destination.is_some_and(|index| !selection.destinations(self).contains(&index))
         {
             return false;
         }
-        let Some(index) = self.spaces.get(source).and_then(|space| {
-            space
+        for (&index, paths) in &selection.0 {
+            let Some(space) = self.spaces.get(index) else {
+                return false;
+            };
+            if space
                 .projects
                 .iter()
-                .position(|project| project.directory == path)
-        }) else {
-            return false;
-        };
-        let project = self.spaces[source].projects.remove(index);
-        let destination = self.spaces[target].projects.len();
-        self.spaces[target].projects.push(project);
-        if self.selected_space == Some(source) {
-            match self.selected_project {
-                Some(selected) if selected == index => {
-                    self.select_project(target, destination);
-                }
-                Some(selected) if selected > index => self.selected_project = Some(selected - 1),
-                _ => {}
+                .filter(|p| paths.contains(&p.directory))
+                .count()
+                != paths.len()
+            {
+                return false;
             }
         }
+        let active = self.selected_space.zip(self.directory().cloned());
+        let mut moved = Vec::new();
+        for (&index, paths) in &selection.0 {
+            if Some(index) != destination {
+                moved.extend(
+                    self.spaces[index]
+                        .projects
+                        .extract_if(.., |p| paths.contains(&p.directory)),
+                );
+            }
+        }
+        if let Some(target) = destination {
+            self.spaces[target].projects.extend(moved);
+        }
+        if let Some((source, path)) = active {
+            let space = if selection.contains(source, &path) {
+                destination.unwrap_or(source)
+            } else {
+                source
+            };
+            self.selected_space = Some(space);
+            self.selected_project = self.spaces[space]
+                .projects
+                .iter()
+                .position(|p| p.directory == path);
+        }
+        self.normalize();
         true
     }
 

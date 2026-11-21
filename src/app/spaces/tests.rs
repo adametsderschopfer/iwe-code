@@ -906,3 +906,102 @@ fn dragging_spaces_preserves_selection_collapsed_state_and_saved_order() {
     let _ = app.update_space(Message::MoveSpace(99, 0));
     assert_eq!(serde_json::to_value(&app.workspace).unwrap(), before);
 }
+
+#[test]
+fn command_click_project_group_can_move_and_remove_memberships() {
+    use crate::i18n::Key;
+    use iced::{Point, keyboard::Modifiers, widget::Id};
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let mut app = state(language);
+        app.workspace
+            .preferences
+            .disabled_modules
+            .insert("git".into());
+        let root = tempfile::tempdir().unwrap();
+        let api = root.path().join("api");
+        let web = root.path().join("web");
+        std::fs::create_dir(&api).unwrap();
+        std::fs::create_dir(&web).unwrap();
+        app.workspace
+            .create_space("Team".into(), vec![api.clone(), web.clone()]);
+        app.workspace.create_space("Archive".into(), Vec::new());
+        app.workspace.spaces[0].projects[1].pinned = true;
+        app.workspace.select_project(0, 0);
+        let id = iced::window::Id::unique();
+        app.window_id = Some(id);
+        let click = |app: &mut App, target: Id| {
+            let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+            ui.click(target).unwrap();
+            for message in ui.into_messages() {
+                let _ = app.update(message);
+            }
+        };
+        let click_label = |app: &mut App, label: String| {
+            let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+            ui.click(label).unwrap();
+            for message in ui.into_messages() {
+                let _ = app.update(message);
+            }
+        };
+        let _ = app.update(AppMessage::WindowModifiers(id, Modifiers::COMMAND));
+        click(&mut app, Id::new("space-project-0-1"));
+        assert_eq!(app.project_selection.as_ref().unwrap().len(), 2);
+        assert_eq!(app.workspace.directory(), Some(&api));
+        click(&mut app, Id::new("space-project-0-1"));
+        assert_eq!(app.project_selection.as_ref().unwrap().len(), 1);
+        click(&mut app, Id::new("space-project-0-1"));
+        let _ = app.update(AppMessage::WindowModifiers(id, Modifiers::empty()));
+        let _ = app.update(AppMessage::ProjectMenu(
+            0,
+            web.clone(),
+            Point::new(80., 180.),
+        ));
+        let label = app.i18n.text(Key::ProjectMoveToSpace);
+        click_label(&mut app, label);
+        click(&mut app, Id::new("project-destination-1"));
+        assert_eq!(app.workspace.selected_space, Some(1));
+        assert_eq!(app.workspace.directory(), Some(&api));
+        assert!(app.workspace.spaces[0].projects.is_empty());
+        assert!(app.workspace.spaces[1].projects[1].pinned);
+
+        let _ = app.update(AppMessage::WindowModifiers(id, Modifiers::COMMAND));
+        click(&mut app, Id::new("space-project-1-1"));
+        let _ = app.update(AppMessage::WindowUnfocused(id));
+        assert!(!app.project_modifiers.command());
+        let _ = app.update(AppMessage::ProjectMenu(
+            1,
+            api.clone(),
+            Point::new(80., 180.),
+        ));
+        click(&mut app, Id::new("remove-selected-projects"));
+        assert_eq!(app.project_menu_page, ProjectMenuPage::ConfirmRemoval);
+        let cancel = app.i18n.text(Key::Cancel);
+        click_label(&mut app, cancel);
+        assert_eq!(app.project_menu_page, ProjectMenuPage::Actions);
+        assert_eq!(app.workspace.spaces[1].projects.len(), 2);
+        click(&mut app, Id::new("remove-selected-projects"));
+        click(&mut app, Id::new("remove-selected-projects"));
+        assert!(app.workspace.spaces[1].projects.is_empty());
+        assert!(app.workspace.directory().is_none());
+        assert!(api.is_dir() && web.is_dir());
+    }
+}
+
+#[test]
+fn context_click_on_an_unselected_project_does_not_remove_the_group() {
+    let mut app = state(Language::English);
+    let api = PathBuf::from("api");
+    let web = PathBuf::from("web");
+    app.workspace
+        .create_space("Main".into(), vec![api.clone(), web.clone()]);
+    app.workspace
+        .create_space("Other".into(), vec![web.clone()]);
+    app.workspace.select_project(0, 0);
+    let _ = app.update(AppMessage::ToggleProjectSelection(0, web.clone()));
+    let _ = app.update(AppMessage::ProjectMenu(1, web, iced::Point::ORIGIN));
+    assert_eq!(app.project_menu_selection().unwrap().len(), 1);
+    let _ = app.update(AppMessage::RemoveProjectFromSpace);
+    assert!(app.workspace.spaces[1].projects.is_empty());
+    assert_eq!(app.workspace.spaces[0].projects.len(), 2);
+    assert_eq!(app.workspace.directory(), Some(&api));
+}

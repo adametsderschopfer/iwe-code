@@ -1,7 +1,15 @@
 use super::{App, Message as AppMessage, Navigation};
-use crate::infrastructure::workspace;
+use crate::{domain::workspace::ProjectSelection, infrastructure::workspace};
 use iced::{Task, widget::operation};
 use std::path::PathBuf;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProjectMenuPage {
+    Actions,
+    Destinations,
+    ConfirmRemoval,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum Menu {
     Context(iced::Point),
@@ -53,27 +61,40 @@ pub(crate) enum Message {
 }
 
 impl App {
-    pub(super) fn transfer_project(&mut self, destination: usize) -> Task<AppMessage> {
-        if self.picking
-            || self.space_draft.is_some()
-            || self.auth_dialog.is_some()
-            || self.modules.git.git_actions.has_dialog()
-            || self.modules.git.git_actions.pending
+    pub(super) fn toggle_project_selection(&mut self, space: usize, path: PathBuf) {
+        if !self
+            .workspace
+            .spaces
+            .get(space)
+            .is_some_and(|group| group.projects.iter().any(|p| p.directory == path))
         {
-            return Task::none();
+            return;
         }
-        let Some((source, path, _)) = self.project_menu.take() else {
-            return Task::none();
-        };
-        if self.workspace.transfer_project(source, &path, destination) {
-            self.collapsed_spaces.remove(&destination);
-            self.save()
-        } else {
-            Task::none()
-        }
+        let selection = self.project_selection.get_or_insert_with(|| {
+            self.workspace
+                .selected_space
+                .zip(self.workspace.directory())
+                .map(|(space, path)| ProjectSelection::single(space, path.clone()))
+                .unwrap_or_default()
+        });
+        selection.toggle(space, path);
     }
 
-    pub(super) fn remove_project_from_space(&mut self) -> Task<AppMessage> {
+    pub(crate) fn project_menu_selection(&self) -> Option<ProjectSelection> {
+        let (space, path, _) = self.project_menu.as_ref()?;
+        Some(
+            self.project_selection
+                .as_ref()
+                .filter(|set| set.contains(*space, path))
+                .cloned()
+                .unwrap_or_else(|| ProjectSelection::single(*space, path.clone())),
+        )
+    }
+
+    pub(super) fn change_selected_projects(
+        &mut self,
+        destination: Option<usize>,
+    ) -> Task<AppMessage> {
         if self.picking
             || self.space_draft.is_some()
             || self.auth_dialog.is_some()
@@ -82,33 +103,33 @@ impl App {
         {
             return Task::none();
         }
-        let Some((index, path, _)) = self.project_menu.take() else {
+        let Some(selection) = self.project_menu_selection() else {
             return Task::none();
         };
-        let Some(space) = self.workspace.spaces.get(index) else {
-            return Task::none();
-        };
-        if !space
-            .projects
-            .iter()
-            .any(|project| project.directory == path)
+        if destination.is_none()
+            && selection.len() > 1
+            && self.project_menu_page != ProjectMenuPage::ConfirmRemoval
         {
             return Task::none();
         }
-        let name = space.name.clone();
-        let directories = space
-            .projects
-            .iter()
-            .filter(|project| project.directory != path)
-            .map(|project| project.directory.clone())
-            .collect();
         let previous = self.workspace.directory().cloned();
-        if !self.workspace.update_space(index, name, directories) {
+        if !self
+            .workspace
+            .move_or_remove_projects(&selection, destination)
+        {
             return Task::none();
+        }
+        self.project_menu = None;
+        self.project_selection = None;
+        if let Some(target) = destination {
+            self.collapsed_spaces.remove(&target);
         }
         let load = if self.workspace.directory() != previous.as_ref() {
             self.load_directory()
         } else {
+            self.modules
+                .deployment
+                .sync_context(self.workspace.selected_space, previous.as_deref());
             Task::none()
         };
         Task::batch([load, self.save()])
@@ -173,6 +194,7 @@ impl App {
                 if !self.workspace.remove_space(index) {
                     return Task::none();
                 }
+                self.project_selection = None;
                 self.space_draft = None;
                 self.space_menu = None;
                 self.project_menu = None;
@@ -241,6 +263,7 @@ impl App {
                     && self.space_draft.is_none() =>
             {
                 if self.workspace.move_space(from, to) {
+                    self.project_selection = None;
                     self.collapsed_spaces = self
                         .collapsed_spaces
                         .iter()
@@ -299,6 +322,7 @@ impl App {
                     return Task::none();
                 }
                 let previous = self.workspace.directory().cloned();
+                self.project_selection = None;
                 if let Some(draft) = self.space_draft.take() {
                     if let Some(index) = draft.editing {
                         self.workspace

@@ -137,6 +137,14 @@ have icons beside their labels. Red text marks actions that remove items or can 
 The project menu can open its folder, copy its path, or move the project to another space. Moving a
 project preserves its files and pinned status.
 
+Hold Command on macOS or Ctrl on Windows and Linux while clicking projects to change the selection.
+The first modified click starts with the open project. Click a selected project again with the
+modifier to deselect it. The Spaces heading shows the selection count. A regular project click or
+Escape ends the selection. Right-click a selected project to move the group to another space or
+remove its entries. Confirm a group removal to keep the folders on disk and remove the workspace
+entries. Moving projects preserves their order within each source space, their pins, and the open
+editor. The destination menu lists spaces that can accept the group without duplicate folders.
+
 Open the space menu to add a local folder, clone a repository, or collapse its project list. The
 menu also provides **Edit space** and **Delete space**. The edit form also places **Delete space**
 at the left of its bottom action row. Deleting a space removes its saved project entries, including

@@ -296,6 +296,10 @@ file-count = { $count ->
 pinned-projects = Fijados
 pin-project = Fijar proyecto
 unpin-project = Desfijar proyecto
+projects-selected = Proyectos seleccionados: { $count }
+remove-selected-projects = Quitar proyectos seleccionados
+no-project-destination = Ningún espacio puede recibir estos proyectos sin duplicar carpetas.
+remove-projects-hint = ¿Quitar estos proyectos de sus espacios? Las carpetas y los archivos seguirán en el disco.
 remove-project-from-space = Quitar proyecto del espacio
 all-repositories = Todos los repositorios
 

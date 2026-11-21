@@ -297,6 +297,10 @@ file-count = { $count ->
 pinned-projects = Закреплённые
 pin-project = Закрепить проект
 unpin-project = Открепить проект
+projects-selected = Выбрано проектов: { $count }
+remove-selected-projects = Убрать выбранные проекты
+no-project-destination = Нет пространства, куда можно перенести эти проекты без повторяющихся папок.
+remove-projects-hint = Убрать эти проекты из пространств? Папки и файлы сохранятся на диске.
 remove-project-from-space = Убрать проект из пространства
 all-repositories = Все репозитории
 

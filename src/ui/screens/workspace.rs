@@ -498,15 +498,26 @@ fn footer(app: &App) -> Element<'_, Message> {
         .into()
 }
 
+fn selection_count(app: &App, count: usize) -> String {
+    let mut args = FluentArgs::new();
+    args.set("count", count as i64);
+    app.i18n.format(Key::ProjectsSelected, &args)
+}
+
 fn sidebar(app: &App) -> Element<'_, Message> {
     let navigation: Element<'_, Message> = {
         container(
             row![
                 container(
-                    text(app.i18n.text(Key::Spaces))
-                        .size(14)
-                        .font(theme::semibold())
-                        .style(theme::MUTED.text())
+                    text(
+                        app.project_selection
+                            .as_ref()
+                            .map(|set| selection_count(app, set.len()))
+                            .unwrap_or_else(|| app.i18n.text(Key::Spaces))
+                    )
+                    .size(14)
+                    .font(theme::semibold())
+                    .style(theme::MUTED.text())
                 )
                 .id("spaces-heading")
                 .width(Length::Fill),
@@ -1025,6 +1036,10 @@ fn project_entry(app: &App, space_index: usize, project_index: usize) -> Element
     let project = &group.projects[project_index];
     let active = app.workspace.selected_space == Some(space_index)
         && app.workspace.selected_project == Some(project_index);
+    let marked = app
+        .project_selection
+        .as_ref()
+        .map(|set| set.contains(space_index, &project.directory));
     let mut title = column![text(short(&project.name, 20)).size(13)];
     if project.pinned {
         title = title.push(
@@ -1035,8 +1050,18 @@ fn project_entry(app: &App, space_index: usize, project_index: usize) -> Element
     }
     let mut contents = row![
         icon(
-            Icon::Folder,
-            if active { theme::TEXT } else { theme::MUTED }
+            if marked == Some(true) {
+                Icon::Check
+            } else {
+                Icon::Folder
+            },
+            if marked == Some(true) {
+                theme::BLUE
+            } else if active {
+                theme::TEXT
+            } else {
+                theme::MUTED
+            }
         ),
         title.width(Length::Fill),
     ]
@@ -1059,8 +1084,12 @@ fn project_entry(app: &App, space_index: usize, project_index: usize) -> Element
             button(contents)
                 .padding([5, 9])
                 .width(Length::Fill)
-                .style(theme::action(active))
-                .on_press(Message::SelectProject(space_index, project_index)),
+                .style(theme::action(marked.unwrap_or(active)))
+                .on_press(if app.project_modifiers.command() {
+                    Message::ToggleProjectSelection(space_index, project.directory.clone())
+                } else {
+                    Message::SelectProject(space_index, project_index)
+                }),
         )
         .id(format!("space-project-{space_index}-{project_index}"))
         .width(Length::Fill),
@@ -1071,20 +1100,6 @@ fn project_entry(app: &App, space_index: usize, project_index: usize) -> Element
     context_menu::trigger(entry, move |point| {
         Message::ProjectMenu(space_index, path.clone(), point)
     })
-}
-
-fn sidebar_menu_item(
-    label: String,
-    message: Option<Message>,
-    destructive: bool,
-) -> iced::widget::Button<'static, Message> {
-    let mut label = text(label)
-        .size(context_menu::TEXT_SIZE)
-        .wrapping(text::Wrapping::None);
-    if destructive {
-        label = label.style(theme::GIT_REMOVED.text());
-    }
-    context_menu::row(label).on_press_maybe(message)
 }
 
 fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
@@ -1100,21 +1115,14 @@ fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Mes
     }) else {
         return base;
     };
-    let destinations: Vec<_> = app
-        .workspace
-        .spaces
-        .iter()
-        .enumerate()
-        .filter(|(index, space)| {
-            index != source
-                && !space
-                    .projects
-                    .iter()
-                    .any(|project| &project.directory == path)
-        })
-        .collect();
+    use spaces::ProjectMenuPage;
+    let Some(selection) = app.project_menu_selection() else {
+        return base;
+    };
+    let count = selection.len();
+    let destinations = selection.destinations(&app.workspace);
     let can_edit = !app.modules.git.git_actions.pending && !app.picking;
-    let height = if app.sidebar_menu_choices {
+    let height = if app.project_menu_page == ProjectMenuPage::Destinations {
         ((destinations.len() + 1) as f32 * 28. + 16.).min(212.)
     } else {
         185.
@@ -1122,20 +1130,26 @@ fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Mes
     context_menu::overlay(
         base,
         *point,
-        iced::Size::new(252., height),
+        iced::Size::new(252. + context_menu::ICON_COLUMN_WIDTH, height),
         move || {
-            let item = |key, message| sidebar_menu_item(app.i18n.text(key), Some(message), false);
-            if app.sidebar_menu_choices {
+            let item =
+                |key, message| context_menu::action(key, app.i18n.text(key)).on_press(message);
+            if app.project_menu_page == ProjectMenuPage::Destinations {
                 let mut choices = column![item(
                     Key::SidebarMenuBack,
-                    Message::SidebarMenuChoices(false)
+                    Message::ProjectMenuPage(ProjectMenuPage::Actions)
                 )];
-                for (index, space) in &destinations {
-                    choices = choices.push(sidebar_menu_item(
-                        short(&space.name, 27),
-                        can_edit.then_some(Message::TransferProject(*index)),
-                        false,
-                    ));
+                for &index in &destinations {
+                    let space = &app.workspace.spaces[index];
+                    choices = choices.push(
+                        container(
+                            context_menu::row(context_menu::icon_label(None, space.name.clone()))
+                                .on_press_maybe(
+                                    can_edit.then_some(Message::TransferProject(index)),
+                                ),
+                        )
+                        .id(format!("project-destination-{index}")),
+                    );
                 }
                 return container(
                     iced::widget::scrollable(choices)
@@ -1145,7 +1159,69 @@ fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Mes
                 .max_height(196.)
                 .into();
             }
-            let mut items = column![
+            let transfer = || -> Element<'_, Message> {
+                let control = context_menu::action(
+                    Key::ProjectMoveToSpace,
+                    app.i18n.text(Key::ProjectMoveToSpace),
+                )
+                .on_press_maybe(
+                    (can_edit && !destinations.is_empty())
+                        .then_some(Message::ProjectMenuPage(ProjectMenuPage::Destinations)),
+                );
+                if destinations.is_empty() {
+                    tooltip::view(
+                        control,
+                        text(app.i18n.text(Key::NoProjectDestination)).size(12),
+                        tooltip::Position::Right,
+                    )
+                    .into()
+                } else {
+                    control.into()
+                }
+            };
+            if count > 1 {
+                let mut items = column![
+                    container(
+                        text(selection_count(app, count))
+                            .size(12)
+                            .style(theme::MUTED.text())
+                    )
+                    .padding([4, 8]),
+                    context_menu::separator()
+                ];
+                let confirm = app.project_menu_page == ProjectMenuPage::ConfirmRemoval;
+                if confirm {
+                    items = items
+                        .push(
+                            container(text(app.i18n.text(Key::RemoveProjectsHint)).size(13))
+                                .padding([6, 8]),
+                        )
+                        .push(item(
+                            Key::Cancel,
+                            Message::ProjectMenuPage(ProjectMenuPage::Actions),
+                        ));
+                } else {
+                    items = items.push(transfer());
+                }
+                let remove = if confirm {
+                    Message::RemoveProjectFromSpace
+                } else {
+                    Message::ProjectMenuPage(ProjectMenuPage::ConfirmRemoval)
+                };
+                return items
+                    .push(
+                        container(
+                            context_menu::action(
+                                Key::RemoveSelectedProjects,
+                                app.i18n.text(Key::RemoveSelectedProjects),
+                            )
+                            .on_press_maybe(can_edit.then_some(remove)),
+                        )
+                        .id("remove-selected-projects"),
+                    )
+                    .into();
+            }
+            let items = column![
                 container(item(
                     if project.pinned {
                         Key::UnpinProject
@@ -1158,13 +1234,8 @@ fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Mes
                 item(Key::ProjectOpenFolder, Message::ProjectFolder(false)),
                 item(Key::CopyPath, Message::ProjectFolder(true)),
             ];
-            if !destinations.is_empty() {
-                items = items.push(item(
-                    Key::ProjectMoveToSpace,
-                    Message::SidebarMenuChoices(true),
-                ));
-            }
             items
+                .push(transfer())
                 .push(crate::ui::explain::submenu(
                     &app.i18n,
                     crate::domain::explain::Target::Project(project.name.clone(), path.clone()),
@@ -1172,11 +1243,13 @@ fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Mes
                 ))
                 .push(context_menu::separator())
                 .push(
-                    container(sidebar_menu_item(
-                        app.i18n.text(Key::RemoveProjectFromSpace),
-                        can_edit.then_some(Message::RemoveProjectFromSpace),
-                        true,
-                    ))
+                    container(
+                        context_menu::action(
+                            Key::RemoveProjectFromSpace,
+                            app.i18n.text(Key::RemoveProjectFromSpace),
+                        )
+                        .on_press_maybe(can_edit.then_some(Message::RemoveProjectFromSpace)),
+                    )
                     .id("remove-project-from-space"),
                 )
                 .into()

@@ -22,7 +22,7 @@ fn symbol(key: Key) -> Option<Icon> {
     use Key::*;
     Some(match key {
         FileTrash | DeleteSpace | GitDelete | GitBulkDelete | GitHistoryDeleteTag => Icon::Trash,
-        RemoveProjectFromSpace => Icon::Minus,
+        RemoveProjectFromSpace | RemoveSelectedProjects => Icon::Minus,
         FileCopy | CopyPath | CopyPathMenu | CopyAbsolutePath | GitHistoryCopy | FileDuplicate
         | DuplicateLine => Icon::Duplicate,
         FileCut => Icon::Cut,
@@ -71,6 +71,7 @@ pub(crate) fn action_style(
         Key::FileTrash
             | Key::DeleteSpace
             | Key::RemoveProjectFromSpace
+            | Key::RemoveSelectedProjects
             | Key::GitDelete
             | Key::GitBulkDelete
             | Key::GitHistoryDeleteTag

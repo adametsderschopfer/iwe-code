@@ -95,7 +95,10 @@ fn all_catalogs_have_the_complete_key_set_and_resolve_without_errors() {
                 Key::UpdateAvailable => {
                     args.set("version", "0.1.11");
                 }
-                Key::FileCount | Key::BranchesSelected | Key::DeploymentQueued => {
+                Key::FileCount
+                | Key::BranchesSelected
+                | Key::ProjectsSelected
+                | Key::DeploymentQueued => {
                     args.set("count", 3);
                 }
                 Key::GitBulkResult => {
