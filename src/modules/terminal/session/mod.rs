@@ -52,6 +52,16 @@ impl Session {
         Self::spawn(directory, rows, cols, command)
     }
 
+    pub(super) fn program(
+        directory: &Path,
+        path: &Path,
+        args: Vec<String>,
+    ) -> Result<Arc<Self>, ()> {
+        let mut command = CommandBuilder::new(path);
+        command.args(args);
+        Self::spawn(directory, 24, 80, command)
+    }
+
     fn spawn(
         directory: &Path,
         rows: u16,

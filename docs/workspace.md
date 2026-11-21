@@ -663,10 +663,11 @@ Language changes apply immediately. General also switches between **Dark** and *
 Dark remains the default. Appearance changes apply immediately to panels, dialogs, source code, and
 both diff views. The choice survives restarts. Switching themes preserves open files and scroll
 positions. Code adjusts the source font size and line numbers. Code and Terminal each have a font
-family list. The bottom toolbar lists Terminal, Git, and Pipelines in that order. Opening one panel
-hides the current panel. Select the active button again to collapse its panel. The toolbar stays
-vertical. It sits beside the open panel or at the bottom of the file toolbar when collapsed. Drag
-the horizontal divider to resize the open panel.
+family list. The bottom toolbar lists Terminal, Docker, Git, and Pipelines in that order. Opening
+one panel hides the current panel. Select the active button again to collapse its panel. The buttons
+stay at the bottom of the vertical toolbar when you open, switch, or collapse a panel. Drag the
+horizontal divider to resize the open panel. If the buttons no longer fit, scroll the toolbar to
+reach them.
 
 On macOS, choose **IWE Code** → **Settings** to open the settings window. **Spaces**, **Projects**,
 and **Deployment** appear beside the **IWE Code** application menu. **Deployment** offers separate
@@ -678,10 +679,10 @@ menu.
 
 On Windows, the workspace header starts with a **File**, **View**, **Deployment**, and **Help** menu
 bar. **File** offers **New space**, **Add project**, **Settings**, and **Exit**. **View** toggles
-the Terminal, Git, and Pipelines panels and lists only available panels. **Deployment** appears
-while the module is enabled and opens the connections and servers windows. **Help** opens the
-settings window on its **About** section. Modal dialogs disable workspace actions in these menus,
-and any other interaction closes an open menu. Linux retains its existing sidebar controls.
+the Terminal, Docker, Git, and Pipelines panels and lists only available panels. **Deployment**
+appears while the module is enabled and opens the connections and servers windows. **Help** opens
+the settings window on its **About** section. Modal dialogs disable workspace actions in these
+menus, and any other interaction closes an open menu. Linux retains its existing sidebar controls.
 
 Escape dismisses dialogs and context menus, including forms with focused text fields. Escape closes
 the focused settings or deployment window. If a nested dialog is open, Escape dismisses that dialog
@@ -717,10 +718,10 @@ stays fixed and does not appear in settings.
 
 ## Modules
 
-Open **Settings → Modules** to enable or disable Git, Pipelines, Terminal, and Deployment. All
-modules are enabled by default. Disabling preserves their saved settings. Modules cannot be removed.
-Open **Terminal** from the bottom toolbar to run commands in the selected project's folder. See
-[modules and terminal sessions](modules.md) for controls, session behavior, and limits.
+Open **Settings → Modules** to enable or disable Git, Pipelines, Terminal, Docker, and Deployment.
+All modules are enabled by default. Disabling preserves their saved settings. Modules cannot be
+removed. Open **Terminal** from the bottom toolbar to run commands in the selected project's folder.
+See [modules and terminal sessions](modules.md) for controls, session behavior, and limits.
 
 ## Application updates
 

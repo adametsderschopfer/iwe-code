@@ -1955,6 +1955,7 @@ impl App {
             self.modules.git.git_actions.pending = false;
             self.editor.menu = None;
             self.editor.rename = None;
+            self.modules.docker.reset();
             self.modules.terminal.reset();
             self.file_panel = self.workspace.preferences.file_panels[0];
             self.file_panel_visible = true;
@@ -2066,7 +2067,9 @@ impl App {
     pub(crate) fn panel_available(&self, id: ModuleId) -> bool {
         self.module_enabled(id)
             && match id {
-                ModuleId::Terminal | ModuleId::Git => self.workspace.directory().is_some(),
+                ModuleId::Docker | ModuleId::Terminal | ModuleId::Git => {
+                    self.workspace.directory().is_some()
+                }
                 ModuleId::Pipelines => self.has_remote(),
                 ModuleId::Deployment => false,
             }
@@ -2093,11 +2096,13 @@ impl App {
     fn hide_other_bottom_panels(&mut self, id: ModuleId) {
         self.workspace.preferences.show_git &= id == ModuleId::Git;
         self.workspace.preferences.show_pipelines &= id == ModuleId::Pipelines;
+        self.modules.docker.open &= id == ModuleId::Docker;
         self.modules.terminal.open &= id == ModuleId::Terminal;
     }
 
     fn sync_panels(&mut self) {
         let visible = [
+            (ModuleId::Docker, 0.51),
             (ModuleId::Terminal, 0.68),
             (ModuleId::Git, 0.62),
             (ModuleId::Pipelines, 0.72),

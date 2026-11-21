@@ -11,6 +11,10 @@ use iced::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Icon {
+    Docker,
+    Cube,
+    Network,
+    Volume,
     Locate,
     More,
     Check,
@@ -33,6 +37,8 @@ pub(crate) enum Icon {
     Cut,
     Paste,
     Trash,
+    Pause,
+    Stop,
     Rename,
     Right,
     Down,
@@ -158,6 +164,20 @@ impl Drawing {
                 line(&[(8., 8.), (8.5, 15.)]);
                 line(&[(12., 8.), (11.5, 15.)]);
             }
+            Icon::Pause => {
+                for x in [6., 12.] {
+                    frame.fill(
+                        &Path::rectangle(Point::new(x, 3.), iced::Size::new(2., 14.)),
+                        self.1.resolve(theme),
+                    );
+                }
+            }
+            Icon::Stop => {
+                frame.stroke(
+                    &Path::rectangle(Point::new(4., 4.), iced::Size::new(12., 12.)),
+                    stroke,
+                );
+            }
             Icon::Rename => {
                 line(&[
                     (3., 13.),
@@ -174,6 +194,73 @@ impl Drawing {
                 line(&[(3., 10.), (17., 10.)]);
                 line(&[(6., 6.), (8., 6.)]);
                 line(&[(6., 13.), (8., 13.)]);
+            }
+            Icon::Cube => {
+                line(&[
+                    (10., 2.),
+                    (17., 6.),
+                    (17., 14.),
+                    (10., 18.),
+                    (3., 14.),
+                    (3., 6.),
+                    (10., 2.),
+                ]);
+                line(&[(3., 6.), (10., 10.), (17., 6.)]);
+                line(&[(10., 10.), (10., 18.)]);
+            }
+            Icon::Network => {
+                line(&[(10., 7.), (10., 10.)]);
+                line(&[(5., 13.), (5., 10.), (15., 10.), (15., 13.)]);
+                for (x, y) in [(7., 2.), (2., 13.), (12., 13.)] {
+                    let device = Path::rectangle(Point::new(x, y), iced::Size::new(6., 5.));
+                    frame.stroke(&device, stroke);
+                }
+            }
+            Icon::Volume => {
+                let path = Path::new(|pen| {
+                    pen.move_to(Point::new(3., 5.));
+                    pen.bezier_curve_to(
+                        Point::new(3., 1.),
+                        Point::new(17., 1.),
+                        Point::new(17., 5.),
+                    );
+                    pen.bezier_curve_to(
+                        Point::new(17., 9.),
+                        Point::new(3., 9.),
+                        Point::new(3., 5.),
+                    );
+                    pen.line_to(Point::new(3., 15.));
+                    pen.bezier_curve_to(
+                        Point::new(3., 19.),
+                        Point::new(17., 19.),
+                        Point::new(17., 15.),
+                    );
+                    pen.line_to(Point::new(17., 5.));
+                });
+                frame.stroke(&path, stroke);
+            }
+            Icon::Docker => {
+                for (x, y) in [
+                    (3., 9.),
+                    (7., 9.),
+                    (11., 9.),
+                    (7., 5.),
+                    (11., 5.),
+                    (11., 1.),
+                ] {
+                    line(&[(x, y), (x + 3., y), (x + 3., y + 3.), (x, y + 3.), (x, y)]);
+                }
+                line(&[
+                    (1., 13.),
+                    (14., 13.),
+                    (16., 11.),
+                    (19., 11.),
+                    (16., 15.),
+                    (12., 18.),
+                    (5., 18.),
+                    (2., 16.),
+                    (1., 13.),
+                ]);
             }
             Icon::Locate => {
                 line(&[(10., 2.), (10., 6.)]);

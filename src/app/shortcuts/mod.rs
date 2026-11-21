@@ -132,11 +132,12 @@ impl App {
                     return self.update(Message::Zoom(delta));
                 }
                 if self.window_id == Some(id)
-                    && (self
-                        .editor
-                        .rename
-                        .as_ref()
-                        .is_some_and(|form| form.tab == self.preview().id)
+                    && (self.modules.docker.has_dialog()
+                        || self
+                            .editor
+                            .rename
+                            .as_ref()
+                            .is_some_and(|form| form.tab == self.preview().id)
                         || self
                             .editor
                             .menu

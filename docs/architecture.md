@@ -406,12 +406,12 @@ rendering. Workspace metadata never contains credentials. See
 ## Bundled modules
 
 `modules/catalog/` defines stable module identifiers and the bundled catalog. Each entry declares
-its system origin. Git, Pipelines, Terminal, and Deployment are enabled by default. The activation
-switches persist disabled identifiers in preferences. Unknown identifiers remain intact. Disabling
-stops subscriptions, hides controls, and invalidates asynchronous results. Configuration remains
-intact. Disabling Terminal ends its sessions. Disabling Deployment cancels transfers and clears its
-queue. Submitted Git and provider writes can finish externally; enabling never resubmits them.
-Module availability alone does not start a terminal process.
+its system origin. Git, Pipelines, Terminal, Docker, and Deployment are enabled by default. The
+activation switches persist disabled identifiers in preferences. Unknown identifiers remain intact.
+Disabling stops subscriptions, hides controls, and invalidates asynchronous results. Configuration
+remains intact. Disabling Terminal ends its sessions. Disabling Deployment cancels transfers and
+clears its queue. Submitted Git and provider writes can finish externally; enabling never resubmits
+them. Module availability alone does not start a terminal process.
 
 Git owns history, selection, and action state under `modules/git/`. Pipelines owns run and job state
 under `modules/pipelines/`. Their views accept explicit read-only projections and emit module
@@ -423,6 +423,15 @@ application messages. `ui/modules.rs` projects the catalog into settings and pas
 values to module views. `Panel::Module` connects module panels to the existing resizable workspace.
 Each bundled module keeps its implementation under `modules/<name>/`. Shared application code
 retains its layers. No module marketplace exists.
+
+The Docker module owns connection selection, paginated inventories, operation forms, and bounded
+Docker CLI tasks. It refreshes visible lists and rejects stale completions using request
+identifiers. The host opens a terminal tab for explicit Docker shell requests using separate
+executable arguments. See [Docker operations](modules.md#docker).
+
+The local image reader decodes raster images and renders SVG files on bounded background workers.
+Tab identifiers and project generations protect image results. The host releases image handles when
+it stashes a project.
 
 External modules install from local `.iwe-module` packages without recompilation. Each module runs
 as a separate process and speaks a line-delimited JSON protocol (`api: 1`) over stdin and stdout.
@@ -553,8 +562,8 @@ and every space's projects, and activates them by opening files or switching pro
 interlocks with the other workspace dialogs like Go to Line. `ui/screens/search_everywhere/` renders
 the popup and routes popup keys before the focused search input.
 
-Terminal, Git, and Pipelines share one optional bottom panel position. The workspace guide lists
-platform-specific keyboard shortcuts. Middle-click closes the targeted tab.
+Terminal, Docker, Git, and Pipelines share one optional bottom panel position. The workspace guide
+lists platform-specific keyboard shortcuts. Middle-click closes the targeted tab.
 
 The launcher tries these backends in order:
 

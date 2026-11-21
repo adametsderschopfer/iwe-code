@@ -104,6 +104,7 @@ fn view_items(app: &App) -> Element<'_, Message> {
     let mut available = 0;
     for (id, label, widget_id) in [
         (ModuleId::Terminal, Key::Terminal, "menu-item-terminal"),
+        (ModuleId::Docker, Key::Docker, "menu-item-docker"),
         (ModuleId::Git, Key::Git, "menu-item-git"),
         (ModuleId::Pipelines, Key::Pipelines, "menu-item-pipelines"),
     ] {

@@ -21,7 +21,8 @@ pub(crate) const ICON_COLUMN_WIDTH: f32 = ICON_SIZE + ICON_SPACING;
 fn symbol(key: Key) -> Option<Icon> {
     use Key::*;
     Some(match key {
-        FileTrash | DeleteSpace | GitDelete | GitBulkDelete | GitHistoryDeleteTag => Icon::Trash,
+        FileTrash | DeleteSpace | DockerRemove | GitDelete | GitBulkDelete
+        | GitHistoryDeleteTag => Icon::Trash,
         RemoveProjectFromSpace | RemoveSelectedProjects => Icon::Minus,
         FileCopy | CopyPath | CopyPathMenu | CopyAbsolutePath | GitHistoryCopy | FileDuplicate
         | DuplicateLine => Icon::Duplicate,
@@ -30,7 +31,7 @@ fn symbol(key: Key) -> Option<Icon> {
         FileNew | FileNewFile | AddProject => Icon::Plus,
         ProjectOpenFolder | FileNewFolder | FileReveal | DeploymentOpenLocal => Icon::Folder,
         FileRename | EditSpace | EditorRenameLocal | GitRename | GitHistoryMessage => Icon::Rename,
-        FindFile | FindFiles | EditorUsages => Icon::Search,
+        FindFile | FindFiles | EditorUsages | DockerInspect => Icon::Search,
         GoToDefinition | GitHistoryTip => Icon::Locate,
         PinProject | UnpinProject => Icon::Pin,
         SidebarMenuBack => Icon::Back,
@@ -40,9 +41,12 @@ fn symbol(key: Key) -> Option<Icon> {
         DeploymentDownload | GitBulkPull => Icon::Fetch,
         DeploymentOpenRemote | GitHistoryBrowser => Icon::External,
         GitNewBranch => Icon::Branch,
-        GitUpdate => Icon::Refresh,
-        GitHistoryTag => Icon::Tag,
-
+        GitUpdate | DockerRestart => Icon::Refresh,
+        GitHistoryTag | DockerTag => Icon::Tag,
+        DockerConnect => Icon::Network,
+        DockerStart | DockerResume => Icon::Play,
+        DockerPause => Icon::Pause,
+        DockerStop => Icon::Stop,
         Terminal => Icon::Terminal,
         _ => return None,
     })
@@ -76,6 +80,7 @@ pub(crate) fn action_style(
             | Key::GitBulkDelete
             | Key::GitHistoryDeleteTag
             | Key::GitHistoryReset
+            | Key::DockerRemove
     );
     move |theme, status| {
         let mut style = theme::action(selected)(theme, status);

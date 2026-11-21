@@ -56,6 +56,10 @@ fn all_catalogs_have_the_complete_key_set_and_resolve_without_errors() {
         for &key in Key::ALL {
             let mut args = FluentArgs::new();
             match key {
+                Key::DockerProgress => {
+                    args.set("operation", "Docker");
+                    args.set("seconds", 1);
+                }
                 Key::ExplainFile | Key::ExplainDirectory => args.set("path", "/tmp/project"),
                 Key::ExplainCommit => args.set("commit", "abc123"),
                 Key::ExplainBranch => args.set("branch", "main"),
@@ -271,7 +275,7 @@ fn module_messages_stay_in_module_catalogs_and_resolve_in_every_language() {
         .map(str::to_owned)
         .collect();
     for language in LANGUAGES {
-        let [shared, terminal, _deployment, _git, _pipelines] = language.sources();
+        let [shared, terminal, ..] = language.sources();
         let message_keys = |source: &str| {
             let resource = FluentResource::try_new(source.to_owned()).unwrap();
             resource

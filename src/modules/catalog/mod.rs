@@ -6,6 +6,7 @@ pub(crate) enum ModuleId {
     Pipelines,
     Terminal,
     Deployment,
+    Docker,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,11 +37,16 @@ pub(crate) const MODULES: &[Module] = &[
         id: ModuleId::Deployment,
         origin: Origin::System,
     },
+    Module {
+        id: ModuleId::Docker,
+        origin: Origin::System,
+    },
 ];
 
 impl ModuleId {
     pub(crate) const fn key(self) -> &'static str {
         match self {
+            Self::Docker => "docker",
             Self::Git => "git",
             Self::Pipelines => "pipelines",
             Self::Terminal => "terminal",

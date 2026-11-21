@@ -115,7 +115,7 @@ fn disabled_terminal_rejects_events_and_reenable_starts_a_new_session() {
 }
 
 #[test]
-fn bottom_toolbar_opens_and_hides_the_terminal_through_module_events() {
+fn bottom_toolbar_buttons_stay_in_place_when_opening_switching_and_closing_panels() {
     use crate::domain::repository::{Remote, Repository};
 
     let mut app = app();
@@ -131,26 +131,37 @@ fn bottom_toolbar_opens_and_hides_the_terminal_through_module_events() {
         }
         .into(),
     );
-    for opened in [true, false] {
+    let buttons = ["nav-terminal", "nav-docker", "nav-git", "nav-pipelines"];
+    let mut closed_bounds = None;
+    for (button, module, opened) in [
+        ("nav-terminal", ModuleId::Terminal, true),
+        ("nav-terminal", ModuleId::Terminal, false),
+        ("nav-docker", ModuleId::Docker, true),
+        ("nav-git", ModuleId::Git, true),
+        ("nav-pipelines", ModuleId::Pipelines, true),
+        ("nav-pipelines", ModuleId::Pipelines, false),
+    ] {
         let mut ui = iced_test::Simulator::with_size(
             iced::Settings {
                 default_font: crate::ui::theme::font(),
                 ..iced::Settings::default()
             },
-            (1080., 720.),
+            (1080., 820.),
             app.view(),
         );
-        let [terminal, git, pipelines] = ["nav-terminal", "nav-git", "nav-pipelines"].map(|id| {
+        let bounds = buttons.map(|id| {
             ui.find(iced::widget::Id::new(id))
                 .unwrap()
                 .visible_bounds()
                 .unwrap()
         });
-        assert_eq!(terminal.x, git.x);
-        assert_eq!(git.x, pipelines.x);
-        assert!(terminal.y + terminal.height <= git.y);
-        assert!(git.y + git.height <= pipelines.y);
-        if app.modules.terminal.open {
+        assert_eq!(&bounds, closed_bounds.get_or_insert(bounds));
+        let terminal = bounds[0];
+        for pair in bounds.windows(2) {
+            assert_eq!(pair[0].x, pair[1].x);
+            assert!(pair[0].y + pair[0].height <= pair[1].y);
+        }
+        if app.panes.len() > 1 {
             let [files, bottom] = ["file-toolbar-divider", "bottom-toolbar-divider"].map(|id| {
                 ui.find(iced::widget::Id::new(id))
                     .unwrap()
@@ -158,6 +169,15 @@ fn bottom_toolbar_opens_and_hides_the_terminal_through_module_events() {
                     .unwrap()
             });
             assert_eq!((files.x, files.width), (bottom.x, bottom.width));
+            let last = bounds[3];
+            assert!(
+                (bottom.y + bottom.height
+                    - last.y
+                    - last.height
+                    - crate::ui::theme::FILE_PANEL_TOOL_INSET)
+                    .abs()
+                    <= 1.
+            );
         } else {
             let files = ui
                 .find(iced::widget::Id::new("file-panel-project"))
@@ -167,28 +187,76 @@ fn bottom_toolbar_opens_and_hides_the_terminal_through_module_events() {
             assert_eq!(files.x, terminal.x);
             assert!(files.y + files.height <= terminal.y);
         }
-        ui.click(iced::widget::Id::new("nav-terminal")).unwrap();
+        ui.click(iced::widget::Id::new(button)).unwrap();
         let messages = ui.into_messages().collect::<Vec<_>>();
-        assert!(
-            messages.iter().any(|message| matches!(
-                message,
-                Message::Module(Event::Toggle(ModuleId::Terminal))
-            ))
-        );
+        assert!(messages.iter().any(|message| matches!(
+            message,
+            Message::Module(Event::Toggle(id)) if *id == module
+        )));
         for message in messages {
             let _ = app.update(message);
         }
-        assert_eq!(app.modules.terminal.open, opened);
+        assert_eq!(app.module_open(module), opened);
         assert_eq!(
             app.panes
                 .iter()
-                .any(|(_, panel)| matches!(panel, crate::app::Panel::Module(ModuleId::Terminal))),
+                .any(|(_, panel)| matches!(panel, crate::app::Panel::Module(id) if *id == module)),
             opened
         );
     }
     let mut ui =
-        iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
-    assert!(ui.find(iced::widget::Id::new("nav-terminal")).is_ok());
+        iced_test::Simulator::with_size(iced::Settings::default(), (1080., 820.), app.view());
+    let bounds = buttons.map(|id| {
+        ui.find(iced::widget::Id::new(id))
+            .unwrap()
+            .visible_bounds()
+            .unwrap()
+    });
+    assert_eq!(Some(bounds), closed_bounds);
+}
+
+#[test]
+fn a_short_bottom_panel_keeps_the_last_button_visible_and_scrolls_to_the_first() {
+    use iced::{
+        mouse,
+        widget::{Id, pane_grid},
+    };
+
+    let mut app = app();
+    let _ = app.update_module(Event::Toggle(ModuleId::Docker));
+    let split = *app.panes.layout().splits().next().unwrap();
+    let _ = app.update(Message::Resize(pane_grid::ResizeEvent {
+        split,
+        ratio: 0.85,
+    }));
+    let mut ui =
+        iced_test::Simulator::with_size(iced::Settings::default(), (1080., 540.), app.view());
+    let last = ui
+        .find(Id::new("nav-git"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    assert_eq!(last.height, crate::ui::theme::FILE_PANEL_TOOL_SIZE);
+    assert!(
+        ui.find(Id::new("nav-terminal"))
+            .unwrap()
+            .visible_bounds()
+            .is_none()
+    );
+    ui.point_at(last.center());
+    ui.simulate([iced::Event::Mouse(mouse::Event::WheelScrolled {
+        delta: mouse::ScrollDelta::Lines { x: 0., y: 12. },
+    })]);
+    let first = ui
+        .click(Id::new("nav-terminal"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    assert_eq!(first.height, crate::ui::theme::FILE_PANEL_TOOL_SIZE);
+    assert!(
+        ui.into_messages()
+            .any(|message| matches!(message, Message::Module(Event::Toggle(ModuleId::Terminal))))
+    );
 }
 
 #[test]

@@ -44,10 +44,7 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
                         _ => crate::ui::modules::panel(app, *id),
                     };
                     row![
-                        vertical_toolbar(
-                            scrollable(panel_buttons(app)).into(),
-                            "bottom-toolbar-divider",
-                        ),
+                        vertical_toolbar(panel_buttons(app), "bottom-toolbar-divider"),
                         container(content).width(Length::Fill).height(Length::Fill),
                     ]
                     .into()
@@ -168,6 +165,13 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
             crate::modules::deployment::activity_details(&app.modules.deployment, &app.i18n)
                 .map(crate::app::modules::deployment_message)
         }),
+    );
+    let base = crate::modules::docker::overlay(
+        &app.modules.docker,
+        &app.i18n,
+        app.module_enabled(ModuleId::Terminal),
+        base,
+        crate::app::modules::docker_message,
     );
     let base = super::header_repositories::overlay(app, base);
     let base = super::tab_menu::overlay(app, base);
@@ -411,7 +415,7 @@ fn header_controls(app: &App, panel_span: f32) -> Element<'_, Message> {
     .into()
 }
 
-fn panel_buttons(app: &App) -> Column<'_, Message> {
+fn panel_buttons(app: &App) -> Element<'_, Message> {
     let buttons = [
         (
             ModuleId::Terminal,
@@ -419,6 +423,7 @@ fn panel_buttons(app: &App) -> Column<'_, Message> {
             Key::Terminal,
             "nav-terminal",
         ),
+        (ModuleId::Docker, Icon::Docker, Key::Docker, "nav-docker"),
         (ModuleId::Git, Icon::Branch, Key::Git, "nav-git"),
         (
             ModuleId::Pipelines,
@@ -449,7 +454,13 @@ fn panel_buttons(app: &App) -> Column<'_, Message> {
         )
         .into()
     });
-    column(buttons).spacing(theme::FILE_PANEL_TOOL_INSET)
+    container(
+        scrollable(column(buttons).spacing(theme::FILE_PANEL_TOOL_INSET))
+            .anchor_bottom()
+            .style(theme::scroll),
+    )
+    .align_bottom(Length::Fill)
+    .into()
 }
 
 fn footer(app: &App) -> Element<'_, Message> {
@@ -884,7 +895,7 @@ fn project_content(app: &App, width: f32) -> Element<'_, Message> {
     }
     let tools = reorder::fixed_column(tools, Message::MoveFilePanel);
     let tools = if app.panes.len() == 1 {
-        column![tools, space().height(Length::Fill), panel_buttons(app)].into()
+        column![tools, panel_buttons(app)].into()
     } else {
         tools
     };

@@ -30,7 +30,8 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
     let line_height = f32::from(app.workspace.preferences.code_line_height) / 100.;
     let font = theme::selected_code_font(app.workspace.preferences.code_font);
     let bindings = &app.workspace.preferences.shortcuts;
-    let blocked = app.editor.menu.as_ref().is_some_and(|menu| menu.tab == id)
+    let blocked = app.modules.docker.has_dialog()
+        || app.editor.menu.as_ref().is_some_and(|menu| menu.tab == id)
         || app
             .editor
             .rename

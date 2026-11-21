@@ -15,6 +15,7 @@ pub(crate) struct State {
     pub git: crate::modules::git::State,
     pub pipelines: crate::modules::pipelines::State,
     pub terminal: terminal::State,
+    pub docker: crate::modules::docker::State,
     pub deployment: crate::modules::deployment::State,
     pub external: external::State,
 }
@@ -26,6 +27,7 @@ pub(crate) enum Event {
     Git(crate::modules::git::Event),
     Pipelines(crate::modules::pipelines::Event),
     Terminal(terminal::Event),
+    Docker(crate::modules::docker::Event),
     Deployment(crate::modules::deployment::Event),
     External(external::Event),
 }
@@ -49,6 +51,19 @@ impl App {
                     ModuleId::Git | ModuleId::Pipelines => {
                         self.update(Message::TogglePanel(super::Panel::Module(id)))
                     }
+                    ModuleId::Docker => {
+                        self.modules.docker.open = !self.modules.docker.open;
+                        let task = if self.modules.docker.open {
+                            self.hide_other_bottom_panels(ModuleId::Docker);
+                            self.update_module(Event::Docker(
+                                crate::modules::docker::Event::Connections,
+                            ))
+                        } else {
+                            Task::none()
+                        };
+                        self.sync_panels();
+                        task
+                    }
                     ModuleId::Deployment => {
                         self.update_deployment(crate::modules::deployment::Event::Toggle)
                     }
@@ -70,6 +85,35 @@ impl App {
                 self.update_terminal(event)
             }
             Event::Terminal(_) => Task::none(),
+            Event::Docker(event) if self.module_enabled(ModuleId::Docker) => {
+                use crate::modules::docker::Event as Docker;
+                let terminal = self.module_enabled(ModuleId::Terminal);
+                match event {
+                    Docker::Hide => {
+                        self.modules.docker.open = false;
+                        self.sync_panels();
+                        Task::none()
+                    }
+                    Docker::Shell(id, args)
+                        if terminal && self.modules.docker.accepts_shell(id) =>
+                    {
+                        self.update_terminal(terminal::Event::StartProgram(
+                            crate::infrastructure::process::executable("docker"),
+                            args,
+                        ))
+                    }
+                    _ => {
+                        let Some(root) = self.workspace.directory() else {
+                            return Task::none();
+                        };
+                        self.modules
+                            .docker
+                            .update(event, root, terminal)
+                            .map(docker_message)
+                    }
+                }
+            }
+            Event::Docker(_) => Task::none(),
             Event::Deployment(event) if self.module_enabled(ModuleId::Deployment) => {
                 self.update_deployment(event)
             }
@@ -90,6 +134,12 @@ impl App {
                     .deployment
                     .subscription()
                     .map(deployment_message)
+            } else {
+                Subscription::none()
+            },
+            if self.module_open(ModuleId::Docker) {
+                iced::time::every(self.modules.docker.refresh_interval())
+                    .map(|_| docker_message(crate::modules::docker::Event::Tick))
             } else {
                 Subscription::none()
             },
@@ -121,7 +171,10 @@ impl App {
         }
         let panel_changed = matches!(
             event,
-            terminal::Event::Start | terminal::Event::Hide | terminal::Event::Close(_)
+            terminal::Event::Start
+                | terminal::Event::StartProgram(..)
+                | terminal::Event::Hide
+                | terminal::Event::Close(_)
         );
         let task = self
             .modules
@@ -159,10 +212,15 @@ impl App {
         match id {
             ModuleId::Git => self.workspace.preferences.show_git,
             ModuleId::Pipelines => self.workspace.preferences.show_pipelines,
+            ModuleId::Docker => self.modules.docker.open,
             ModuleId::Terminal => self.modules.terminal.open,
             ModuleId::Deployment => self.modules.deployment.open,
         }
     }
+}
+
+pub(crate) fn docker_message(event: crate::modules::docker::Event) -> Message {
+    Message::Module(Event::Docker(event))
 }
 
 fn terminal_message(event: terminal::Event) -> Message {
@@ -242,6 +300,7 @@ impl App {
         let mut tasks = Vec::new();
         if !enabled {
             match id {
+                ModuleId::Docker => self.modules.docker.reset(),
                 ModuleId::Terminal => self.modules.terminal.reset(),
                 ModuleId::Deployment => {
                     self.modules.deployment.suspend();

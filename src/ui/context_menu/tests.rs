@@ -128,6 +128,7 @@ fn destructive_menu_actions_keep_red_text_when_hovered_or_selected() {
                     Key::FileTrash,
                     Key::DeleteSpace,
                     Key::RemoveProjectFromSpace,
+                    Key::DockerRemove,
                     Key::GitDelete,
                     Key::GitBulkDelete,
                     Key::GitHistoryDeleteTag,

@@ -2621,6 +2621,16 @@
           "es": "Mueve proyectos seleccionados entre espacios o quítalos juntos."
         },
         "sources": ["src/app/spaces.rs"]
+      },
+      {
+        "id": "docker-resource-management",
+        "category": "added",
+        "text": {
+          "en": "Manage containers, images, networks, volumes, and Compose projects through local or remote Docker connections.",
+          "ru": "Управляйте контейнерами, образами, сетями, томами и проектами Compose через локальные или удалённые подключения Docker.",
+          "es": "Gestiona contenedores, imágenes, redes, volúmenes y proyectos Compose mediante conexiones Docker locales o remotas."
+        },
+        "sources": ["src/modules/docker/mod.rs"]
       }
     ]
   }

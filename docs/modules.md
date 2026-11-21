@@ -1,10 +1,11 @@
 # Modules
 
-IWE Code provides Git, Pipelines, Terminal, and Deployment under **Settings → Modules**. Each module
-is enabled by default. Each row provides an activation switch and a **System** badge. Changes apply
-immediately and persist across restarts. Modules remain installed when disabled. Saved connections,
-profiles, credentials, shortcuts, and panel preferences remain unchanged. Unknown module identifiers
-survive settings updates. Older settings without activation preferences enable every module.
+IWE Code provides Git, Pipelines, Terminal, Docker, and Deployment under **Settings → Modules**.
+Each module is enabled by default. Each row provides an activation switch and a **System** badge.
+Changes apply immediately and persist across restarts. Modules remain installed when disabled. Saved
+connections, profiles, credentials, shortcuts, and panel preferences remain unchanged. Unknown
+module identifiers survive settings updates. Older settings without activation preferences enable
+every module.
 
 Disabling hides module controls and panels. It also stops subscriptions and rejects new module
 actions. Terminal sessions end. Deployment transfers receive cancellation, and queued transfers are
@@ -28,6 +29,51 @@ Normal local file viewing remains available. Disabling Pipelines stops run and j
 including pipeline status updates in Git history.
 
 The application has no module store. Users install external modules from local package files.
+
+## Docker
+
+Open **Docker** on the vertical toolbar. Choose a connection above the resource list. IWE reads
+existing Docker CLI contexts. The initial selection follows the current Docker context. Choose **Add
+SSH connection** to save another named context. Docker uses your existing SSH configuration.
+Changing the panel selection only changes the connection used by IWE.
+
+Use the icons on the left to select a resource type. Hover over an icon to see its name. The
+adjacent list shows matching resources and their count. Select a row to open **Properties** with the
+available actions and command output. Each section scrolls independently. In a narrow panel,
+properties occupy the list area. Use **Back to list** to return to the filtered results.
+
+| Section    | Operations                                                                                                 |
+| ---------- | ---------------------------------------------------------------------------------------------------------- |
+| Containers | Create from an image, inspect, start, pause, resume, restart, stop, read logs, open a terminal, or remove. |
+| Images     | Pull an image, build from a Dockerfile, inspect, add a tag, or remove a tag.                               |
+| Networks   | Create a network, inspect it, connect or disconnect a container, or remove a user network.                 |
+| Volumes    | Create a volume, inspect it, or remove it. Docker protects volumes that containers still use.              |
+| Compose    | Deploy a local Compose file, inspect services, read logs, start, stop, restart, or remove a project.       |
+
+Select a resource or right-click its row for available operations. Filter by name, identifier,
+driver, image, or status. Lists display forty results per page. Refresh updates the selected
+section. The visible panel also checks idle lists every twelve seconds. Log requests retrieve the
+latest 500 lines per container. The details pane splits long output into pages. Terminal sessions
+run the selected executable inside the container. Enter its path if the image lacks the default
+shell. Closing the terminal tab ends the session. Removing a Compose project preserves named
+volumes.
+
+IWE asks for confirmation before stopping, pausing, restarting, disconnecting, or removing
+resources. The panel shows the operation and elapsed time while the editor remains available. Read
+requests time out after thirty seconds. Changes time out after ten minutes. Refresh after a timeout
+to see what Docker completed. Disabling the module discards pending interface results. Docker can
+finish an operation already submitted to the daemon.
+
+The container form groups the image and container name under **Settings**. **Runtime options**
+contains port mappings, mounts, environment variables, and an optional command. Scroll through the
+fields in smaller windows. The form keeps the submit and cancel buttons visible. Separate multiple
+values with spaces. Quote a value when it contains spaces or backslashes. Docker receives each value
+as a separate argument.
+
+Install Docker CLI and enable access to the selected daemon. Compose operations require the Docker
+Compose plugin. Existing contexts support the connection methods configured in Docker, including
+TLS. IWE never changes Docker's active context. A remote build sends its build context to the
+selected daemon. The module uses the selected Dockerfile's directory as its build context.
 
 ## External modules
 

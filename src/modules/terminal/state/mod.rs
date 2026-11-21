@@ -100,6 +100,7 @@ impl Tab {
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
     Start,
+    StartProgram(std::path::PathBuf, Vec<String>),
     Started(u64, Result<Arc<Session>, ()>),
     Close(u64),
     Select(u64),
@@ -137,7 +138,7 @@ impl State {
 
     pub(crate) fn update(&mut self, event: Event, directory: Option<&Path>) -> Task<Event> {
         match event {
-            Event::Start => {
+            Event::Start | Event::StartProgram(..) => {
                 let Some(directory) = directory.map(Path::to_owned) else {
                     return Task::none();
                 };
@@ -149,9 +150,14 @@ impl State {
                 self.open = true;
                 let start = Task::perform(
                     async move {
-                        tokio::task::spawn_blocking(move || Session::start(&directory, 24, 80))
-                            .await
-                            .unwrap_or(Err(()))
+                        tokio::task::spawn_blocking(move || match event {
+                            Event::StartProgram(path, args) => {
+                                Session::program(&directory, &path, args)
+                            }
+                            _ => Session::start(&directory, 24, 80),
+                        })
+                        .await
+                        .unwrap_or(Err(()))
                     },
                     move |result| Event::Started(request, result),
                 );
