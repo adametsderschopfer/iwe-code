@@ -233,17 +233,32 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
     let cursor = buffer.content.cursor().position;
     let size = app.workspace.preferences.code_size as f32;
     let mut body = row![];
-    if app.workspace.preferences.line_numbers {
+    let marks = if app.module_enabled(crate::modules::ModuleId::Git)
+        && buffer.marks.after == buffer.document.text
+    {
+        buffer.marks.hunks.as_slice()
+    } else {
+        &[]
+    };
+    let numbers = app.workspace.preferences.line_numbers;
+    if numbers || !marks.is_empty() {
         let digits = buffer.content.line_count().max(1).ilog10() + 1;
         body = body.push(
             container(
                 iced::widget::canvas(gutter::Gutter {
                     content: &buffer.content,
+                    tab: id,
+                    marks,
+                    numbers,
                     size,
                     line_height,
                     font,
                 })
-                .width(size * 0.65 * digits.max(3) as f32 + 16.)
+                .width(if numbers {
+                    size * 0.65 * digits.max(3) as f32 + gutter::MARKER_LANE + 8.
+                } else {
+                    gutter::MARKER_LANE
+                })
                 .height(Length::Fill),
             )
             .id("editor-line-numbers"),
@@ -278,6 +293,77 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
 }
 
 pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
+    let base = if let Some(buffer) = app.editor_buffer()
+        && app.module_enabled(crate::modules::ModuleId::Git)
+        && buffer.document.text == buffer.marks.after
+        && let Some((index, point)) = buffer.marks.open
+        && let Some(hunk) = buffer.marks.hunks.get(index)
+    {
+        use crate::ui::context_menu;
+        context_menu::overlay(
+            base,
+            point,
+            iced::Size::new(490., 220.),
+            || {
+                let mut lines = column![];
+                let mut skip = 40 * buffer.marks.page;
+                let mut left = 40;
+                for (source, range, color, prefix) in [
+                    (
+                        &buffer.marks.before,
+                        hunk.old.clone(),
+                        theme::GIT_REMOVED,
+                        "−",
+                    ),
+                    (&buffer.marks.after, hunk.new.clone(), theme::GIT_ADDED, "+"),
+                ] {
+                    let count = range.len();
+                    let start = skip.min(count);
+                    skip -= start;
+                    let take = (count - start).min(left);
+                    left -= take;
+                    for line in source.lines().skip(range.start + start).take(take) {
+                        lines = lines.push(
+                            text(format!("{prefix} {line}"))
+                                .size(12)
+                                .font(iced::Font::MONOSPACE)
+                                .style(color.text())
+                                .wrapping(iced::widget::text::Wrapping::None),
+                        );
+                    }
+                }
+                let lines = iced::widget::scrollable(lines)
+                    .direction(iced::widget::scrollable::Direction::Both {
+                        vertical: Default::default(),
+                        horizontal: Default::default(),
+                    })
+                    .height(176);
+                let pages = (hunk.old.len() + hunk.new.len()).div_ceil(40);
+                let mut popup = column![lines];
+                if pages > 1 {
+                    let page = buffer.marks.page;
+                    let message = |next| {
+                        Message::Editor(Event::Marks(crate::app::editor::marks::Event::Page(next)))
+                    };
+                    popup = popup.push(row![
+                        button(text(app.i18n.text(Key::PreviousFilePart)).size(12))
+                            .on_press_maybe((page > 0).then(|| message(false)))
+                            .style(theme::action(false)),
+                        space().width(Length::Fill),
+                        text(format!("{} / {pages}", page + 1)).size(12),
+                        space().width(Length::Fill),
+                        button(text(app.i18n.text(Key::NextFilePart)).size(12))
+                            .on_press_maybe((page + 1 < pages).then(|| message(true)))
+                            .style(theme::action(false))
+                    ]);
+                }
+                popup.into()
+            },
+            Message::Editor(Event::Marks(crate::app::editor::marks::Event::Close)),
+        )
+    } else {
+        base
+    };
     if app.editor.pending.is_none()
         || app.editor.saving_all
         || app

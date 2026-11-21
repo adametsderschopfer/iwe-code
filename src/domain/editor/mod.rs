@@ -1,5 +1,7 @@
 //! Track editable text and bounded undo history independently of the interface.
 
+pub(crate) mod hunks;
+
 use std::{collections::VecDeque, sync::Arc};
 
 pub(crate) const LIMIT: usize = 2 * 1024 * 1024;

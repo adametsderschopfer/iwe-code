@@ -96,6 +96,7 @@ file-renamed = Renamed file
 select-opened-file = Select Opened File
 tree-behavior = Behavior
 preview-tab = Enable Preview Tab
+file-ignored = Ignored by Git
 file-conflict = Unresolved conflict
 comparison-failed = Changes could not be compared. Reopen the file to retry.
 local-workspace = Local workspace

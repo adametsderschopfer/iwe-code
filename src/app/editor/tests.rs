@@ -1113,3 +1113,38 @@ fn failed_diagnostics_back_off_and_detecting_a_program_retries_promptly() {
     ));
     assert_eq!(app.diagnostics_interval(), Some(Duration::from_millis(800)));
 }
+
+#[test]
+fn clicking_git_gutter_shows_original_and_current_lines() {
+    use iced::{mouse, widget::Id};
+    let mut app = app();
+    let tab = app.preview().id;
+    let after = app.editor_buffer().unwrap().document.text.clone();
+    let before = Arc::new("previous\r\n".to_string());
+    let hunks = Arc::new(crate::domain::editor::hunks::compare(&before, &after));
+    let report = marks::Event::Compared(app.generation, tab, 0, before, after, hunks);
+    let _ = app.update_editor(Event::Marks(report.clone()));
+    let mut ui =
+        iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+    let gutter = ui
+        .find(Id::new("editor-line-numbers"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    ui.point_at(iced::Point::new(
+        gutter.x + crate::ui::theme::FILE_PANEL_RESIZE_GRAB + 4.,
+        gutter.y + 16.,
+    ));
+    ui.simulate([iced::Event::Mouse(mouse::Event::ButtonPressed(
+        mouse::Button::Left,
+    ))]);
+    for message in ui.into_messages() {
+        let _ = app.update(message);
+    }
+    assert!(app.editor_buffer().unwrap().marks.open.is_some());
+    let _ = app.update_editor(Event::Marks(report));
+    let mut ui =
+        iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+    assert!(ui.find("− previous").unwrap().visible_bounds().is_some());
+    assert!(ui.find("+ original").unwrap().visible_bounds().is_some());
+}

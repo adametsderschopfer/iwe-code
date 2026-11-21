@@ -1,12 +1,13 @@
 //! Describe file status and source comparisons without filesystem access.
 
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum FileStatus {
+    Ignored,
     Untracked,
     Added,
     Deleted,
@@ -35,6 +36,7 @@ pub(crate) struct FileChange {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct Worktree {
+    pub ignored: BTreeSet<PathBuf>,
     pub files: BTreeMap<PathBuf, FileChange>,
     pub folders: BTreeMap<PathBuf, FileStatus>,
     pub roots: Vec<PathBuf>,
@@ -70,6 +72,17 @@ impl Worktree {
             .get(path)
             .map(|change| change.status)
             .or_else(|| directory.then(|| self.folders.get(path).copied()).flatten())
+            .or_else(|| {
+                let root = self
+                    .roots
+                    .iter()
+                    .filter(|root| path.starts_with(root))
+                    .max_by_key(|root| root.components().count());
+                path.ancestors()
+                    .take_while(|parent| root.is_none_or(|root| parent.starts_with(root)))
+                    .any(|parent| self.ignored.contains(parent))
+                    .then_some(FileStatus::Ignored)
+            })
     }
 }
 

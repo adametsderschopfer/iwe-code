@@ -523,6 +523,7 @@ message_keys! {
     SelectOpenedFile => "select-opened-file",
     TreeBehavior => "tree-behavior",
     PreviewTab => "preview-tab",
+    FileIgnored => "file-ignored",
     FileConflict => "file-conflict",
     ComparisonFailed => "comparison-failed",
     LocalWorkspace => "local-workspace",

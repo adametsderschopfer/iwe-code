@@ -96,6 +96,7 @@ file-renamed = Archivo renombrado
 select-opened-file = Seleccionar el archivo abierto
 tree-behavior = Comportamiento
 preview-tab = Activar pestaña de vista previa
+file-ignored = Git ignora esta ruta
 file-conflict = Conflicto sin resolver
 comparison-failed = No se pudieron comparar los cambios. Vuelva a abrir el archivo para reintentar.
 local-workspace = Espacio local

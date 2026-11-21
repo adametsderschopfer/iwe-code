@@ -628,11 +628,13 @@ Completion tokens protect newer drafts. Navigation flushes pending snapshots bef
 buffers. Failed writes stop automatic retries. Remote saves wait for the deployment queue before
 submission. `ui/editor` renders Iced text editors with incremental syntax highlighting and
 synchronized line numbers. Its gutter reads visible layout runs through the local widget's read-only
-inspection API. Project-file sources skip Git comparison preparation. Uncommitted-file sources use
-separate tabs and retain the comparison viewer. `infrastructure/editor` replaces local files through
-temporary files after checking the saved baseline. Server saves use typed deployment operations and
-completion effects. The module does not import application state. Save completions carry operation
-tokens and never replace newer draft text.
+inspection API. Editable local documents use a separate bounded line comparison against the Git
+baseline. Each result carries the project generation, tab identifier, request number, and text
+snapshot. The gutter resolves visible layout runs to changed ranges and deletion anchors.
+Uncommitted-file sources use separate tabs and retain the comparison viewer. `infrastructure/editor`
+replaces local files through temporary files after checking the saved baseline. Server saves use
+typed deployment operations and completion effects. The module does not import application state.
+Save completions carry operation tokens and never replace newer draft text.
 
 `app/tabs.rs` records project-relative local tab paths, comparison mode, and the active tab in
 workspace metadata. It reopens the remembered tabs when their project becomes active. Normal exit

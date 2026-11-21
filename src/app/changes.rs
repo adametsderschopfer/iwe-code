@@ -18,7 +18,7 @@ pub(crate) struct State {
     disabled: bool,
     request: u64,
     pub(super) preview_pending: Option<u64>,
-    baseline: Arc<tokio::sync::Mutex<repository::BaselineCache>>,
+    pub(super) baseline: Arc<tokio::sync::Mutex<repository::BaselineCache>>,
 }
 
 #[derive(Debug, Clone)]
@@ -192,7 +192,11 @@ impl App {
                         }
                         let refresh =
                             Task::batch(folders.into_iter().map(|path| self.refresh_folder(path)));
-                        return Task::batch([refresh, self.refresh_preview()]);
+                        return Task::batch([
+                            refresh,
+                            self.refresh_preview(),
+                            self.refresh_editor_marks(),
+                        ]);
                     }
                     Err(error @ (Failure::NotRepository | Failure::MissingTool)) => {
                         if error == Failure::NotRepository

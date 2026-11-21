@@ -1136,7 +1136,7 @@ impl App {
             Err(error) => preview.error = Some(error),
         }
         if self.preview().id == id {
-            self.restore_preview_scroll()
+            Task::batch([self.restore_preview_scroll(), self.refresh_editor_marks()])
         } else {
             Task::none()
         }
@@ -1268,6 +1268,7 @@ impl App {
             self.restore_preview_scroll(),
             self.reveal_tab(),
             self.refresh_preview(),
+            self.refresh_editor_marks(),
         ])
     }
 

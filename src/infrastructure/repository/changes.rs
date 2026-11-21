@@ -28,7 +28,9 @@ fn status_entries(bytes: &[u8]) -> impl Iterator<Item = (&str, FileStatus, Optio
             let Ok(path) = std::str::from_utf8(&field[3..]) else {
                 continue;
             };
-            let status = if xy == b"??" {
+            let status = if xy == b"!!" {
+                FileStatus::Ignored
+            } else if xy == b"??" {
                 FileStatus::Untracked
             } else if xy.contains(&b'U') || xy == b"AA" || xy == b"DD" {
                 FileStatus::Conflict
@@ -101,10 +103,22 @@ pub(crate) async fn has_working_changes(directory: &Path) -> Result<bool, Failur
 pub(crate) async fn working_status(directory: PathBuf) -> Result<Worktree, Failure> {
     let discovery = discovery::discover(&directory).await?;
     let mut files = BTreeMap::new();
+    let mut ignored = std::collections::BTreeSet::new();
     let mut roots = Vec::new();
     let mut failures = discovery.failures;
     for root in &discovery.roots {
-        let bytes = match status_bytes(root).await {
+        let bytes = match git(
+            root,
+            &[
+                "status",
+                "--porcelain=v1",
+                "-z",
+                "--untracked-files=all",
+                "--ignored=matching",
+            ],
+        )
+        .await
+        {
             Ok(bytes) => bytes,
             Err(error) => {
                 failures.push((root.clone(), error));
@@ -119,9 +133,16 @@ pub(crate) async fn working_status(directory: PathBuf) -> Result<Worktree, Failu
             if discovery::owner(&discovery.roots, &path) != Some(root) {
                 continue;
             }
+            if change.status == FileStatus::Ignored && discovery.scope.starts_with(&path) {
+                ignored.insert(directory.clone());
+            }
             let Ok(relative) = path.strip_prefix(&discovery.scope) else {
                 continue;
             };
+            if change.status == FileStatus::Ignored {
+                ignored.insert(directory.join(relative));
+                continue;
+            }
             change.original = change.original.and_then(|path| {
                 path.strip_prefix(&discovery.scope)
                     .ok()
@@ -134,6 +155,7 @@ pub(crate) async fn working_status(directory: PathBuf) -> Result<Worktree, Failu
         return Err(failures.first().map_or(Failure::Read, |(_, error)| *error));
     }
     let mut status = Worktree::new(&directory, files);
+    status.ignored = ignored;
     status.roots = roots;
     status.failures = failures;
     status.comparison_scope = Some(discovery.scope);
@@ -223,7 +245,7 @@ pub(crate) async fn working_file_cached(
     })
 }
 
-async fn cached_baseline(
+pub(crate) async fn cached_baseline(
     directory: &Path,
     path: &Path,
     snapshot: &WorkingSnapshot,

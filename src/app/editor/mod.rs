@@ -11,6 +11,7 @@ mod completion;
 mod definition;
 mod diagnostics;
 mod formatting;
+pub(crate) mod marks;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Target {
@@ -23,6 +24,7 @@ pub(crate) struct Buffer {
     pub document: Document,
     pub content: text_editor::Content,
     pub target: Target,
+    pub marks: marks::Marks,
     pub saving: bool,
     pub error: Option<Key>,
     autosave: u64,
@@ -36,6 +38,7 @@ impl Buffer {
             content: text_editor::Content::with_text(&text),
             document: Document::new(text),
             target,
+            marks: Default::default(),
             saving: false,
             error: None,
             autosave: 0,
@@ -66,6 +69,7 @@ pub(crate) struct State {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
+    Marks(marks::Event),
     DuplicateLine,
     Format,
     Formatted(formatting::Report),
@@ -285,10 +289,20 @@ impl App {
             tab.temporary = false;
         }
         buffer.autosave = revision;
-        if buffer.error.is_some() || !buffer.document.dirty() {
-            return Task::none();
+        buffer.marks.open = None;
+        let save = if buffer.error.is_none() && buffer.document.dirty() {
+            autosave_after(id, revision)
+        } else {
+            Task::none()
+        };
+        if self.changes.status.comparison_scope.is_none() {
+            return save;
         }
-        autosave_after(id, revision)
+        let marks = Task::perform(
+            async { tokio::time::sleep(Duration::from_millis(180)).await },
+            move |_| Message::Editor(Event::Marks(marks::Event::After(id, revision))),
+        );
+        Task::batch([save, marks])
     }
 
     pub(super) fn flush_editor(&mut self) -> Task<Message> {
@@ -431,6 +445,7 @@ impl App {
             return Task::none();
         }
         match event {
+            Event::Marks(event) => return self.update_marks(event),
             Event::DuplicateLine => return self.duplicate_editor_line(),
             Event::Format => return self.request_formatting(),
             Event::Formatted(report) => return self.apply_formatting(report),

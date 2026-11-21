@@ -46,6 +46,11 @@ to keep the tab. Clicking an existing permanent tab preserves it. Disabling prev
 temporary tabs permanent. IWE remembers this setting after restart. New installations and existing
 workspaces start with previews disabled.
 
+Git colors ignored files and directories orange. Tab labels use the same Git status colors as file
+rows. Click a colored mark beside the editor's line numbers to see the previous and current lines.
+Green marks show additions. Blue marks show replacements. Red marks anchor deletions to the nearest
+remaining line.
+
 Right-click a file or folder in the project tree to open its context menu. Right-click empty space
 to work in the project root. Use **New** to create a file or folder. A new file opens in the editor.
 A new folder becomes selected.
@@ -744,10 +749,10 @@ separate save and saved-version toolbar is removed. The tab marks unsaved change
 errors in its tooltip. Errors also appear in notifications. Failed saves stop automatic retries,
 including after further edits.
 
-Project files open without Git comparison preparation. The uncommitted-files section opens separate
-comparison tabs for the same paths. Comparison controls appear in comparison tabs, including
-explicit server comparisons. Ordinary file tabs have no comparison controls. Git revisions,
-comparison snapshots, and paged files retain the source viewer.
+The editor compares changed lines against Git HEAD on a background worker. The uncommitted-files
+section opens separate comparison tabs for the same paths. Comparison controls appear in comparison
+tabs, including explicit server comparisons. Ordinary file tabs have no comparison controls. Git
+revisions, comparison snapshots, and paged files retain the source viewer.
 
 Each project keeps up to 20 file tabs open. Opening or reopening a file at the limit closes the
 earliest opened tab that has no unsaved changes or save in progress. If every tab has changes to

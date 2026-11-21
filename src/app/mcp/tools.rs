@@ -956,6 +956,7 @@ fn failure_message(error: Failure) -> String {
 
 fn status_name(status: FileStatus) -> &'static str {
     match status {
+        FileStatus::Ignored => "ignored",
         FileStatus::Untracked => "untracked",
         FileStatus::Added => "added",
         FileStatus::Deleted => "deleted",

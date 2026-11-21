@@ -2571,6 +2571,16 @@
           "es": "Localiza el archivo abierto en el árbol o previsualiza archivos en una pestaña reutilizable."
         },
         "sources": ["src/app/files.rs"]
+      },
+      {
+        "id": "editor-git-line-changes",
+        "category": "added",
+        "text": {
+          "en": "Ignored paths appear orange. Click a change beside a line number to compare its current and previous text.",
+          "ru": "Игнорируемые пути выделяются оранжевым. Щёлкните по отметке рядом с номером строки, чтобы сравнить изменения.",
+          "es": "Las rutas ignoradas aparecen en naranja. Pulsa una marca junto al número de línea para comparar los cambios."
+        },
+        "sources": ["src/app/editor/marks.rs"]
       }
     ]
   }

@@ -178,6 +178,7 @@ fn rows<'a, Message: Clone + 'a>(
 
 pub(crate) fn status_key(status: FileStatus) -> Key {
     match status {
+        FileStatus::Ignored => Key::FileIgnored,
         FileStatus::Untracked => Key::FileUntracked,
         FileStatus::Added => Key::FileAdded,
         FileStatus::Modified => Key::FileModified,

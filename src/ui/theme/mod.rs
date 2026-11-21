@@ -15,6 +15,7 @@ use iced::{
 pub(crate) fn file_status(status: crate::domain::changes::FileStatus) -> Tone {
     use crate::domain::changes::FileStatus;
     match status {
+        FileStatus::Ignored => ICON_ORANGE,
         FileStatus::Untracked | FileStatus::Added => FILE_ADDED,
         FileStatus::Modified | FileStatus::Renamed => FILE_MODIFIED,
         FileStatus::Deleted | FileStatus::Conflict => GIT_REMOVED,

@@ -1353,6 +1353,8 @@ fn file_tree<'a>(
                     .style(
                         (if let Some(index) = repository_index {
                             theme::repository_color(index)
+                        } else if status == Some(crate::domain::changes::FileStatus::Ignored) {
+                            theme::ICON_ORANGE
                         } else if entry.directory {
                             theme::MUTED
                         } else {
@@ -1544,6 +1546,21 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
                                 } else {
                                     theme::font()
                                 })
+                                .style(
+                                    preview
+                                        .path
+                                        .as_deref()
+                                        .filter(|_| !preview.remote && preview.revision.is_none())
+                                        .and_then(|path| app.changes.status.status(path, false))
+                                        .or_else(|| preview
+                                            .editor
+                                            .as_ref()
+                                            .filter(|buffer| buffer.document.dirty())
+                                            .map(|_| crate::domain::changes::FileStatus::Modified))
+                                        .map(theme::file_status)
+                                        .unwrap_or(theme::TEXT)
+                                        .text()
+                                )
                                 .size(theme::FILE_TAB_TEXT_SIZE)
                                 .shaping(text::Shaping::Advanced)
                                 .wrapping(text::Wrapping::None),

@@ -97,6 +97,12 @@ async fn working_files_compare_head_and_include_staged_and_untracked_changes() {
     assert_eq!(new.previous.as_deref(), Some(""));
     fs::create_dir(root.join("ignored")).unwrap();
     fs::write(root.join("ignored/file.rs"), "ignored\n").unwrap();
+    let statuses = working_status(root.to_owned()).await.unwrap();
+    assert_eq!(
+        statuses.status(&root.join("ignored/file.rs"), false),
+        Some(FileStatus::Ignored)
+    );
+    assert!(!statuses.files.contains_key(&root.join("ignored/file.rs")));
     let ignored = working_file(root.to_owned(), root.join("ignored/file.rs"))
         .await
         .unwrap();
