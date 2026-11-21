@@ -2671,6 +2671,16 @@
           "es": "Filtra los recursos de Docker desde la cabecera de la lista."
         },
         "sources": ["src/modules/docker/view.rs"]
+      },
+      {
+        "id": "docker-resizable-properties",
+        "category": "changed",
+        "text": {
+          "en": "Drag the divider to resize properties. Container properties initially occupy 30% of the available width.",
+          "ru": "Перетаскивайте границу, чтобы изменить ширину свойств. Свойства контейнера сначала занимают 30% доступной ширины.",
+          "es": "Arrastra el separador para ajustar las propiedades. Las propiedades del contenedor ocupan inicialmente el 30 % del ancho disponible."
+        },
+        "sources": ["src/modules/docker/view.rs"]
       }
     ]
   }

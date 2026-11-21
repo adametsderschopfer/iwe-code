@@ -59,6 +59,7 @@ pub(crate) enum Event {
     Page(bool),
     Select(String),
     BackToList,
+    ResizeProperties(f32),
     Menu(String, Point),
     Dismiss,
     Act(Action),
@@ -104,6 +105,7 @@ pub(crate) struct State {
     filtered: Vec<usize>,
     query: String,
     page: usize,
+    properties_width: Option<f32>,
     selected: Option<String>,
     menu: Option<(String, Point)>,
     draft: Option<Draft>,
@@ -277,6 +279,9 @@ impl State {
                 self.query = query;
                 self.page = 0;
                 self.filter();
+            }
+            Event::ResizeProperties(width) if width.is_finite() => {
+                self.properties_width = Some(width)
             }
             Event::Page(next) => {
                 self.page = if next {

@@ -42,8 +42,9 @@ Docker becomes available again.
 Use the icons on the left to select a resource type. Hover over an icon to see its name. The
 adjacent list shows matching resources and their count. Select a row to open **Properties** with the
 available actions and command output. Thin dividers separate the sections. Each section scrolls
-independently. In a narrow panel, properties occupy the list area. Use **Back to list** to return to
-the filtered results.
+independently. In a narrow panel, properties occupy the list area. In wider panels, drag the divider
+to resize the properties. Container properties initially use 30% of the space beside the navigation.
+Use **Back to list** to return to the filtered results.
 
 | Section    | Operations                                                                                                 |
 | ---------- | ---------------------------------------------------------------------------------------------------------- |

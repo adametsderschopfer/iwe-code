@@ -381,6 +381,7 @@ fn resource_sections_reflow_and_keep_the_filter_when_returning_to_a_narrow_list(
             .unwrap();
         assert!((filter.center_y() - list.y - 17.).abs() < 1.);
         assert_eq!(nav.width, 42.);
+        assert!((details.width - (850. - 44.) * 0.3).abs() < 1.);
         assert!(wide.find(i18n.text(Key::DockerActions)).is_ok());
         drop(wide);
         let mut narrow = iced_test::Simulator::with_size(
@@ -716,4 +717,59 @@ fn context_menu_keeps_properties_and_targets_the_clicked_container_for_removal()
         .unwrap(),
         ["container", "rm", "--", "a"]
     );
+}
+
+#[test]
+fn dragging_the_properties_divider_resizes_the_pane_without_changing_selection() {
+    use crate::i18n::{I18n, Language};
+    use iced::{mouse, widget::Id};
+    let i18n = I18n::new(Language::English);
+    let mut state = State {
+        items: Arc::new(
+            adapter::parse(
+                Kind::Containers,
+                r#"{"ID":"c","Names":"web","State":"running"}"#,
+            )
+            .unwrap(),
+        ),
+        selected: Some("c".into()),
+        ..Default::default()
+    };
+    state.filter();
+    let mut ui = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        (1000., 360.),
+        panel(&state, &i18n, true),
+    );
+    let before = ui
+        .find(Id::new("docker-properties"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    let start = Point::new(before.x + 1., before.center_y());
+    let end = Point::new(start.x - 70., start.y);
+    ui.point_at(start);
+    ui.simulate([iced::Event::Mouse(mouse::Event::ButtonPressed(
+        mouse::Button::Left,
+    ))]);
+    ui.point_at(end);
+    ui.simulate([
+        iced::Event::Mouse(mouse::Event::CursorMoved { position: end }),
+        iced::Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+    ]);
+    for event in ui.into_messages() {
+        let _ = state.update(event, Path::new("."), true);
+    }
+    let mut ui = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        (1000., 360.),
+        panel(&state, &i18n, true),
+    );
+    let after = ui
+        .find(Id::new("docker-properties"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    assert!((after.width - before.width - 70.).abs() < 1.);
+    assert_eq!(state.selected.as_deref(), Some("c"));
 }

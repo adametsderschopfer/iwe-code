@@ -478,24 +478,43 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
                 .style(theme::separator)
         };
         let mut body = row![navigation(state, i18n), divider()].height(Length::Fill);
+        let available = (size.width - NAVIGATION_WIDTH - 1.).max(0.);
+        let split = selected.is_some() && !compact;
+        let limits = 188. ..=(available - 280.).max(188.);
+        let ratio = if state.kind == Kind::Containers {
+            0.30
+        } else {
+            0.50
+        };
+        let properties_width = state
+            .properties_width
+            .unwrap_or((available - 1.) * ratio)
+            .clamp(*limits.start(), *limits.end());
         if selected.is_none() || !compact {
-            let width = size.width - NAVIGATION_WIDTH - 1.;
-            body = body.push(inventory(
-                state,
-                i18n,
-                if selected.is_some() {
-                    (width - 1.) / 2.
-                } else {
-                    width
-                },
-            ));
+            let width = if split {
+                available - properties_width - 1.
+            } else {
+                available
+            };
+            body = body.push(inventory(state, i18n, width));
         }
         if let Some(item) = selected {
-            if !compact {
-                body = body.push(divider());
+            let properties = properties(state, item, i18n, terminal, compact);
+            if split {
+                body = body
+                    .push(divider())
+                    .push(container(properties).width(properties_width));
+            } else {
+                body = body.push(properties);
             }
-            body = body.push(properties(state, item, i18n, terminal, compact));
         }
+        let body = crate::ui::resize::right(
+            body.into(),
+            split.then_some(properties_width),
+            size.width - properties_width - 1.,
+            limits,
+            |width, _| Event::ResizeProperties(width),
+        );
         let mut panel = column![
             container(heading(state, i18n, size.width))
                 .width(Length::Fill)
