@@ -273,6 +273,7 @@ pub(crate) struct App {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Message {
+    TerminalsStopped,
     Explain(explain::Event),
     Editor(editor::Event),
     WindowOpened(window::Id),
@@ -544,6 +545,13 @@ impl App {
                 _ => Task::none(),
             };
         }
+        if self.modules.terminal.lifetime.stopping() {
+            return if matches!(message, Message::TerminalsStopped) {
+                self.finish_exit()
+            } else {
+                Task::none()
+            };
+        }
         if let Message::InspectWindow(include_text, reply) = &message {
             let _ = reply.try_send(external::window_snapshot(self, *include_text));
             return Task::none();
@@ -628,7 +636,12 @@ impl App {
             updates::State::Saving(_) | updates::State::Installing(_)
         ) && !matches!(
             message,
-            Message::Saved(_) | Message::Update(updates::Event::InstallFailed(_))
+            Message::Saved(_)
+                | Message::Update(updates::Event::InstallFailed(_))
+                | Message::Module(modules::Event::Terminal(
+                    crate::modules::terminal::Event::Started(..)
+                        | crate::modules::terminal::Event::Output(..)
+                ))
         ) {
             return Task::none();
         }
@@ -1879,8 +1892,15 @@ impl App {
         if let Some(cancel) = self.auth_cancel.take() {
             cancel.cancel();
         }
-        // Child processes of modules and terminals die with the process when
-        // their input pipes close; background tasks end with the runtime.
+        let stopped = self.modules.terminal.lifetime.clone().shutdown();
+        self.modules.terminal.reset();
+        if let Some(stopped) = stopped {
+            return Task::perform(stopped, |()| Message::TerminalsStopped);
+        }
+        self.finish_exit()
+    }
+
+    fn finish_exit(&mut self) -> Task<Message> {
         #[cfg(target_os = "macos")]
         {
             if let Some(id) = self.window_id {
@@ -1944,20 +1964,35 @@ impl App {
         self.modules
             .deployment
             .sync_context(self.workspace.selected_space, directory.as_deref());
-        let same_project = self.project_directory == directory;
-        self.project_directory = directory;
+        let previous = std::mem::replace(&mut self.project_directory, directory);
+        let same_project = previous == self.project_directory;
         self.cancel_auth();
         self.disconnecting = false;
         self.generation += 1;
         if !same_project {
+            let has_cluster_shells = self
+                .modules
+                .terminal
+                .tabs
+                .iter()
+                .any(|tab| tab.program == Some(crate::modules::terminal::Program::Kubernetes));
+            self.modules.kubernetes.switch_project(
+                previous.as_deref(),
+                self.project_directory.as_deref(),
+                has_cluster_shells,
+            );
+            self.modules
+                .terminal
+                .switch_project(previous.as_deref(), self.project_directory.as_deref());
+            if self.modules.terminal.open {
+                self.hide_other_bottom_panels(ModuleId::Terminal);
+            }
             self.modules.git.git_actions.history.dialog = None;
             self.modules.git.git_actions.request += 1;
             self.modules.git.git_actions.pending = false;
             self.editor.menu = None;
             self.editor.rename = None;
-            self.modules.kubernetes.reset();
             self.modules.docker.reset();
-            self.modules.terminal.reset();
             self.file_panel = self.workspace.preferences.file_panels[0];
             self.file_panel_visible = true;
             self.collapsed_worktree_folders.clear();

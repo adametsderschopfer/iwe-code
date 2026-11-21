@@ -229,9 +229,11 @@ resizing, and scrollback changes update a screen revision. Font size, appearance
 and tab changes invalidate drawing geometry. The terminal uses the source viewer's platform font.
 This avoids rebuilding terminal cells when unrelated panels redraw.
 
-Selecting a different project stops all sessions and closes the panel. Reopening the panel creates a
-tab for that project. Refreshing the same project keeps its existing tabs and sessions. Sessions and
-output do not survive an application restart. Programs that deliberately detach from the shell may
+Selecting a different project leaves the previous project's shells running. Each shell continues
+collecting output within its history limit. Return to a project to see its tabs, selection, and
+accumulated output. Project reordering and refresh preserve these tabs. Removing the project from
+the workspace ends its sessions. Changing the Kubernetes context ends that project's Kubernetes
+sessions. Quitting IWE ends all sessions. Programs that deliberately detach from the shell may
 continue independently.
 
 ## Resource and platform limits
@@ -253,7 +255,7 @@ shell is downloaded or installed. Unix builds use `portable-pty`; Windows builds
 avoid the cursor-inheritance handshake, which would stall a terminal without a cursor-position
 reply. The application uses safe Rust interfaces for both adapters.
 
-The module keeps terminal tabs for the selected project. It has no terminal search, clickable links,
+The terminal has no search, clickable links,
 program-controlled mouse reporting, or input-method composition interface. Tests verify process
 input, output, resizing, cleanup, preferences, translated settings, and session guards. Native
 checks on one platform do not verify the other platforms.

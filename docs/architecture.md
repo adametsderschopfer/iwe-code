@@ -459,21 +459,21 @@ application. An output subscription waits for data without periodic polling. Ses
 reject obsolete startup results, output, input, clipboard reads, and resize requests.
 
 `modules/terminal/state/` keeps independent tabs with bounded `vt100` screens and shell sessions.
-Unique tab identifiers route startup, output, input, clipboard reads, and resize events. Closed tabs
-and replaced projects reject obsolete results. Each running tab owns an output subscription,
-including when another tab is selected or the panel is hidden. The state exposes typed events,
-tasks, and subscriptions without importing application state. `modules/terminal/view/` renders
-cells, handles focus and selection, and encodes keyboard input. `modules/terminal/style.rs` owns
-terminal colors and spacing while reusing shared theme tokens. The parser handles escape sequences
-without exposing them as interface messages. Clipboard operations require explicit user actions.
-Terminal contents never enter saved workspace data or diagnostics.
+Each project owns its tabs and active selection. Its stored project directory identifies it across
+sidebar reordering. Unique tab identifiers route startup, output, input, clipboard reads, and resize
+events. Closing a tab or removing its project invalidates its identifier. Each running tab keeps its
+output subscription across project switches and while the panel is hidden. The state exposes typed
+events, tasks, and subscriptions without importing application state. `modules/terminal/view/`
+renders cells, handles focus and selection, and encodes keyboard input. `modules/terminal/style.rs`
+owns terminal colors and spacing while reusing shared theme tokens. The parser handles escape
+sequences without exposing them as interface messages. Clipboard operations require explicit user
+actions. Terminal contents never enter saved workspace data or diagnostics.
 
-The panel heading's cross hides the panel while retaining every session. A tab's cross removes its
-session and selects a neighboring tab when needed. Closing the last tab hides the panel. The plus
-creates a tab. Opening an empty panel creates its first tab. Switching project ends all sessions.
-Refreshing the same project preserves the tabs. See [the module guide](modules.md) for controls,
-resource limits, and platform requirements. See [the module decision](adr/0001-bundled-modules.md)
-for the extension boundary.
+The panel heading's minus button hides the panel while retaining every session. A tab's cross
+removes its session and selects a neighboring tab when needed. Closing the last tab hides the panel.
+The plus creates a tab at the active project root. Opening an empty panel creates its first tab.
+See [the module guide](modules.md) for controls, resource limits, and platform
+requirements. See [the module decision](adr/0001-bundled-modules.md) for the extension boundary.
 
 ## Window and graphics
 
@@ -619,18 +619,18 @@ editing commands.
 
 `app/updates` coordinates release checks, downloads, workspace persistence, and restart requests.
 Successful installation handoff terminates the updating process from its background installation
-worker. The latest workspace save and helper readiness must both succeed first. OS termination
-releases the installer lock without depending on GUI events or background-worker destruction. Failed
-handoffs retain the running application. Its session schedule checks hourly and allows
-focus-triggered checks after a 15-minute cooldown. Failed checks use the same 15-minute retry delay.
-A minute subscription evaluates wall-clock deadlines locally, including after suspension. Manual
-checks bypass cooldowns but retain in-flight guards. Automatic checks preserve available updates and
-never interrupt download, save, or installation states. `domain/update` carries verified release
-metadata without operating-system access. `infrastructure/updates` verifies signed manifests, stages
-packages, and installs updates after shutdown. `ui/updates` presents localized actions in the
-sidebar and About settings. The startup entry point handles installer and cleanup processes before
-starting the graphics launcher. See [application updates](updates.md) for trust boundaries, package
-limits, and recovery behavior.
+worker. After the latest workspace save succeeds and the helper confirms readiness, the worker stops
+all terminal sessions before exiting. OS termination releases the installer lock without depending
+on GUI events or background-worker destruction. Failed handoffs retain the running application. Its
+session schedule checks hourly and allows focus-triggered checks after a 15-minute cooldown. Failed
+checks use the same 15-minute retry delay. A minute subscription evaluates wall-clock deadlines
+locally, including after suspension. Manual checks bypass cooldowns but retain in-flight guards.
+Automatic checks preserve available updates and never interrupt download, save, or installation
+states. `domain/update` carries verified release metadata without operating-system access.
+`infrastructure/updates` verifies signed manifests, stages packages, and installs updates after
+shutdown. `ui/updates` presents localized actions in the sidebar and About settings. The startup
+entry point handles installer and cleanup processes before starting the graphics launcher. See
+[application updates](updates.md) for trust boundaries, package limits, and recovery behavior.
 
 ## Accessibility
 

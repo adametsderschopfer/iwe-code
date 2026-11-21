@@ -2783,6 +2783,16 @@
         "sources": ["src/app/modules/mod.rs"]
       },
       {
+        "id": "project-terminal-sessions",
+        "category": "changed",
+        "text": {
+          "en": "Keep terminal tabs and running commands when switching projects. Return to see the output collected in the background.",
+          "ru": "При переключении проектов команды продолжают работать. Вернитесь в проект, чтобы увидеть его вкладки и накопленный вывод.",
+          "es": "Los comandos siguen ejecutándose al cambiar de proyecto. Vuelve para ver las pestañas y la salida recibida en segundo plano."
+        },
+        "sources": ["src/modules/terminal/state/mod.rs"]
+      },
+      {
         "id": "skip-disabled-editor-focus",
         "category": "fixed",
         "text": {

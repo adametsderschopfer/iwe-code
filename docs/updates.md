@@ -48,13 +48,13 @@ Staging directories live beside the installed application, keeping replacements 
 copied installer confirms that it accepted the handoff before the application exits. Failed helper
 startup keeps the application open and reports an installation error. The installer normalizes
 Windows paths before validation. It waits for the application's file lock after shutdown. After the
-helper confirms readiness, the updating process exits directly from its installation worker. This
-releases the operating-system lock without waiting for window events, graphics teardown, or blocked
-background workers. This exit path runs only after the latest workspace save succeeds. A failed
-helper handoff keeps the application open. Replacement retries temporary file locks for ten seconds
-while the graphics launcher exits. The installer replaces the complete macOS application bundle,
-including its signature and icon. Windows and Linux updates replace the standalone executable.
-Workspace data and credentials remain separate.
+helper confirms readiness, the installation worker stops all terminal sessions and exits the
+application. This releases the operating-system lock without waiting for window events, graphics
+teardown, or blocked background workers. This exit path runs only after the latest workspace save
+succeeds. A failed helper handoff keeps the application open. Replacement retries temporary file
+locks for ten seconds while the graphics launcher exits. The installer replaces the complete macOS
+application bundle, including its signature and icon. Windows and Linux updates replace the
+standalone executable. Workspace data and credentials remain separate.
 
 The installer moves the current application into its staging directory before moving the new
 application into place. A failed replacement restores the previous application. A failed process

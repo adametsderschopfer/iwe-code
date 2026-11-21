@@ -1,5 +1,39 @@
 use super::*;
 use serde_json::json;
+
+#[test]
+fn returning_to_a_projects_cluster_shells_restores_their_connection() {
+    let mut cluster = State {
+        target: Target {
+            context: "production".into(),
+            file: Some("my kubeconfig".into()),
+            namespace: "team".into(),
+        },
+        contexts: vec![
+            ("production".into(), "team".into()),
+            ("staging".into(), "test".into()),
+        ],
+        namespaces: vec!["team".into()],
+        ..Default::default()
+    };
+    let a = Some(Path::new("a"));
+    let b = Some(Path::new("b"));
+    cluster.switch_project(a, b, true);
+    assert!(cluster.target.context.is_empty());
+    cluster.switch_project(b, a, false);
+    let restored_scope = cluster.scope_id();
+    let _ = cluster.update(Event::Open);
+    assert_eq!(cluster.scope_id(), restored_scope);
+    assert_eq!(
+        cluster.target.file.as_deref(),
+        Some(Path::new("my kubeconfig"))
+    );
+    assert_eq!(cluster.target.context, "production");
+    assert_eq!(cluster.ns_input, "team");
+    let _ = cluster.update(Event::Context("staging".into()));
+    assert_ne!(cluster.scope_id(), restored_scope);
+}
+
 fn resource() -> Resource {
     Resource {
         name: "app".into(),
@@ -9,6 +43,7 @@ fn resource() -> Resource {
         status: "2/2".into(),
     }
 }
+
 #[test]
 fn selected_deployment_container_and_version_guard_the_patch() {
     let object = json!({"spec":{"template":{"spec":{"containers":[{"name":"worker","image":"worker:v1"},{"name":"web","image":"web:v1"}]}}}});

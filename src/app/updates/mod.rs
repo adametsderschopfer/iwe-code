@@ -144,11 +144,18 @@ impl App {
         }
         let prepared = Arc::clone(prepared);
         self.updates = State::Installing(Arc::clone(&prepared));
+        let terminals = self.modules.terminal.lifetime.clone();
         Task::perform(
             async move {
-                tokio::task::spawn_blocking(move || updates::install_and_exit(&prepared))
-                    .await
-                    .unwrap_or(Error::Install)
+                tokio::task::spawn_blocking(move || {
+                    updates::install_and_exit(&prepared, || {
+                        if let Some(stopped) = terminals.shutdown() {
+                            iced::futures::executor::block_on(stopped);
+                        }
+                    })
+                })
+                .await
+                .unwrap_or(Error::Install)
             },
             |error| Message::Update(Event::InstallFailed(error)),
         )

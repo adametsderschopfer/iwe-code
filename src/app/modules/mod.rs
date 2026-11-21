@@ -117,14 +117,11 @@ impl App {
                     }
                     K::Shell if self.module_enabled(ModuleId::Terminal) => {
                         if let Some(args) = self.modules.kubernetes.shell() {
-                            let task = self.update_terminal(terminal::Event::StartProgram(
-                                crate::infrastructure::process::executable("kubectl"),
+                            return self.update_terminal(terminal::Event::StartProgram {
+                                program: terminal::Program::Kubernetes,
+                                executable: crate::infrastructure::process::executable("kubectl"),
                                 args,
-                            ));
-                            if let Some(id) = self.modules.terminal.active {
-                                self.modules.kubernetes.terminal_tabs.push(id)
-                            }
-                            return task;
+                            });
                         }
                         Task::none()
                     }
@@ -136,7 +133,8 @@ impl App {
                             .update(e)
                             .map(|e| Message::Module(Event::Kubernetes(e)));
                         if old != self.modules.kubernetes.scope_id() {
-                            self.close_cluster_terminals()
+                            self.modules.terminal.close_cluster_tabs(false);
+                            self.sync_panels();
                         }
                         task
                     }
@@ -172,10 +170,11 @@ impl App {
                     Docker::Shell(id, args)
                         if terminal && self.modules.docker.accepts_shell(id) =>
                     {
-                        self.update_terminal(terminal::Event::StartProgram(
-                            crate::infrastructure::process::executable("docker"),
+                        self.update_terminal(terminal::Event::StartProgram {
+                            program: terminal::Program::Docker,
+                            executable: crate::infrastructure::process::executable("docker"),
                             args,
-                        ))
+                        })
                     }
                     _ => {
                         let Some(root) = self.workspace.directory() else {
@@ -210,14 +209,6 @@ impl App {
         }
     }
 
-    fn close_cluster_terminals(&mut self) {
-        for id in std::mem::take(&mut self.modules.kubernetes.terminal_tabs) {
-            let _ = self.modules.terminal.update(
-                terminal::Event::Close(id),
-                self.workspace.directory().map(std::path::PathBuf::as_path),
-            );
-        }
-    }
     fn open_registry(&mut self, event: registry::Event) -> Task<Message> {
         self.hide_other_bottom_panels(ModuleId::Docker);
         self.modules.docker.open = true;
@@ -259,15 +250,9 @@ impl App {
     }
 
     fn update_terminal(&mut self, event: terminal::Event) -> Task<Message> {
-        if let terminal::Event::Close(id) = &event {
-            self.modules
-                .kubernetes
-                .terminal_tabs
-                .retain(|tab| tab != id);
-        }
         match event {
             terminal::Event::Focus(request) => {
-                if self.modules.terminal.active == Some(request) {
+                if self.modules.terminal.open && self.modules.terminal.active == Some(request) {
                     self.modules.git.branch_selection.selected.clear();
                     for preview in &mut self.tabs.files {
                         if let Some(document) = &preview.document {
@@ -279,20 +264,20 @@ impl App {
                 }
                 return Task::none();
             }
-            terminal::Event::PasteRejected => {
-                self.notifications
-                    .error(crate::i18n::Key::TerminalPasteTooLarge, None);
+            terminal::Event::PasteRejected(request) => {
+                if self.modules.terminal.open && self.modules.terminal.active == Some(request) {
+                    self.notifications
+                        .error(crate::i18n::Key::TerminalPasteTooLarge, None);
+                }
                 return Task::none();
             }
             _ => {}
         }
-        let panel_changed = matches!(
+        let opens_panel = matches!(
             event,
-            terminal::Event::Start
-                | terminal::Event::StartProgram(..)
-                | terminal::Event::Hide
-                | terminal::Event::Close(_)
+            terminal::Event::Start | terminal::Event::StartProgram { .. }
         );
+        let was_open = self.modules.terminal.open;
         let task = self
             .modules
             .terminal
@@ -301,7 +286,7 @@ impl App {
                 self.workspace.directory().map(std::path::PathBuf::as_path),
             )
             .map(terminal_message);
-        if panel_changed {
+        if opens_panel || was_open != self.modules.terminal.open {
             let save = if self.modules.terminal.open {
                 self.select_terminal_panel()
             } else {
@@ -419,7 +404,7 @@ impl App {
         if !enabled {
             match id {
                 ModuleId::Kubernetes => {
-                    self.close_cluster_terminals();
+                    self.modules.terminal.close_cluster_tabs(true);
                     self.modules.kubernetes.reset();
                     self.modules.docker.registry.finish_pick();
                 }

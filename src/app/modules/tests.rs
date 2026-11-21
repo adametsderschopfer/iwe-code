@@ -333,15 +333,55 @@ fn terminal_controls_hide_without_dropping_tabs_and_close_the_last_tab_with_its_
 }
 
 #[test]
-fn project_switch_invalidates_pending_terminal_and_closes_its_panel() {
+fn project_switch_delivers_late_startup_to_its_original_tab_after_reordering() {
     let mut app = app();
     let _ = app.load_directory();
     let _ = app.update_module(Event::Toggle(ModuleId::Terminal));
     let request = app.modules.terminal.active_tab().unwrap().request;
+    let _ = app.update_module(Event::Terminal(TerminalEvent::Start));
+    let _ = app.update_module(Event::Terminal(TerminalEvent::Select(request)));
     let _ = app.update(Message::SelectProject(0, 1));
     let _ = app.update_module(Event::Terminal(TerminalEvent::Started(request, Err(()))));
     assert!(app.modules.terminal.tabs.is_empty());
     assert!(!app.modules.terminal.open);
+    let _ = app.update_module(Event::Terminal(TerminalEvent::Start));
+    let second_project = app.modules.terminal.active.unwrap();
+    assert!(app.workspace.move_project(0, 0, 1));
+    let _ = app.update(Message::SelectProject(0, 1));
+    assert!(app.modules.terminal.open);
+    assert_eq!(app.modules.terminal.tabs.len(), 2);
+    assert_eq!(app.modules.terminal.active, Some(request));
+    assert_eq!(
+        app.modules.terminal.active_tab().unwrap().status,
+        Status::Failed
+    );
+    let _ = app.update_module(Event::Terminal(TerminalEvent::Close(request)));
+    let _ = app.update(Message::SelectProject(0, 0));
+    assert_eq!(app.modules.terminal.active, Some(second_project));
+    assert_eq!(
+        app.modules.terminal.active_tab().unwrap().status,
+        Status::Starting
+    );
+}
+
+#[test]
+fn removing_an_inactive_project_forgets_its_terminals_and_rejects_late_events() {
+    let mut app = app();
+    let _ = app.load_directory();
+    let _ = app.update_module(Event::Toggle(ModuleId::Terminal));
+    let removed = app.modules.terminal.active.unwrap();
+    let _ = app.update(Message::SelectProject(0, 1));
+    app.project_menu = Some((0, PathBuf::from("first"), iced::Point::ORIGIN));
+    let _ = app.change_selected_projects(None);
+    assert!(app.workspace.add_project(0, "first".into()));
+    let _ = app.load_directory();
+    assert!(app.modules.terminal.tabs.is_empty());
+    let _ = app.update_module(Event::Toggle(ModuleId::Terminal));
+    let _ = app.update_module(Event::Terminal(TerminalEvent::Started(removed, Err(()))));
+    assert_eq!(
+        app.modules.terminal.active_tab().unwrap().status,
+        Status::Starting
+    );
 }
 
 #[test]
@@ -367,6 +407,36 @@ fn same_project_refresh_keeps_terminal_and_its_output() {
             .contents(),
         "retained-output"
     );
+}
+
+#[test]
+fn cluster_scope_changes_close_current_shells_and_disabling_closes_background_shells() {
+    let mut app = app();
+    let _ = app.load_directory();
+    let shell = || {
+        Event::Terminal(TerminalEvent::StartProgram {
+            program: terminal::Program::Kubernetes,
+            executable: "kubectl".into(),
+            args: vec![],
+        })
+    };
+    let _ = app.update_module(shell());
+    let background = app.modules.terminal.active.unwrap();
+    let _ = app.update(Message::SelectProject(0, 1));
+    let _ = app.update_module(Event::Terminal(TerminalEvent::Start));
+    let local = app.modules.terminal.active.unwrap();
+    let _ = app.update_module(shell());
+    let _ = app.update_module(Event::Kubernetes(kubernetes::Event::Standard));
+    assert_eq!(app.modules.terminal.active, Some(local));
+    assert_eq!(app.modules.terminal.tabs.len(), 1);
+    let _ = app.update(Message::SelectProject(0, 0));
+    assert_eq!(app.modules.terminal.active, Some(background));
+    let _ = app.update(Message::SelectProject(0, 1));
+    let _ = app.update_module(Event::SetEnabled(ModuleId::Kubernetes, false));
+    assert_eq!(app.modules.terminal.active, Some(local));
+    let _ = app.update(Message::SelectProject(0, 0));
+    assert!(app.modules.terminal.tabs.is_empty());
+    assert!(!app.modules.terminal.open);
 }
 
 #[test]

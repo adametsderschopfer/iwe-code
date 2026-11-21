@@ -63,7 +63,7 @@ fn closing_tabs_preserves_another_selection_and_hides_only_after_the_last_tab() 
 }
 
 #[test]
-fn closed_tabs_and_previous_projects_cannot_receive_late_results() {
+fn closed_tabs_and_reset_sessions_cannot_receive_late_results() {
     let mut state = State::default();
     let closed = add(&mut state);
     let current = add(&mut state);
@@ -80,4 +80,116 @@ fn closed_tabs_and_previous_projects_cannot_receive_late_results() {
     assert_eq!(state.active_tab().unwrap().number, 1);
     let _ = state.update(Event::Started(current, Err(())), None);
     assert_eq!(state.active_tab().unwrap().status, Status::Starting);
+}
+
+#[test]
+fn delayed_close_and_clipboard_events_cannot_change_the_new_projects_tab() {
+    let a = Some(Path::new("first"));
+    let b = Some(Path::new("second"));
+    let mut state = State::default();
+    let closed = add(&mut state);
+    state.switch_project(a, b);
+    let current = add(&mut state);
+    let _ = state.update(Event::Close(closed), None);
+    let _ = state.update(Event::Pasted(closed, Some("late input".into())), None);
+    let _ = state.update(Event::Started(closed, Err(())), None);
+    assert_eq!(state.active, Some(current));
+    assert_eq!(state.active_tab().unwrap().status, Status::Starting);
+    state.switch_project(b, a);
+    assert!(state.tabs.is_empty());
+    assert!(!state.open);
+}
+
+#[tokio::test]
+async fn live_command_accepts_input_and_collects_output_in_a_background_project() {
+    use iced::futures::{StreamExt, stream};
+    use iced_test::runtime::{Action, task};
+    use std::time::Duration;
+
+    async fn receive_until(state: &mut State, request: u64, marker: &str) {
+        let mut sources = iced::advanced::subscription::into_recipes(state.subscription());
+        assert_eq!(sources.len(), 1);
+        let mut events = sources.pop().unwrap().stream(Box::pin(stream::pending()));
+        tokio::time::timeout(Duration::from_secs(15), async {
+            while let Some(event) = events.next().await {
+                let _ = state.update(event, None);
+                if state
+                    .tab_mut(request)
+                    .unwrap()
+                    .parser
+                    .screen()
+                    .contents()
+                    .contains(marker)
+                {
+                    return;
+                }
+            }
+            panic!("session ended before {marker}");
+        })
+        .await
+        .unwrap();
+    }
+
+    let first = tempfile::tempdir().unwrap();
+    let second = tempfile::tempdir().unwrap();
+    let mut state = State::default();
+    #[cfg(unix)]
+    let command = {
+        std::fs::write(
+            first.path().join("command.sh"),
+            "printf 'COMMAND-READY\\n'; read value; printf 'RESULT-%s\\n' \"$value\"; read hold",
+        )
+        .unwrap();
+        b"/bin/sh ./command.sh\r".to_vec()
+    };
+    #[cfg(windows)]
+    let command = {
+        std::fs::write(first.path().join("command.cmd"), "@echo off\r\necho COMMAND-READY\r\nset /p value=\r\necho RESULT-%value%\r\nset /p hold=\r\n").unwrap();
+        b"command.cmd\r\n".to_vec()
+    };
+    let start = state.update(Event::Start, Some(first.path()));
+    let request = state.active.unwrap();
+    let mut actions = task::into_stream(start).unwrap();
+    while let Some(action) = actions.next().await {
+        if let Action::Output(event) = action {
+            let _ = state.update(event, None);
+        }
+    }
+    let _ = state.update(Event::Input(request, command), None);
+    receive_until(&mut state, request, "COMMAND-READY").await;
+    state.switch_project(Some(first.path()), Some(second.path()));
+    assert!(state.tabs.is_empty());
+    let _ = state.update(Event::Start, Some(second.path()));
+    let other = state.active.unwrap();
+    let _ = state.update(Event::Input(request, b"background\r".to_vec()), None);
+    receive_until(&mut state, request, "RESULT-background").await;
+    assert_eq!(state.active, Some(other));
+    assert!(
+        state
+            .active_tab()
+            .unwrap()
+            .parser
+            .screen()
+            .contents()
+            .is_empty()
+    );
+    state.switch_project(Some(second.path()), Some(first.path()));
+    let tab = state.active_tab().unwrap();
+    assert_eq!(tab.request, request);
+    assert_eq!(tab.status, Status::Running);
+    assert!(tab.parser.screen().contents().contains("RESULT-background"));
+    state.switch_project(Some(first.path()), Some(second.path()));
+    if let Some(stopped) = state.lifetime.clone().shutdown() {
+        stopped.await;
+    }
+    let mut sources = iced::advanced::subscription::into_recipes(state.subscription());
+    let mut events = sources.pop().unwrap().stream(Box::pin(stream::pending()));
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while let Some(event) = events.next().await {
+            let _ = state.update(event, None);
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(state.tab_mut(request).unwrap().status, Status::Exited);
 }

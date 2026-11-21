@@ -7,7 +7,11 @@ use crate::{domain::images::ImageRef, i18n::Key};
 use api::{Details, StreamUpdate, Target, words};
 use iced::Task;
 use model::{Kind, Resource};
-use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 pub(crate) use view::panel;
 
 type Contexts = (Vec<(String, String)>, String);
@@ -82,15 +86,23 @@ struct Session {
     error: Option<Key>,
     _handle: iced::task::Handle,
 }
+
+/// Remember the connection while another project owns the cluster panel.
+struct ProjectConnection {
+    target: Target,
+    contexts: Vec<(String, String)>,
+    namespaces: Vec<String>,
+}
+
 #[derive(Default)]
 pub(crate) struct State {
     pub open: bool,
-    pub terminal_tabs: Vec<u64>,
     epoch: u64,
     scope: u64,
     target: Target,
     contexts: Vec<(String, String)>,
     namespaces: Vec<String>,
+    saved_connections: BTreeMap<PathBuf, ProjectConnection>,
     ns_input: String,
     kind: Kind,
     rows: Vec<Resource>,
@@ -110,6 +122,38 @@ pub(crate) struct State {
     picking: bool,
 }
 impl State {
+    pub fn switch_project(
+        &mut self,
+        previous: Option<&Path>,
+        next: Option<&Path>,
+        has_shells: bool,
+    ) {
+        let mut saved = std::mem::take(&mut self.saved_connections);
+        if has_shells && let Some(previous) = previous {
+            saved.insert(
+                previous.to_owned(),
+                ProjectConnection {
+                    target: std::mem::take(&mut self.target),
+                    contexts: std::mem::take(&mut self.contexts),
+                    namespaces: std::mem::take(&mut self.namespaces),
+                },
+            );
+        }
+        self.reset();
+        if let Some(connection) = next.and_then(|path| saved.remove(path)) {
+            self.target = connection.target;
+            self.ns_input.clone_from(&self.target.namespace);
+            self.contexts = connection.contexts;
+            self.namespaces = connection.namespaces;
+        }
+        self.saved_connections = saved;
+    }
+
+    pub fn retain_projects(&mut self, mut exists: impl FnMut(&Path) -> bool) {
+        self.saved_connections
+            .retain(|directory, _| exists(directory));
+    }
+
     pub fn reset(&mut self) {
         *self = Self {
             epoch: self.epoch + 1,
@@ -349,6 +393,7 @@ impl State {
     pub fn update(&mut self, event: Event) -> Task<Event> {
         match event {
             Event::Open if self.target.context.is_empty() => return self.contexts(),
+            Event::Open if self.rows.is_empty() && !self.busy => return self.list(),
             Event::Refresh if self.target.context.is_empty() => return self.contexts(),
             Event::Refresh => return self.list(),
             Event::Config => {

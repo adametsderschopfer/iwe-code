@@ -124,6 +124,11 @@ impl App {
         if let Some(target) = destination {
             self.collapsed_spaces.remove(&target);
         }
+        let load = self.sync_changed_projects(previous);
+        Task::batch([load, self.save()])
+    }
+
+    fn sync_changed_projects(&mut self, previous: Option<PathBuf>) -> Task<AppMessage> {
         let load = if self.workspace.directory() != previous.as_ref() {
             self.load_directory()
         } else {
@@ -132,7 +137,17 @@ impl App {
                 .sync_context(self.workspace.selected_space, previous.as_deref());
             Task::none()
         };
-        Task::batch([load, self.save()])
+        let exists = |root: &std::path::Path| {
+            self.workspace.spaces.iter().any(|space| {
+                space
+                    .projects
+                    .iter()
+                    .any(|project| project.directory == root)
+            })
+        };
+        self.modules.terminal.retain_projects(exists);
+        self.modules.kubernetes.retain_projects(exists);
+        load
     }
 
     pub(super) fn open_space(&mut self, directories: Vec<PathBuf>) -> Task<AppMessage> {
@@ -210,11 +225,7 @@ impl App {
                         }
                     })
                     .collect();
-                let load = if self.workspace.directory() != previous.as_ref() {
-                    self.load_directory()
-                } else {
-                    Task::none()
-                };
+                let load = self.sync_changed_projects(previous);
                 return Task::batch([load, self.save()]);
             }
             Message::NameChanged(name) => {
@@ -332,11 +343,7 @@ impl App {
                         self.navigation = Navigation::Projects;
                     }
                 }
-                let load = if self.workspace.directory() != previous.as_ref() {
-                    self.load_directory()
-                } else {
-                    Task::none()
-                };
+                let load = self.sync_changed_projects(previous);
                 return Task::batch([load, self.save()]);
             }
             Message::Cancel if self.space_draft.is_some() => {

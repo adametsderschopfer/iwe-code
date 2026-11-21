@@ -1,10 +1,11 @@
-//! Coordinate independent terminal tabs for the selected project.
+//! Coordinate project tabs and route events to their original terminal sessions.
 
-use super::session::{MAX_INPUT, Output, Session};
+use super::session::{Lifetime, MAX_INPUT, Output, Session};
 use iced::{Subscription, Task};
 use std::{
+    collections::BTreeMap,
     hash::{Hash, Hasher},
-    path::Path,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -21,28 +22,74 @@ pub(crate) struct State {
     pub open: bool,
     pub tabs: Vec<Tab>,
     pub active: Option<u64>,
+    background: BTreeMap<PathBuf, ProjectTabs>,
+    pub lifetime: Lifetime,
     next_request: u64,
     next_number: u64,
+}
+
+#[derive(Default)]
+struct ProjectTabs {
+    open: bool,
+    tabs: Vec<Tab>,
+    active: Option<u64>,
+    next_number: u64,
+}
+
+/// Preserve the selected neighbor when the active tab closes.
+fn remove_tabs(
+    tabs: &mut Vec<Tab>,
+    active: &mut Option<u64>,
+    open: &mut bool,
+    remove: impl Fn(&Tab) -> bool,
+) {
+    if let Some(index) = tabs.iter().position(|tab| Some(tab.request) == *active)
+        && remove(&tabs[index])
+    {
+        *active = tabs[index + 1..]
+            .iter()
+            .chain(tabs[..index].iter().rev())
+            .find(|tab| !remove(tab))
+            .map(|tab| tab.request);
+    }
+    tabs.retain(|tab| !remove(tab));
+    *open &= !tabs.is_empty();
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Program {
+    Docker,
+    Kubernetes,
 }
 
 pub(crate) struct Tab {
     pub request: u64,
     pub number: u64,
+    pub program: Option<Program>,
     pub status: Status,
     pub parser: vt100::Parser<Replies>,
     pub revision: u64,
     session: Option<Arc<Session>>,
+    lifetime: Lifetime,
+}
+
+impl Drop for Tab {
+    fn drop(&mut self) {
+        self.lifetime.stop();
+    }
 }
 
 impl Tab {
-    fn new(request: u64, number: u64) -> Self {
+    fn new(request: u64, number: u64, program: Option<Program>, lifetime: Lifetime) -> Self {
         Self {
             request,
             number,
+            program,
             status: Status::Starting,
             parser: vt100::Parser::new_with_callbacks(24, 80, 2000, Replies::default()),
             revision: 0,
             session: None,
+            lifetime,
         }
     }
 
@@ -100,12 +147,16 @@ impl Tab {
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
     Start,
-    StartProgram(std::path::PathBuf, Vec<String>),
+    StartProgram {
+        program: Program,
+        executable: std::path::PathBuf,
+        args: Vec<String>,
+    },
     Started(u64, Result<Arc<Session>, ()>),
     Close(u64),
     Select(u64),
     Hide,
-    PasteRejected,
+    PasteRejected(u64),
     Focus(u64),
     Output(u64, Vec<Output>),
     Input(u64, Vec<u8>),
@@ -125,36 +176,98 @@ impl State {
     }
 
     pub(crate) fn subscription(&self) -> Subscription<Event> {
-        Subscription::batch(self.tabs.iter().map(Tab::subscription))
+        Subscription::batch(
+            self.tabs
+                .iter()
+                .chain(self.background.values().flat_map(|project| &project.tabs))
+                .map(Tab::subscription),
+        )
+    }
+
+    pub(crate) fn switch_project(&mut self, previous: Option<&Path>, next: Option<&Path>) {
+        let mut project = next
+            .and_then(|path| self.background.remove(path))
+            .unwrap_or_default();
+        std::mem::swap(&mut self.open, &mut project.open);
+        std::mem::swap(&mut self.tabs, &mut project.tabs);
+        std::mem::swap(&mut self.active, &mut project.active);
+        std::mem::swap(&mut self.next_number, &mut project.next_number);
+        if let Some(previous) = previous
+            && !project.tabs.is_empty()
+        {
+            self.background.insert(previous.to_owned(), project);
+        }
+    }
+
+    pub(crate) fn retain_projects(&mut self, mut exists: impl FnMut(&Path) -> bool) {
+        self.background.retain(|directory, _| exists(directory));
+    }
+
+    pub(crate) fn close_cluster_tabs(&mut self, all_projects: bool) {
+        let cluster = |tab: &Tab| tab.program == Some(Program::Kubernetes);
+        remove_tabs(&mut self.tabs, &mut self.active, &mut self.open, cluster);
+        if all_projects {
+            self.background.retain(|_, project| {
+                remove_tabs(
+                    &mut project.tabs,
+                    &mut project.active,
+                    &mut project.open,
+                    cluster,
+                );
+                !project.tabs.is_empty()
+            });
+        }
+    }
+
+    fn tab_mut(&mut self, request: u64) -> Option<&mut Tab> {
+        self.tabs
+            .iter_mut()
+            .chain(
+                self.background
+                    .values_mut()
+                    .flat_map(|project| &mut project.tabs),
+            )
+            .find(|tab| tab.request == request)
     }
 
     pub(crate) fn reset(&mut self) {
         let next_request = self.next_request;
         *self = Self {
             next_request,
+            lifetime: self.lifetime.clone(),
             ..Self::default()
         };
     }
 
     pub(crate) fn update(&mut self, event: Event, directory: Option<&Path>) -> Task<Event> {
         match event {
-            Event::Start | Event::StartProgram(..) => {
+            Event::Start | Event::StartProgram { .. } => {
                 let Some(directory) = directory.map(Path::to_owned) else {
                     return Task::none();
                 };
                 self.next_request = self.next_request.wrapping_add(1);
-                self.next_number = self.next_number.wrapping_add(1);
                 let request = self.next_request;
-                self.tabs.push(Tab::new(request, self.next_number));
+                self.next_number = self.next_number.wrapping_add(1);
+                let program = match &event {
+                    Event::StartProgram { program, .. } => Some(*program),
+                    _ => None,
+                };
+                let lifetime = self.lifetime.tab();
+                self.tabs.push(Tab::new(
+                    request,
+                    self.next_number,
+                    program,
+                    lifetime.clone(),
+                ));
                 self.active = Some(request);
                 self.open = true;
                 let start = Task::perform(
                     async move {
                         tokio::task::spawn_blocking(move || match event {
-                            Event::StartProgram(path, args) => {
-                                Session::program(&directory, &path, args)
-                            }
-                            _ => Session::start(&directory, 24, 80),
+                            Event::StartProgram {
+                                executable, args, ..
+                            } => Session::program(&directory, &executable, args, lifetime),
+                            _ => Session::start(&directory, 24, 80, lifetime),
                         })
                         .await
                         .unwrap_or(Err(()))
@@ -170,24 +283,28 @@ impl State {
                 }
             }
             Event::Close(request) => {
-                let Some(index) = self.tabs.iter().position(|tab| tab.request == request) else {
-                    return Task::none();
-                };
-                self.tabs.remove(index);
-                if self.tabs.is_empty() {
-                    self.active = None;
-                    self.open = false;
-                } else if self.active == Some(request) {
-                    self.active = Some(self.tabs[index.min(self.tabs.len() - 1)].request);
+                let matches = |tab: &Tab| tab.request == request;
+                if self.tabs.iter().any(matches) {
+                    remove_tabs(&mut self.tabs, &mut self.active, &mut self.open, matches);
+                } else if let Some(project) = self
+                    .background
+                    .values_mut()
+                    .find(|project| project.tabs.iter().any(matches))
+                {
+                    remove_tabs(
+                        &mut project.tabs,
+                        &mut project.active,
+                        &mut project.open,
+                        matches,
+                    );
                 }
             }
             Event::Copy(text) => return iced::clipboard::write(text),
             Event::Cut(request, text, bytes) => {
-                let input = self
-                    .tabs
-                    .iter_mut()
-                    .find(|tab| tab.request == request)
-                    .map_or_else(Task::none, |tab| tab.update(Event::Input(request, bytes)));
+                let Some(tab) = self.tab_mut(request) else {
+                    return Task::none();
+                };
+                let input = tab.update(Event::Input(request, bytes));
                 return Task::batch([iced::clipboard::write(text), input]);
             }
             event => {
@@ -201,7 +318,7 @@ impl State {
                     | Event::Pasted(request, _) => *request,
                     _ => return Task::none(),
                 };
-                if let Some(tab) = self.tabs.iter_mut().find(|tab| tab.request == request) {
+                if let Some(tab) = self.tab_mut(request) {
                     return tab.update(event);
                 }
             }
@@ -295,7 +412,7 @@ impl Tab {
                     };
                     state.send(bytes);
                 } else {
-                    return Task::done(Event::PasteRejected);
+                    return Task::done(Event::PasteRejected(request));
                 }
             }
             _ => {}

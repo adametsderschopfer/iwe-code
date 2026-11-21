@@ -10,10 +10,41 @@ use std::{
     thread,
     time::Duration,
 };
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 #[cfg(windows)]
 use xpty::{CommandBuilder, PtySize, PtySystem, native_pty_system};
 
 pub(crate) const MAX_INPUT: usize = 64 * 1024;
+
+#[derive(Clone, Default)]
+pub(crate) struct Lifetime {
+    cancel: CancellationToken,
+    children: TaskTracker,
+}
+
+impl Lifetime {
+    pub(super) fn tab(&self) -> Self {
+        Self {
+            cancel: self.cancel.child_token(),
+            children: self.children.clone(),
+        }
+    }
+
+    pub(super) fn stop(&self) {
+        self.cancel.cancel();
+    }
+
+    pub(crate) fn stopping(&self) -> bool {
+        self.children.is_closed()
+    }
+
+    /// Stop every child and report when the last child exits.
+    pub(crate) fn shutdown(self) -> Option<impl Future<Output = ()> + Send + 'static> {
+        self.stop();
+        self.children.close();
+        (!self.children.is_empty()).then_some(async move { self.children.wait().await })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) enum Output {
@@ -47,19 +78,25 @@ impl Drop for Session {
 }
 
 impl Session {
-    pub(crate) fn start(directory: &Path, rows: u16, cols: u16) -> Result<Arc<Self>, ()> {
+    pub(crate) fn start(
+        directory: &Path,
+        rows: u16,
+        cols: u16,
+        lifetime: Lifetime,
+    ) -> Result<Arc<Self>, ()> {
         let command = CommandBuilder::new_default_prog();
-        Self::spawn(directory, rows, cols, command)
+        Self::spawn(directory, rows, cols, command, lifetime)
     }
 
     pub(super) fn program(
         directory: &Path,
         path: &Path,
         args: Vec<String>,
+        lifetime: Lifetime,
     ) -> Result<Arc<Self>, ()> {
         let mut command = CommandBuilder::new(path);
         command.args(args);
-        Self::spawn(directory, 24, 80, command)
+        Self::spawn(directory, 24, 80, command, lifetime)
     }
 
     fn spawn(
@@ -67,8 +104,10 @@ impl Session {
         rows: u16,
         cols: u16,
         mut command: CommandBuilder,
+        lifetime: Lifetime,
     ) -> Result<Arc<Self>, ()> {
-        if !directory.is_dir() {
+        let child_worker = lifetime.children.token();
+        if lifetime.cancel.is_cancelled() || !directory.is_dir() {
             return Err(());
         }
         let pair = native_pty_system()
@@ -91,17 +130,20 @@ impl Session {
             .spawn(move || {
                 loop {
                     match stopped.recv_timeout(Duration::from_millis(100)) {
-                        Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => {
+                        Err(mpsc::RecvTimeoutError::Timeout) if !lifetime.cancel.is_cancelled() => {
+                            match child.try_wait() {
+                                Ok(None) => {}
+                                _ => break,
+                            }
+                        }
+                        _ => {
                             let _ = child.kill();
                             let _ = child.wait();
                             break;
                         }
-                        Err(mpsc::RecvTimeoutError::Timeout) => match child.try_wait() {
-                            Ok(None) => {}
-                            _ => break,
-                        },
                     }
                 }
+                drop(child_worker);
                 // Release ConPTY on the input thread while the output thread drains it.
                 let _ = shutdown.send(Control::Close);
             })
@@ -173,15 +215,19 @@ impl Session {
         if bytes.len() > MAX_INPUT {
             return Err(());
         }
-        self.controls
-            .try_send(Control::Input(bytes))
-            .map_err(|_| ())
+        self.send_control(Control::Input(bytes))
     }
 
     pub(crate) fn resize(&self, rows: u16, cols: u16) -> Result<(), ()> {
-        self.controls
-            .try_send(Control::Resize(rows, cols))
-            .map_err(|_| ())
+        self.send_control(Control::Resize(rows, cols))
+    }
+
+    fn send_control(&self, control: Control) -> Result<(), ()> {
+        match self.controls.try_send(control) {
+            // The output worker delivers the final status after the input worker closes.
+            Ok(()) | Err(mpsc::TrySendError::Disconnected(_)) => Ok(()),
+            Err(mpsc::TrySendError::Full(_)) => Err(()),
+        }
     }
 
     pub(crate) async fn next(&self) -> Vec<Output> {

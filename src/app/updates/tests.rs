@@ -165,3 +165,69 @@ fn installing_waits_for_the_latest_workspace_save_and_preserves_failed_saves() {
         }
     }
 }
+
+#[tokio::test]
+async fn update_handoff_keeps_terminal_completions_and_blocks_user_input() {
+    use crate::{
+        app::modules::Event as ModuleEvent,
+        modules::terminal::{Event as T, Program, Status},
+    };
+    use iced::futures::{StreamExt, stream};
+    use iced_test::runtime::{Action, task};
+
+    let mut app = app();
+    let dir = tempfile::tempdir().unwrap();
+    app.workspace
+        .create_space("Work".into(), vec![dir.path().into()]);
+    #[cfg(unix)]
+    let (executable, args) = (
+        "/bin/sh",
+        vec!["-c", "read answer; printf 'RESULT-%s\\n' \"$answer\""],
+    );
+    #[cfg(windows)]
+    let (executable, args) = {
+        std::fs::write(
+            dir.path().join("test.cmd"),
+            "@echo off\r\nset /p answer=\r\necho RESULT-%answer%\r\n",
+        )
+        .unwrap();
+        ("cmd.exe", vec!["/D", "/Q", "/C", "test.cmd"])
+    };
+    let terminal = |event| Message::Module(ModuleEvent::Terminal(event));
+    let start = app.update(terminal(T::StartProgram {
+        program: Program::Docker,
+        executable: executable.into(),
+        args: args.into_iter().map(str::to_owned).collect(),
+    }));
+    let request = app.modules.terminal.active.unwrap();
+    let update = Arc::new(Prepared::fixture());
+    app.updates = State::Saving(update.clone());
+    let mut actions = task::into_stream(start).unwrap();
+    while let Some(action) = actions.next().await {
+        if let Action::Output(message) = action {
+            let _ = app.update(message);
+        }
+    }
+    assert_eq!(
+        app.modules.terminal.active_tab().unwrap().status,
+        Status::Running
+    );
+    let _ = app.update(terminal(T::Input(request, b"blocked\r".to_vec())));
+    app.updates = State::Idle;
+    let _ = app.update(terminal(T::Input(request, b"allowed\r".to_vec())));
+    app.updates = State::Installing(update);
+    let _ = app.update(terminal(T::Close(request)));
+    let mut recipes =
+        iced::advanced::subscription::into_recipes(app.modules.terminal.subscription());
+    let mut output = recipes.pop().unwrap().stream(Box::pin(stream::pending()));
+    tokio::time::timeout(Duration::from_secs(15), async {
+        while let Some(event) = output.next().await {
+            let _ = app.update(terminal(event));
+        }
+    })
+    .await
+    .unwrap();
+    let tab = app.modules.terminal.active_tab().unwrap();
+    assert_eq!(tab.status, Status::Exited);
+    assert!(tab.parser.screen().contents().contains("RESULT-allowed"));
+}

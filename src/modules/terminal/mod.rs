@@ -5,5 +5,5 @@ mod state;
 mod style;
 mod view;
 
-pub(crate) use state::{Event, State, Status};
+pub(crate) use state::{Event, Program, State, Status};
 pub(crate) use view::view;

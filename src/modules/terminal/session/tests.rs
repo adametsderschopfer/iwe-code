@@ -1,5 +1,46 @@
 use super::*;
 
+#[tokio::test]
+async fn late_startup_and_input_preserve_a_finished_commands_buffered_output() {
+    use crate::modules::terminal::{Event, State, Status};
+    use iced::futures::{StreamExt, stream};
+
+    let mut terminal = State::default();
+    let first = Some(Path::new("first"));
+    let second = Some(Path::new("second"));
+    let _ = terminal.update(Event::Start, first);
+    let request = terminal.active.unwrap();
+    terminal.switch_project(first, second);
+
+    let (controls, input) = mpsc::sync_channel(1);
+    drop(input);
+    let (writer, output) = tokio::sync::mpsc::channel(2);
+    writer
+        .try_send(Output::Bytes(b"final output".to_vec()))
+        .unwrap();
+    writer.try_send(Output::Closed).unwrap();
+    let (stop, _) = mpsc::channel();
+    let session = Arc::new(Session {
+        controls,
+        output: tokio::sync::Mutex::new(output),
+        stop,
+    });
+    let _ = terminal.update(Event::Started(request, Ok(session)), None);
+    let _ = terminal.update(Event::Input(request, b"x".to_vec()), None);
+    let mut subscriptions = iced::advanced::subscription::into_recipes(terminal.subscription());
+    let mut events = subscriptions
+        .pop()
+        .unwrap()
+        .stream(Box::pin(stream::pending()));
+    while let Some(event) = events.next().await {
+        let _ = terminal.update(event, None);
+    }
+    terminal.switch_project(second, first);
+    let tab = terminal.active_tab().unwrap();
+    assert_eq!(tab.status, Status::Exited);
+    assert_eq!(tab.parser.screen().contents(), "final output");
+}
+
 #[cfg(windows)]
 #[tokio::test]
 async fn shell_starts_without_cursor_reply_and_drains_output_before_closing() {
@@ -7,10 +48,12 @@ async fn shell_starts_without_cursor_reply_and_drains_output_before_closing() {
     let path = directory.path().to_path_buf();
     let mut command = CommandBuilder::new("cmd.exe");
     command.args(["/D", "/Q", "/C", "echo FINAL-OUTPUT"]);
-    let session = tokio::task::spawn_blocking(move || Session::spawn(&path, 24, 80, command))
-        .await
-        .unwrap()
-        .unwrap();
+    let session = tokio::task::spawn_blocking(move || {
+        Session::spawn(&path, 24, 80, command, Lifetime::default())
+    })
+    .await
+    .unwrap()
+    .unwrap();
     let mut output = Vec::new();
     tokio::time::timeout(Duration::from_secs(15), async {
         loop {
@@ -47,10 +90,12 @@ async fn project_shell_accepts_input_and_reports_output_and_exit() {
         command
     };
     let path = directory.path().to_path_buf();
-    let session = tokio::task::spawn_blocking(move || Session::spawn(&path, 24, 80, command))
-        .await
-        .unwrap()
-        .unwrap();
+    let session = tokio::task::spawn_blocking(move || {
+        Session::spawn(&path, 24, 80, command, Lifetime::default())
+    })
+    .await
+    .unwrap()
+    .unwrap();
     #[cfg(unix)]
     session.input(b"hello-terminal\r".to_vec()).unwrap();
     #[cfg(windows)]
@@ -99,10 +144,12 @@ async fn resize_reaches_the_pseudo_terminal() {
     let mut command = CommandBuilder::new("/bin/sh");
     command.args(["-c", "read value; stty size"]);
     let path = directory.path().to_path_buf();
-    let session = tokio::task::spawn_blocking(move || Session::spawn(&path, 24, 80, command))
-        .await
-        .unwrap()
-        .unwrap();
+    let session = tokio::task::spawn_blocking(move || {
+        Session::spawn(&path, 24, 80, command, Lifetime::default())
+    })
+    .await
+    .unwrap()
+    .unwrap();
     session.resize(35, 110).unwrap();
     session.input(b"go\r".to_vec()).unwrap();
     let mut output = Vec::new();
@@ -125,7 +172,15 @@ async fn resize_reaches_the_pseudo_terminal() {
 #[test]
 fn missing_project_directory_cannot_start_a_shell() {
     let directory = tempfile::tempdir().unwrap();
-    assert!(Session::start(&directory.path().join("missing"), 24, 80).is_err());
+    assert!(
+        Session::start(
+            &directory.path().join("missing"),
+            24,
+            80,
+            Lifetime::default()
+        )
+        .is_err()
+    );
 }
 
 #[cfg(unix)]
@@ -142,10 +197,12 @@ printf ready
 while :; do sleep 0.05; done"#,
     ]);
     let path = directory.path().to_path_buf();
-    let session = tokio::task::spawn_blocking(move || Session::spawn(&path, 24, 80, command))
-        .await
-        .unwrap()
-        .unwrap();
+    let session = tokio::task::spawn_blocking(move || {
+        Session::spawn(&path, 24, 80, command, Lifetime::default())
+    })
+    .await
+    .unwrap()
+    .unwrap();
     tokio::time::timeout(Duration::from_secs(5), session.next())
         .await
         .unwrap();

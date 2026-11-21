@@ -138,8 +138,12 @@ fn launch_helper(prepared: &Prepared, mut command: Command) -> Result<(), Error>
     Ok(())
 }
 
-pub(crate) fn install_and_exit(prepared: &Prepared) -> Error {
-    exit_after_handoff(|| start_install(prepared))
+pub(crate) fn install_and_exit(prepared: &Prepared, before_exit: impl FnOnce()) -> Error {
+    exit_after_handoff(|| {
+        start_install(prepared)?;
+        before_exit();
+        Ok(())
+    })
 }
 
 fn exit_after_handoff(handoff: impl FnOnce() -> Result<(), Error>) -> Error {
