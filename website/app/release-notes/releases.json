@@ -2801,6 +2801,16 @@
           "es": "Los diálogos del espacio de trabajo y los módulos comparten la misma disposición. Los botones, campos y menús comparten esquinas y estados en ambos temas."
         },
         "sources": ["src/ui/modal/mod.rs", "src/ui/theme/fields.rs", "src/ui/theme/buttons.rs"]
+      },
+      {
+        "id": "shared-controls-website-gallery",
+        "category": "maintenance",
+        "text": {
+          "en": "The website gallery now shows the updated workspace controls.",
+          "ru": "Галерея сайта показывает обновлённые элементы управления приложения.",
+          "es": "La galería del sitio muestra los controles actualizados del espacio de trabajo."
+        },
+        "sources": ["website/public/images/search-en.webp", "website/public/images/settings-en.webp"]
       }
     ]
   }
