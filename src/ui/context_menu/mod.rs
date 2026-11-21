@@ -16,6 +16,21 @@ pub(crate) fn trigger<'a, Message: 'a>(
 ) -> Element<'a, Message> {
     Element::new(Trigger {
         content: content.into(),
+        on_open: Some(Box::new(move |point, _| on_open(point))),
+        on_key: None,
+        popup_position: None,
+        anchored: false,
+        fallback: false,
+    })
+}
+
+/// Include the content-relative position for widgets that perform hit testing.
+pub(crate) fn positioned<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+    on_open: impl Fn(Point, Point) -> Message + 'a,
+) -> Element<'a, Message> {
+    Element::new(Trigger {
+        content: content.into(),
         on_open: Some(Box::new(on_open)),
         on_key: None,
         popup_position: None,
@@ -30,7 +45,7 @@ pub(crate) fn fallback<'a, Message: 'a>(
 ) -> Element<'a, Message> {
     Element::new(Trigger {
         content: content.into(),
-        on_open: Some(Box::new(on_open)),
+        on_open: Some(Box::new(move |point, _| on_open(point))),
         on_key: None,
         popup_position: None,
         anchored: false,
@@ -44,7 +59,7 @@ pub(crate) fn anchored<'a, Message: 'a>(
 ) -> Element<'a, Message> {
     Element::new(Trigger {
         content: content.into(),
-        on_open: Some(Box::new(on_open)),
+        on_open: Some(Box::new(move |point, _| on_open(point))),
         on_key: None,
         popup_position: None,
         anchored: true,
@@ -87,7 +102,7 @@ pub(crate) fn dismiss_on_escape<'a, Message: Clone + 'a>(
 
 struct Trigger<'a, Message> {
     content: Element<'a, Message>,
-    on_open: Option<Box<dyn Fn(Point) -> Message + 'a>>,
+    on_open: Option<Box<dyn Fn(Point, Point) -> Message + 'a>>,
     on_key: Option<KeyHandler<'a, Message>>,
     popup_position: Option<Point>,
     anchored: bool,
@@ -188,7 +203,13 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
             } else {
                 position
             };
-            shell.publish(on_open(position));
+            shell.publish(on_open(
+                position,
+                Point::new(
+                    position.x - layout.bounds().x,
+                    position.y - layout.bounds().y,
+                ),
+            ));
             shell.capture_event();
             return;
         }

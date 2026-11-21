@@ -131,6 +131,20 @@ impl App {
                 if let Some(delta) = shortcuts::zoom_delta(&key, physical_key, modifiers) {
                     return self.update(Message::Zoom(delta));
                 }
+                if self.window_id == Some(id)
+                    && (self
+                        .editor
+                        .rename
+                        .as_ref()
+                        .is_some_and(|form| form.tab == self.preview().id)
+                        || self
+                            .editor
+                            .menu
+                            .as_ref()
+                            .is_some_and(|menu| menu.tab == self.preview().id))
+                {
+                    return Task::none();
+                }
                 if status == Status::Captured {
                     return Task::none();
                 }

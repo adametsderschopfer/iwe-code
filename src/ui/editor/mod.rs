@@ -4,6 +4,7 @@ mod completion;
 mod definition;
 mod diagnostics;
 mod gutter;
+mod menu;
 mod scrollbar;
 mod search;
 mod syntax;
@@ -29,7 +30,13 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
     let line_height = f32::from(app.workspace.preferences.code_line_height) / 100.;
     let font = theme::selected_code_font(app.workspace.preferences.code_font);
     let bindings = &app.workspace.preferences.shortcuts;
-    let blocked = app.editor.pending.is_some()
+    let blocked = app.editor.menu.as_ref().is_some_and(|menu| menu.tab == id)
+        || app
+            .editor
+            .rename
+            .as_ref()
+            .is_some_and(|rename| rename.tab == id)
+        || app.editor.pending.is_some()
         || app.auth_dialog.is_some()
         || app.line_navigation.is_some()
         || app.space_draft.is_some()
@@ -62,6 +69,27 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
             use text_editor::{Binding, Status};
             if blocked || !matches!(key.status, Status::Focused { .. }) {
                 return None;
+            }
+            if key.key == iced::keyboard::Key::Named(iced::keyboard::key::Named::ContextMenu)
+                || (key.modifiers.shift()
+                    && key.key == iced::keyboard::Key::Named(iced::keyboard::key::Named::F10))
+            {
+                let left = if app.file_panel_visible {
+                    app.workspace.preferences.file_panel_width
+                } else {
+                    0.
+                } + if app.workspace.preferences.show_spaces_sidebar {
+                    app.workspace.preferences.spaces_sidebar_width
+                } else {
+                    0.
+                };
+                return Some(Binding::Custom(crate::app::editor::menu::message(
+                    crate::app::editor::menu::Event::Open(
+                        id,
+                        iced::Point::new(left + 64., 110.),
+                        None,
+                    ),
+                )));
             }
             if crate::ui::shortcuts::zoom_delta(&key.key, key.physical_key, key.modifiers).is_some()
             {
@@ -212,9 +240,12 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
     } else {
         iced::widget::stack![editor].into()
     };
-    let editor = if let Some(report) = app.editor.diagnostics.as_ref().filter(|report| {
-        !report.diagnostics.is_empty() && report.tab == id && report.text == buffer.document.text
-    }) {
+    let editor: Element<'_, Message> = if let Some(report) =
+        app.editor.diagnostics.as_ref().filter(|report| {
+            !report.diagnostics.is_empty()
+                && report.tab == id
+                && report.text == buffer.document.text
+        }) {
         iced::widget::stack![
             editor,
             iced::widget::canvas(diagnostics::Underlines {
@@ -228,6 +259,20 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
     } else {
         iced::widget::stack![editor].into()
     };
+    let editor = crate::ui::context_menu::positioned(editor, move |point, local| {
+        let hit = buffer
+            .content
+            .with_editor(|editor| {
+                editor
+                    .buffer()
+                    .hit(local.x - TEXT_PADDING, local.y - TEXT_PADDING)
+            })
+            .map(|cursor| text_editor::Position {
+                line: cursor.line,
+                column: cursor.index,
+            });
+        crate::app::editor::menu::message(crate::app::editor::menu::Event::Open(id, point, hit))
+    });
     let editor = completion::overlay(app, editor);
     let editor = definition::overlay(app, editor);
     let cursor = buffer.content.cursor().position;
@@ -293,6 +338,7 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
 }
 
 pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
+    let base = menu::overlay(app, base);
     let base = if let Some(buffer) = app.editor_buffer()
         && app.module_enabled(crate::modules::ModuleId::Git)
         && buffer.document.text == buffer.marks.after

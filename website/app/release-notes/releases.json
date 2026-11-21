@@ -2581,6 +2581,16 @@
           "es": "Las rutas ignoradas aparecen en naranja. Pulsa una marca junto al número de línea para comparar los cambios."
         },
         "sources": ["src/app/editor/marks.rs"]
+      },
+      {
+        "id": "editor-action-menu",
+        "category": "added",
+        "text": {
+          "en": "Right-click code to edit the selection, navigate to definitions, or find usages in supported languages.",
+          "ru": "Щёлкните правой кнопкой по коду для редактирования выделения, перехода к определению или поиска использований в поддерживаемых языках.",
+          "es": "Haz clic derecho en el código para editar la selección, ir a definiciones o buscar usos en lenguajes compatibles."
+        },
+        "sources": ["src/app/editor/menu/mod.rs"]
       }
     ]
   }

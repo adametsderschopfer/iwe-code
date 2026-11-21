@@ -16,7 +16,7 @@ pub(crate) struct Definition {
 }
 
 impl App {
-    pub(super) fn request_definition(&mut self) -> Task<Message> {
+    pub(super) fn request_locations(&mut self, references: bool) -> Task<Message> {
         let Some(buffer) = self.editor_buffer() else {
             return Task::none();
         };
@@ -51,10 +51,15 @@ impl App {
                 let mut service = service.lock().await;
                 service.configure(&configured);
                 service.maintain(&root, buffers).await;
-                let result = service
-                    .request(&root, &path, &text, position, "textDocument/definition")
-                    .await;
-                let definitions = result.ok().map(parse).unwrap_or_default();
+                let method = if references {
+                    "textDocument/references"
+                } else {
+                    "textDocument/definition"
+                };
+                let result = service.request(&root, &path, &text, position, method).await;
+                let definitions = result
+                    .map(parse)
+                    .map_err(|_| crate::i18n::Key::EditorLanguageUnavailable);
                 (generation, tab, text, cursor, definitions)
             },
             |(generation, tab, text, cursor, definitions)| {

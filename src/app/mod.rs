@@ -1868,6 +1868,8 @@ impl App {
             self.modules.git.git_actions.history.dialog = None;
             self.modules.git.git_actions.request += 1;
             self.modules.git.git_actions.pending = false;
+            self.editor.menu = None;
+            self.editor.rename = None;
             self.modules.terminal.reset();
             self.file_panel = self.workspace.preferences.file_panels[0];
             self.file_panel_visible = true;

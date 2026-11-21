@@ -2120,6 +2120,19 @@ fn preview(app: &App) -> Element<'_, Message> {
     } else {
         content
     };
+    let content = if app.preview().editor.is_none()
+        && !app.preview().loading
+        && app.preview().document.is_some()
+    {
+        let id = app.preview().id;
+        context_menu::trigger(content, move |point| {
+            crate::app::editor::menu::message(crate::app::editor::menu::Event::OpenViewer(
+                id, point,
+            ))
+        })
+    } else {
+        content
+    };
     let content = super::text_search::file_panel(app, content);
     let content = crate::modules::deployment::target_popup(
         &app.modules.deployment,

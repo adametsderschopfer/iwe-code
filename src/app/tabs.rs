@@ -1260,6 +1260,10 @@ impl App {
         let Some(index) = self.tabs.files.iter().position(|preview| preview.id == id) else {
             return Task::none();
         };
+        if self.preview().id != id {
+            self.editor.menu = None;
+            self.editor.rename = None;
+        }
         self.tabs.active = index;
         if self.preview().revision.is_none() {
             self.files.selected_path = self.preview().path.clone();

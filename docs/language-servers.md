@@ -35,6 +35,21 @@ line or word boundary.
 Completion and diagnostic surfaces preserve the editor widget state when they appear or disappear.
 The editor keeps keyboard focus and drag selection during these changes.
 
+## Editor context menu
+
+Right-click source text to open the editor menu. Shift+F10 opens it from the focused editor. A click
+inside the selection preserves it. A click outside moves the cursor. Up and Down move between
+available commands. The menu lists navigation and code actions under separate headings. Enter runs
+an action. Escape closes the menu. Read-only source tabs provide copying, selection, search, and
+line navigation.
+
+Editable tabs add clipboard commands, undo, redo, and line duplication. **Navigate** offers line
+navigation, definitions, and language-server references for supported symbols. **Code actions**
+provides formatting and semantic renaming for file-local symbols. Renaming asks the language server
+for edits. IWE validates every edit before changing the file. Renaming a symbol that requires
+changes elsewhere leaves every file intact and explains the scope. A successful rename forms one
+undo operation. Language actions require a compatible server.
+
 ## Project formatting
 
 IWE searches from the file's directory toward the project root. The nearest formatter configuration

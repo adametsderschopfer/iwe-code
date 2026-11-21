@@ -10,6 +10,17 @@ use std::{
     sync::Arc,
 };
 
+pub(crate) enum Query<'a> {
+    Method(&'a str),
+    Rename(&'a str),
+}
+
+impl<'a> From<&'a str> for Query<'a> {
+    fn from(method: &'a str) -> Self {
+        Self::Method(method)
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct Service {
     configured: std::collections::BTreeMap<String, String>,
@@ -61,14 +72,18 @@ impl Service {
             self.configured = configured.clone();
         }
     }
-    pub(crate) async fn request(
+    pub(crate) async fn request<'a>(
         &mut self,
         root: &Path,
         path: &Path,
         text: &str,
         position: Position,
-        method: &str,
+        query: impl Into<Query<'a>>,
     ) -> io::Result<Value> {
+        let (method, rename) = match query.into() {
+            Query::Method(method) => (method, None),
+            Query::Rename(name) => ("textDocument/rename", Some(name)),
+        };
         if self.root != root {
             self.clients.clear();
             self.root = root.to_owned();
@@ -162,12 +177,14 @@ impl Service {
                     )
                     .await;
             }
-            client
-                .call(
-                    method,
-                    json!({"textDocument": {"uri": uri}, "position": position}),
-                )
-                .await
+            let mut params = json!({"textDocument": {"uri": uri}, "position": position});
+            if method == "textDocument/references" {
+                params["context"] = json!({"includeDeclaration": false});
+            }
+            if let Some(name) = rename {
+                params["newName"] = json!(name);
+            }
+            client.call(method, params).await
         }
         .await;
         if result.is_err() {

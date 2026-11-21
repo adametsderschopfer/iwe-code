@@ -146,6 +146,13 @@ impl Selection {
         )
     }
 
+    pub(crate) fn has_text(&self, document: &Document) -> bool {
+        self.fingerprint == Some(document.fingerprint)
+            && self.anchor.is_some()
+            && self.focus.is_some()
+            && self.anchor != self.focus
+    }
+
     pub(crate) fn copy(&self, document: &Document) -> Option<String> {
         let (anchor, focus) = (self.anchor?, self.focus?);
         if anchor == focus {

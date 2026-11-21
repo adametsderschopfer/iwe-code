@@ -12,6 +12,7 @@ mod definition;
 mod diagnostics;
 mod formatting;
 pub(crate) mod marks;
+pub(crate) mod menu;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Target {
@@ -53,6 +54,8 @@ impl Buffer {
 
 #[derive(Default)]
 pub(crate) struct State {
+    pub menu: Option<menu::Menu>,
+    pub rename: Option<menu::Rename>,
     pub server_checks: std::collections::BTreeMap<String, bool>,
     pub diagnostics: Option<diagnostics::Report>,
     diagnostics_busy: bool,
@@ -69,6 +72,7 @@ pub(crate) struct State {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
+    Menu(menu::Event),
     Marks(marks::Event),
     DuplicateLine,
     Format,
@@ -84,7 +88,7 @@ pub(crate) enum Event {
         u64,
         Arc<String>,
         text_editor::Position,
-        Vec<definition::Definition>,
+        Result<Vec<definition::Definition>, Key>,
     ),
     OpenDefinition(usize),
     CompleteAfter(u64, u64),
@@ -445,6 +449,7 @@ impl App {
             return Task::none();
         }
         match event {
+            Event::Menu(event) => return self.update_editor_menu(event),
             Event::Marks(event) => return self.update_marks(event),
             Event::DuplicateLine => return self.duplicate_editor_line(),
             Event::Format => return self.request_formatting(),
@@ -464,7 +469,7 @@ impl App {
                     self.editor.diagnostics = Some(report);
                 }
             }
-            Event::Definition => return self.request_definition(),
+            Event::Definition => return self.request_locations(false),
             Event::OpenDefinition(index) => return self.open_definition(index),
             Event::Definitions(generation, tab, text, cursor, definitions) => {
                 if self.generation == generation
@@ -473,7 +478,17 @@ impl App {
                         buffer.document.text == text && buffer.content.cursor().position == cursor
                     })
                 {
-                    self.editor.definitions = definitions;
+                    match definitions {
+                        Err(key) => {
+                            self.notifications.error(key, None);
+                            return Task::none();
+                        }
+                        Ok(found) if found.is_empty() => {
+                            self.notifications.success(Key::EditorNoLocations, None);
+                            return Task::none();
+                        }
+                        Ok(found) => self.editor.definitions = found,
+                    }
                     if self.editor.definitions.len() == 1 {
                         return self.open_definition(0);
                     }

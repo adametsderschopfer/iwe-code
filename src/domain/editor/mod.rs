@@ -26,6 +26,14 @@ impl Document {
         }
     }
 
+    pub(crate) fn can_undo(&self, redo: bool) -> bool {
+        if redo {
+            !self.redo.is_empty()
+        } else {
+            !self.undo.is_empty()
+        }
+    }
+
     pub(crate) fn dirty(&self) -> bool {
         self.text != self.saved
     }

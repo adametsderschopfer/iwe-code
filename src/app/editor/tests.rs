@@ -1115,6 +1115,114 @@ fn failed_diagnostics_back_off_and_detecting_a_program_retries_promptly() {
 }
 
 #[test]
+fn right_click_preserves_selection_and_shows_grouped_actions() {
+    use iced::{mouse, widget::Id};
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let mut app = app();
+        app.i18n = Rc::new(I18n::new(language));
+        let id = app.preview().id;
+        let _ = app.update_editor(Event::Action(id, text_editor::Action::SelectAll));
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+        let bounds = ui
+            .find(Id::from(format!("text-editor-{id}")))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        ui.point_at(iced::Point::new(bounds.x + 20., bounds.y + 17.));
+        ui.simulate([iced::Event::Mouse(mouse::Event::ButtonPressed(
+            mouse::Button::Right,
+        ))]);
+        for message in ui.into_messages() {
+            let _ = app.update(message);
+        }
+        assert!(app.editor_buffer().unwrap().content.selection().is_some());
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+        assert!(ui.find(app.i18n.text(Key::EditorRefactor)).is_err());
+        assert!(
+            ui.find(app.i18n.text(Key::GoToLine))
+                .unwrap()
+                .visible_bounds()
+                .is_some()
+        );
+        ui.click(app.i18n.text(Key::EditorNavigate)).unwrap();
+        ui.click(app.i18n.text(Key::FileCut)).unwrap();
+        for message in ui.into_messages() {
+            let _ = app.update(message);
+        }
+        assert!(app.editor.menu.is_none());
+        assert!(app.editor_buffer().unwrap().document.text.is_empty());
+        let _ = app.update_editor(Event::Undo(id, false));
+        assert_eq!(
+            app.editor_buffer().unwrap().document.text.as_str(),
+            "original\r\n"
+        );
+    }
+}
+
+#[test]
+fn grouped_editor_actions_share_one_menu_and_keyboard_skips_headings() {
+    use iced::keyboard::key::Named;
+    use text_editor::Position;
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let mut app = app();
+        app.i18n = Rc::new(I18n::new(language));
+        let _ = app.open_file("project/source.rs".into());
+        let id = app.preview().id;
+        let _ = app.finish_preview(id, Ok(Document::new("let sample = 1;".into(), "rs")));
+        let open = menu::Event::Open(
+            id,
+            iced::Point::new(1075., 710.),
+            Some(Position { line: 0, column: 5 }),
+        );
+        let _ = app.update_editor(Event::Menu(open.clone()));
+        fn view(app: &App) -> iced_test::Simulator<'_, Message> {
+            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view())
+        }
+        let mut ui = view(&app);
+        let mut bottom = 0.;
+        for key in [
+            Key::EditorNavigate,
+            Key::GoToLine,
+            Key::GoToDefinition,
+            Key::EditorUsages,
+            Key::EditorRefactor,
+            Key::EditorRenameLocal,
+            Key::FormatCode,
+        ] {
+            let row = ui
+                .find(app.i18n.text(key))
+                .unwrap()
+                .visible_bounds()
+                .unwrap();
+            assert!(row.y >= bottom && row.y + row.height <= 720.);
+            bottom = row.y + row.height;
+        }
+        ui.click(app.i18n.text(Key::EditorRefactor)).unwrap();
+        assert!(ui.into_messages().next().is_none());
+        for key in [Named::ArrowUp, Named::ArrowUp, Named::Enter] {
+            let mut ui = view(&app);
+            ui.tap_key(key);
+            for message in ui.into_messages() {
+                let _ = app.update(message);
+            }
+        }
+        assert_eq!(app.editor.rename.as_ref().unwrap().symbol, "sample");
+        assert!(app.editor.menu.is_none());
+        let _ = app.update_editor(Event::Menu(menu::Event::RenameCancel));
+        let _ = app.update_editor(Event::Menu(open));
+        let mut ui = view(&app);
+        ui.click(app.i18n.text(Key::GoToLine)).unwrap();
+        for message in ui.into_messages() {
+            let _ = app.update(message);
+        }
+        assert!(app.line_navigation.is_some());
+        assert!(app.editor.menu.is_none());
+    }
+}
+
+#[test]
 fn clicking_git_gutter_shows_original_and_current_lines() {
     use iced::{mouse, widget::Id};
     let mut app = app();

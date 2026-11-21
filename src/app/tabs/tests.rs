@@ -2579,12 +2579,5 @@ fn svg_modes_preserve_edits_and_reject_old_image_results() {
     assert!(app.editor_buffer().is_none());
     assert!(app.preview().image.is_some());
     let _ = app.update(Message::ToggleSvgSource(new_id));
-    assert!(
-        app.preview_mut()
-            .editor
-            .as_mut()
-            .unwrap()
-            .document
-            .undo(true)
-    );
+    assert!(app.editor_buffer().unwrap().document.can_undo(true));
 }
