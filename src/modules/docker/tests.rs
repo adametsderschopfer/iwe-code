@@ -374,6 +374,12 @@ fn resource_sections_reflow_and_keep_the_filter_when_returning_to_a_narrow_list(
         assert_eq!(details.x + details.width, 850.);
         assert_eq!(nav.y + nav.height, 280.);
         assert_eq!(nav.y, details.y);
+        let filter = wide
+            .find(Id::new("docker-filter"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        assert!((filter.center_y() - list.y - 17.).abs() < 1.);
         assert_eq!(nav.width, 42.);
         assert!(wide.find(i18n.text(Key::DockerActions)).is_ok());
         drop(wide);

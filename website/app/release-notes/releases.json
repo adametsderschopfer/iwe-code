@@ -2661,6 +2661,16 @@
           "es": "El clic derecho abre el menú del recurso sin abrir sus propiedades. Eliminar un contenedor en ejecución requiere confirmación."
         },
         "sources": ["src/modules/docker/model.rs"]
+      },
+      {
+        "id": "docker-header-search",
+        "category": "changed",
+        "text": {
+          "en": "Filter Docker resources from the list heading.",
+          "ru": "Фильтруйте ресурсы Docker в заголовке списка.",
+          "es": "Filtra los recursos de Docker desde la cabecera de la lista."
+        },
+        "sources": ["src/modules/docker/view.rs"]
       }
     ]
   }

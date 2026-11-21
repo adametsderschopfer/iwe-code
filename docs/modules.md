@@ -55,12 +55,12 @@ the filtered results.
 
 Click a resource to open its properties. Right-click a row to act on it while keeping the current
 properties. Removing a running or paused container requires confirmation and stops it immediately.
-Filter by name, identifier, driver, image, or status. Lists display forty results per page. Refresh
-updates the selected section. The visible panel also checks idle lists every twelve seconds. Log
-requests retrieve the latest 500 lines per container. The details pane splits long output into
-pages. Terminal sessions run the selected executable inside the container. Enter its path if the
-image lacks the default shell. Closing the terminal tab ends the session. Removing a Compose project
-preserves named volumes.
+Use the filter in the resource heading to search by name, identifier, driver, image, or status.
+Lists display forty results per page. Refresh updates the selected section. The visible panel also
+checks idle lists every twelve seconds. Log requests retrieve the latest 500 lines per container.
+The details pane splits long output into pages. Terminal sessions run the selected executable inside
+the container. Enter its path if the image lacks the default shell. Closing the terminal tab ends
+the session. Removing a Compose project preserves named volumes.
 
 IWE asks for confirmation before stopping, pausing, restarting, disconnecting, or removing
 resources. The panel shows the operation and elapsed time while the editor remains available. Read

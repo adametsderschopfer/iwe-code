@@ -181,6 +181,12 @@ fn status_key(kind: Kind) -> Key {
 fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Event> {
     let ready = state.busy.is_none();
     let create = state.kind.create();
+    let search = text_input(&i18n.text(Key::DockerFilter), &state.query)
+        .id("docker-filter")
+        .on_input(Event::Search)
+        .size(12)
+        .padding([5, 8])
+        .style(style::input);
     let mut header = row![
         text(i18n.text(state.kind.key()))
             .font(theme::semibold())
@@ -188,7 +194,7 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
         container(text(state.filtered.len().to_string()).size(11))
             .padding([1, 6])
             .style(style::surface(theme::badge)),
-        space().width(Length::Fill),
+        search.width(Length::Fill),
     ]
     .align_y(Alignment::Center)
     .spacing(5);
@@ -242,13 +248,7 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
             Length::Fill,
         );
     }
-    let search = text_input(&i18n.text(Key::DockerFilter), &state.query)
-        .id("docker-filter")
-        .on_input(Event::Search)
-        .size(12)
-        .padding([5, 8])
-        .style(style::input);
-    let mut content = column![container(search).padding([6., GUTTER]).width(Length::Fill)];
+    let mut content = column![];
     if !state.filtered.is_empty() {
         content = content
             .push(
