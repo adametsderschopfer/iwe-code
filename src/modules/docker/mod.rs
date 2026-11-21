@@ -2,6 +2,7 @@
 
 mod adapter;
 mod container;
+mod graph;
 mod model;
 mod relations;
 mod view;
@@ -64,6 +65,10 @@ pub(crate) enum Event {
     ShowRunning(bool),
     RunningLoaded(u64, Result<Arc<Vec<relations::Running>>, Error>),
     RunningPage(bool),
+    Graph,
+    GraphLoaded(u64, Result<Arc<graph::Data>, Error>),
+    Diagram(graph::Interaction),
+    OpenNode(graph::Id),
     OpenImage,
     OpenContainer(String),
     Linked(u64, Kind, Result<(Arc<Vec<Item>>, String), Error>),
@@ -113,6 +118,9 @@ pub(crate) struct State {
     query: String,
     page: usize,
     properties_width: Option<f32>,
+    graph_open: bool,
+    diagram: Arc<graph::Data>,
+    diagram_view: graph::Viewport,
     show_running: bool,
     running: Option<Arc<Vec<relations::Running>>>,
     running_page: usize,
@@ -131,7 +139,13 @@ pub(crate) struct State {
 
 impl State {
     pub(crate) fn refresh_interval(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(if self.busy.is_some() { 1 } else { 12 })
+        std::time::Duration::from_secs(if self.busy.is_some() {
+            1
+        } else if self.graph_open {
+            60
+        } else {
+            12
+        })
     }
     pub(crate) fn has_dialog(&self) -> bool {
         self.open && self.draft.is_some()
@@ -199,6 +213,13 @@ impl State {
         let kind = self.kind;
         let root = root.to_owned();
         let id = self.begin(Key::Loading);
+        if self.graph_open {
+            let previous = self.diagram.clone();
+            return Task::perform(
+                async move { graph::load(&context, &root, previous).await },
+                move |r| Event::GraphLoaded(id, r),
+            );
+        }
         Task::perform(
             async move { relations::inventory(&context, &root, kind).await },
             move |result| Event::Listed(id, result),
@@ -222,6 +243,7 @@ impl State {
             return Task::none();
         };
         self.clear_selection();
+        self.graph_open = false;
         self.kind = kind;
         self.items = items;
         self.query.clear();
@@ -229,6 +251,15 @@ impl State {
         self.page = index / PAGE;
         self.selected = Some(id);
         crate::ui::reveal_file::in_list("docker-rows".into(), "docker-selected-row".into(), 0.)
+    }
+    fn change_connection(&mut self, name: String) {
+        self.diagram = Arc::default();
+        self.diagram_view = Default::default();
+        self.context = Some(name);
+        self.connection_error = None;
+        self.items = Arc::default();
+        self.clear_selection();
+        self.filter();
     }
     fn connections(&mut self, root: &Path) -> Task<Event> {
         let id = self.begin(Key::Loading);
@@ -250,7 +281,7 @@ impl State {
                             .as_ref()
                             .is_none_or(|name| !names.contains(name))
                         {
-                            self.context = Some(current);
+                            self.change_connection(current);
                         }
                         self.contexts = names;
                         return self.list(root);
@@ -269,6 +300,20 @@ impl State {
                             self.clear_selection();
                         } else if self.show_running {
                             return self.load_running(root);
+                        }
+                    }
+                    Err(error) => self.list_failed(error),
+                }
+            }
+            Event::Diagram(event) if self.graph_open => self.diagram_view.update(event),
+            Event::GraphLoaded(id, result) if id == self.request && self.graph_open => {
+                self.busy = None;
+                match result {
+                    Ok(data) => {
+                        self.connection_error = None;
+                        if !Arc::ptr_eq(&data, &self.diagram) {
+                            self.diagram_view.reconcile(&data);
+                            self.diagram = data;
                         }
                     }
                     Err(error) => self.list_failed(error),
@@ -382,6 +427,36 @@ impl State {
                 self.show_running = true;
                 return self.load_running(root);
             }
+            Event::Graph if !self.graph_open => {
+                self.graph_open = true;
+                self.menu = None;
+                return self.list(root);
+            }
+            Event::OpenNode(key)
+                if self.graph_open && self.diagram_view.selected.as_ref() == Some(&key) =>
+            {
+                let Some(context) = self.context.clone() else {
+                    return Task::none();
+                };
+                let root = root.to_owned();
+                let id = self.begin(Key::Loading);
+                let kind = key.0;
+                return Task::perform(
+                    async move {
+                        let items = relations::inventory(&context, &root, kind).await?;
+                        let target = if kind == Kind::Images {
+                            items.iter().find(|r| r.detail == key.1)
+                        } else {
+                            items.iter().find(|r| r.id == key.1)
+                        }
+                        .ok_or(Error::NotFound)?
+                        .id
+                        .clone();
+                        Ok((items, target))
+                    },
+                    move |result| Event::Linked(id, kind, result),
+                );
+            }
             Event::OpenImage if self.kind == Kind::Containers => {
                 let (Some(context), Some(container)) =
                     (self.context.clone(), self.selected().cloned())
@@ -426,14 +501,14 @@ impl State {
             Event::Context(name)
                 if self.context.as_ref() != Some(&name) && self.contexts.contains(&name) =>
             {
-                self.context = Some(name);
-                self.connection_error = None;
-                self.items = Arc::default();
-                self.clear_selection();
-                self.filter();
+                self.change_connection(name);
                 return self.list(root);
             }
-            Event::Kind(kind) if kind != self.kind => {
+            Event::Kind(kind) if self.graph_open || kind != self.kind => {
+                self.graph_open = false;
+                if self.kind == kind {
+                    return self.list(root);
+                }
                 self.kind = kind;
                 self.items = Arc::default();
                 self.query.clear();

@@ -2731,6 +2731,16 @@
           "es": "Los diálogos de Docker muestran los campos bajo el título y mantienen visibles las acciones durante el desplazamiento."
         },
         "sources": ["src/modules/docker/view/form.rs"]
+      },
+      {
+        "id": "docker-resource-graph",
+        "category": "added",
+        "text": {
+          "en": "Explore how containers connect to images, networks, volumes, and Compose projects in an interactive graph.",
+          "ru": "Просматривайте связи контейнеров с образами, сетями, томами и проектами Compose на интерактивном графе.",
+          "es": "Explora las conexiones entre contenedores, imágenes, redes, volúmenes y proyectos Compose en un grafo interactivo."
+        },
+        "sources": ["src/modules/docker/graph/mod.rs"]
       }
     ]
   }

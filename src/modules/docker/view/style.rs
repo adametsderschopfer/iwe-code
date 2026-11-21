@@ -21,7 +21,7 @@ pub(super) fn surface(
     }
 }
 
-pub(super) fn button(
+pub(in crate::modules::docker) fn button(
     style: impl Fn(&Theme, ButtonStatus) -> ButtonStyle,
 ) -> impl Fn(&Theme, ButtonStatus) -> ButtonStyle {
     move |theme, status| {

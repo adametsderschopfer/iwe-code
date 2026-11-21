@@ -158,9 +158,33 @@ async fn live_resource_lifecycle() {
                 .contains(&name)
         );
         if kind == Kind::Networks {
-            for action in [Action::Connect, Action::Disconnect] {
-                invoke(root, &context, kind, action, Some(&item), &container.id, "").await;
-            }
+            invoke(
+                root,
+                &context,
+                kind,
+                Action::Connect,
+                Some(&item),
+                &container.id,
+                "",
+            )
+            .await;
+            let graph = graph::load(&context, root, Arc::default()).await.unwrap();
+            assert!(graph.edges.iter().any(|&(a, b)| graph.nodes[a].id
+                == graph::Id(Kind::Containers, container.id.clone())
+                && graph.nodes[b].id == graph::Id(Kind::Networks, item.id.clone())));
+            assert!(graph.edges.iter().any(|&(a, b)| graph.nodes[a].id
+                == graph::Id(Kind::Images, digest.clone())
+                && graph.nodes[b].id == graph::Id(Kind::Containers, container.id.clone())));
+            invoke(
+                root,
+                &context,
+                kind,
+                Action::Disconnect,
+                Some(&item),
+                &container.id,
+                "",
+            )
+            .await;
         }
         invoke(root, &context, kind, Action::Remove, Some(&item), "", "").await;
     }

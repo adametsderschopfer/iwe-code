@@ -89,21 +89,37 @@ pub(super) async fn running(
         return Err(Error::Invalid);
     }
     let mut running = Vec::new();
+    inspect_batches(
+        context,
+        root,
+        &ids,
+        "{{.Id}} {{.Image}} {{.State.Status}} {{.Name}}",
+        |rows| {
+            running.extend(exact_running(rows, image)?);
+            Ok(())
+        },
+    )
+    .await?;
+    running.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+    Ok(Arc::new(running))
+}
+
+pub(super) async fn inspect_batches(
+    context: &str,
+    root: &Path,
+    ids: &[&str],
+    format: &str,
+    mut accept: impl FnMut(&str) -> Result<(), Error>,
+) -> Result<(), Error> {
     for batch in ids.chunks(64) {
         let mut pending = vec![batch];
         while let Some(group) = pending.pop() {
-            let mut args = [
-                "container",
-                "inspect",
-                "--format",
-                "{{.Id}} {{.Image}} {{.State.Status}} {{.Name}}",
-                "--",
-            ]
-            .map(String::from)
-            .to_vec();
+            let mut args = ["container", "inspect", "--format", format, "--"]
+                .map(String::from)
+                .to_vec();
             args.extend(group.iter().map(|id| (*id).to_owned()));
             match adapter::run(Some(context), &args, root, false, false).await {
-                Ok(rows) => running.extend(exact_running(&rows, image)?),
+                Ok(rows) => accept(&rows)?,
                 // Containers can disappear between the list and inspection.
                 Err(Error::NotFound) if group.len() > 1 => {
                     let (first, second) = group.split_at(group.len() / 2);
@@ -114,8 +130,7 @@ pub(super) async fn running(
             }
         }
     }
-    running.sort_unstable_by(|a, b| a.name.cmp(&b.name));
-    Ok(Arc::new(running))
+    Ok(())
 }
 
 pub(super) fn exact_running(rows: &str, image: &str) -> Result<Vec<Running>, Error> {

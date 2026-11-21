@@ -14,6 +14,7 @@ pub(crate) enum Icon {
     Docker,
     Cube,
     Network,
+    Relationships,
     Volume,
     Locate,
     More,
@@ -207,6 +208,13 @@ impl Drawing {
                 ]);
                 line(&[(3., 6.), (10., 10.), (17., 6.)]);
                 line(&[(10., 10.), (10., 18.)]);
+            }
+            Icon::Relationships => {
+                line(&[(5.5, 9.), (12.5, 4.5)]);
+                line(&[(5.5, 11.), (13.5, 15.)]);
+                for (x, y) in [(3.5, 10.), (15., 3.5), (16., 16.)] {
+                    frame.stroke(&Path::circle(Point::new(x, y), 2.5), stroke);
+                }
             }
             Icon::Network => {
                 line(&[(10., 7.), (10., 10.)]);
