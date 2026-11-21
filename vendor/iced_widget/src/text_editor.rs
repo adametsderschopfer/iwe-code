@@ -666,6 +666,12 @@ where
         })
     }
 
+    fn diff(&self, tree: &mut widget::Tree) {
+        if self.on_edit.is_none() {
+            tree.state.downcast_mut::<State<Highlighter>>().focus = None;
+        }
+    }
+
     fn size(&self) -> Size<Length> {
         Size {
             width: self.width,
@@ -1165,7 +1171,9 @@ where
     ) {
         let state = tree.state.downcast_mut::<State<Highlighter>>();
 
-        operation.focusable(self.id.as_ref(), layout.bounds(), state);
+        if self.on_edit.is_some() {
+            operation.focusable(self.id.as_ref(), layout.bounds(), state);
+        }
     }
 }
 

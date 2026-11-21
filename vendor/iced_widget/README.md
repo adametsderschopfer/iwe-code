@@ -17,5 +17,10 @@ grabbing and dragging on both axes.
 The patch also adds `text_editor::Content::with_editor`, a read-only layout inspection callback. The
 editor gutter uses visible layout runs to align line numbers with text during scrolling. The public
 content API otherwise exposes no visible-line positions. Application tests verify the gutter,
-scrolling, and its visibility preference. Keep other source files identical to the published crate.
-Remove each patch when upstream provides equivalent behavior.
+scrolling, and its visibility preference.
+
+Disabled text fields and multiline editors reject focus operations. Tab skips these controls. The
+dialog interaction tests cover both widget types.
+
+Keep other source files identical to the published crate. Remove each patch when upstream provides
+equivalent behavior.

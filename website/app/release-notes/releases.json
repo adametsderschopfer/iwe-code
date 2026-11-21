@@ -2781,6 +2781,16 @@
           "es": "Elige una etiqueta o un digest del registro para un Deployment, o abre la imagen de un contenedor en su registro."
         },
         "sources": ["src/app/modules/mod.rs"]
+      },
+      {
+        "id": "skip-disabled-editor-focus",
+        "category": "fixed",
+        "text": {
+          "en": "Keyboard navigation skips disabled text fields and multiline editors.",
+          "ru": "При переходе с клавиатуры фокус пропускает недоступные поля, включая многострочные.",
+          "es": "La navegación con el teclado omite los campos de texto desactivados, incluidos los de varias líneas."
+        },
+        "sources": ["vendor/iced_widget/src/text_input.rs", "vendor/iced_widget/src/text_editor.rs"]
       }
     ]
   }
