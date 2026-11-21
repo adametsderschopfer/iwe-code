@@ -498,12 +498,7 @@ impl canvas::Program<Event> for Screen<'_> {
                         *modifiers,
                         self.screen.application_cursor(),
                     )
-                    .or_else(|| {
-                        modifiers
-                            .control()
-                            .then(|| input::physical_control(*physical_key))
-                            .flatten()
-                    })
+                    .or_else(|| input::physical_control(*physical_key, *modifiers))
                 {
                     if matches!(key, keyboard::Key::Named(keyboard::key::Named::Enter)) {
                         state.input_start = None;

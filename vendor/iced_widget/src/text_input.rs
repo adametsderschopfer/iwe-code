@@ -905,18 +905,16 @@ where
                 text,
                 modified_key,
                 physical_key,
+                modifiers,
                 ..
             }) => {
                 let state = state::<Renderer>(tree);
 
                 if let Some(focus) = &mut state.is_focused {
-                    let modifiers = state.keyboard_modifiers;
+                    let modifiers = *modifiers;
 
                     match key.to_latin(*physical_key) {
-                        Some('c')
-                            if state.keyboard_modifiers.command()
-                                && !self.is_secure =>
-                        {
+                        Some('c') if modifiers.command() && !self.is_secure => {
                             if let Some((start, end)) =
                                 state.cursor.selection(&self.value)
                             {
@@ -929,10 +927,7 @@ where
                             shell.capture_event();
                             return;
                         }
-                        Some('x')
-                            if state.keyboard_modifiers.command()
-                                && !self.is_secure =>
-                        {
+                        Some('x') if modifiers.command() && !self.is_secure => {
                             let Some(on_input) = &self.on_input else {
                                 return;
                             };
@@ -958,10 +953,7 @@ where
                             update_cache(state, &self.value);
                             return;
                         }
-                        Some('v')
-                            if state.keyboard_modifiers.command()
-                                && !state.keyboard_modifiers.alt() =>
-                        {
+                        Some('v') if modifiers.command() && !modifiers.alt() => {
                             let Some(on_input) = &self.on_input else {
                                 return;
                             };
@@ -997,7 +989,7 @@ where
                             update_cache(state, &self.value);
                             return;
                         }
-                        Some('a') if state.keyboard_modifiers.command() => {
+                        Some('a') if modifiers.command() => {
                             let cursor_before = state.cursor;
 
                             state.cursor.select_all(&self.value);
@@ -1014,7 +1006,9 @@ where
                         _ => {}
                     }
 
-                    if let Some(text) = text {
+                    if let Some(text) = text
+                        && !modifiers.macos_command()
+                    {
                         let Some(on_input) = &self.on_input else {
                             return;
                         };

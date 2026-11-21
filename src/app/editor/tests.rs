@@ -638,6 +638,73 @@ fn editor_keyboard_input_and_save_work_with_russian_physical_keys() {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn command_chords_do_not_type_in_fields_or_the_code_editor() {
+    use iced::{
+        Event as IcedEvent,
+        keyboard::{self, Key, Modifiers, key},
+        widget::{Id, text_input},
+    };
+
+    let press = |key: Key, code, text: &str, repeat| {
+        IcedEvent::Keyboard(keyboard::Event::KeyPressed {
+            modified_key: key.clone(),
+            key,
+            physical_key: key::Physical::Code(code),
+            location: keyboard::Location::Standard,
+            modifiers: Modifiers::COMMAND,
+            repeat,
+            text: Some(text.into()),
+        })
+    };
+    let chords = [
+        press(Key::Character("f".into()), key::Code::KeyF, "f", false),
+        press(Key::Character("f".into()), key::Code::KeyF, "f", true),
+        press(
+            Key::Character("ж".into()),
+            key::Code::Semicolon,
+            "ж",
+            false,
+        ),
+    ];
+
+    let field = text_input("", "seed").id("field").on_input(|value| value);
+    let mut input: iced_test::Simulator<String> = iced_test::Simulator::new(field);
+    input.click(Id::from("field")).unwrap();
+    // Command is already held when the field receives focus.
+    input.simulate(chords.clone());
+    input.simulate([press(
+        Key::Character("a".into()),
+        key::Code::KeyA,
+        "a",
+        false,
+    )]);
+    input.typewrite("x");
+    assert_eq!(input.into_messages().collect::<Vec<_>>(), ["x"]);
+
+    let app = app();
+    let mut editor =
+        iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
+    editor
+        .click(Id::from(format!("text-editor-{}", app.preview().id)))
+        .unwrap();
+    editor.simulate(chords);
+    editor.simulate([
+        press(Key::Named(key::Named::Tab), key::Code::Tab, "\t", true),
+        press(Key::Named(key::Named::Enter), key::Code::Enter, "\r", true),
+    ]);
+    editor.typewrite("x");
+    let edits: Vec<_> = editor
+        .into_messages()
+        .filter_map(|message| match message {
+            Message::Editor(Event::Action(_, text_editor::Action::Edit(edit))) => Some(edit),
+            _ => None,
+        })
+        .collect();
+    assert!(matches!(edits.as_slice(), [text_editor::Edit::Insert('x')]));
+}
+
 #[test]
 fn native_close_preserves_dirty_buffers_and_settings_do_not_save_them() {
     let mut app = app();

@@ -2823,6 +2823,16 @@
         "sources": ["src/app/files/operations.rs"]
       },
       {
+        "id": "mac-command-shortcut-input",
+        "category": "fixed",
+        "text": {
+          "en": "On macOS, repeating a Command shortcut keeps stray characters out of text fields and the terminal.",
+          "ru": "В macOS повторное нажатие сочетания с Command больше не вставляет лишние символы в текстовые поля и терминал.",
+          "es": "En macOS, repetir un atajo con Comando ya no inserta caracteres adicionales en los campos de texto ni en el terminal."
+        },
+        "sources": ["vendor/iced_widget/src/text_input.rs", "src/modules/terminal/view/input.rs"]
+      },
+      {
         "id": "skip-disabled-editor-focus",
         "category": "fixed",
         "text": {

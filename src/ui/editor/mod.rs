@@ -198,7 +198,9 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
                     }
                 }
             }
-            if key.key == iced::keyboard::Key::Named(iced::keyboard::key::Named::Tab) {
+            if key.key == iced::keyboard::Key::Named(iced::keyboard::key::Named::Tab)
+                && !key.modifiers.macos_command()
+            {
                 return Some(Binding::Sequence(vec![Binding::Insert(' '); 4]));
             }
             for command in Command::ALL {

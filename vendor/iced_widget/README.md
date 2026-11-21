@@ -22,5 +22,8 @@ scrolling, and its visibility preference.
 Disabled text fields and multiline editors reject focus operations. Tab skips these controls. The
 dialog interaction tests cover both widget types.
 
+On macOS, both text widgets use Command combinations for shortcuts and suppress their text.
+The single-line field reads modifiers from each key press, including after focus changes.
+
 Keep other source files identical to the published crate. Remove each patch when upstream provides
 equivalent behavior.

@@ -5,7 +5,10 @@ use iced::keyboard::{
     key::{Code, Named, Physical},
 };
 
-pub(super) fn physical_control(key: Physical) -> Option<Vec<u8>> {
+pub(super) fn physical_control(key: Physical, modifiers: Modifiers) -> Option<Vec<u8>> {
+    if !modifiers.control() || modifiers.logo() {
+        return None;
+    }
     const LETTERS: [Code; 26] = [
         Code::KeyA,
         Code::KeyB,

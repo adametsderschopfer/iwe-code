@@ -1286,7 +1286,11 @@ impl<Message> Binding<Message> {
             convert_macos_shortcut(&key, modifiers).unwrap_or(modified_key);
 
         match modified_key.as_ref() {
-            keyboard::Key::Named(key::Named::Enter) => Some(Self::Enter),
+            keyboard::Key::Named(key::Named::Enter)
+                if !modifiers.macos_command() =>
+            {
+                Some(Self::Enter)
+            }
             keyboard::Key::Named(key::Named::Backspace) => {
                 Some(Self::Backspace)
             }
@@ -1297,7 +1301,9 @@ impl<Message> Binding<Message> {
             }
             keyboard::Key::Named(key::Named::Escape) => Some(Self::Unfocus),
             _ => {
-                if let Some(text) = text {
+                if let Some(text) = text
+                    && !modifiers.macos_command()
+                {
                     let c = text.chars().find(|c| !c.is_control())?;
 
                     Some(Self::Insert(c))

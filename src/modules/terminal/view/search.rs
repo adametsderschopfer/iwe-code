@@ -84,10 +84,19 @@ pub(super) fn bar<'a>(
             .width(Length::Fill)
             .style(theme::search_panel),
         move |event| {
-            let keyboard::Event::KeyPressed { key, modifiers, .. } = event else {
+            let keyboard::Event::KeyPressed {
+                key,
+                physical_key,
+                modifiers,
+                ..
+            } = event
+            else {
                 return None;
             };
             interactive.then_some(())?;
+            if shortcut(key, *physical_key, *modifiers) {
+                return Some(Event::Search(request, Action::Open));
+            }
             let action = match key {
                 keyboard::Key::Named(keyboard::key::Named::Escape) => Action::Close,
                 keyboard::Key::Named(keyboard::key::Named::Enter) => {

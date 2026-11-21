@@ -70,7 +70,10 @@ fn tab_context_menu_and_rename_field_emit_actions_for_the_right_tab() {
 #[test]
 fn terminal_input_supports_unicode_interrupts_and_cursor_modes() {
     assert_eq!(
-        input::physical_control(keyboard::key::Physical::Code(keyboard::key::Code::KeyC)),
+        input::physical_control(
+            keyboard::key::Physical::Code(keyboard::key::Code::KeyC),
+            Modifiers::CTRL
+        ),
         Some(vec![3])
     );
     assert_eq!(
@@ -314,13 +317,16 @@ fn terminal_line_spacing_changes_grid_dimensions() {
 
 fn press(key: keyboard::Key, code: keyboard::key::Code, modifiers: Modifiers) -> iced::Event {
     iced::Event::Keyboard(keyboard::Event::KeyPressed {
+        text: match &key {
+            Key::Character(text) => Some(text.clone()),
+            _ => None,
+        },
         modified_key: key.clone(),
         key,
         physical_key: keyboard::key::Physical::Code(code),
         location: keyboard::Location::Standard,
         modifiers,
         repeat: false,
-        text: None,
     })
 }
 
@@ -404,17 +410,29 @@ fn focused_terminal_captures_find_and_preserves_shell_ctrl_f() {
     let key = Key::Character("а".into());
     ui.simulate([press(key.clone(), keyboard::key::Code::KeyF, find)]);
     ui.simulate([press(key, keyboard::key::Code::KeyF, Modifiers::CTRL)]);
+    for modifiers in [
+        Modifiers::LOGO,
+        Modifiers::LOGO | Modifiers::CTRL,
+        Modifiers::LOGO | Modifiers::SHIFT,
+        Modifiers::LOGO | Modifiers::ALT,
+    ] {
+        ui.simulate([press(
+            Key::Character("u".into()),
+            keyboard::key::Code::KeyU,
+            modifiers,
+        )]);
+    }
     let events = ui.into_messages().collect::<Vec<_>>();
     assert!(
         events
             .iter()
             .any(|e| matches!(e, Event::Search(42, SearchAction::Open)))
     );
-    assert!(
-        events
-            .iter()
-            .any(|e| matches!(e, Event::Input(42, bytes) if bytes == &[6]))
-    );
+    let shell_input = events.iter().filter_map(|e| match e {
+        Event::Input(42, bytes) => Some(bytes.as_slice()),
+        _ => None,
+    });
+    assert!(shell_input.eq([b"\x06".as_slice()]));
 }
 
 #[test]
@@ -422,7 +440,8 @@ fn search_keys_reach_only_the_focused_search_field_in_each_language() {
     use crate::i18n::Language;
     for language in [Language::English, Language::Russian, Language::Spanish] {
         let i18n = I18n::new(language);
-        let search = Search::default();
+        let mut search = Search::default();
+        search.query.push_str("needle");
         let controls = search::bar(&i18n, 42, &search, true);
         let mut ui = iced_test::Simulator::new(iced::widget::column![
             controls,
@@ -432,6 +451,16 @@ fn search_keys_reach_only_the_focused_search_field_in_each_language() {
         ]);
         ui.click(iced::widget::Id::from(super::super::state::search_id(42)))
             .unwrap();
+        let find = if cfg!(target_os = "macos") {
+            Modifiers::LOGO
+        } else {
+            Modifiers::CTRL | Modifiers::SHIFT
+        };
+        ui.simulate([press(
+            Key::Character("f".into()),
+            keyboard::key::Code::KeyF,
+            find,
+        )]);
         for modifier in [Modifiers::NONE, Modifiers::SHIFT] {
             ui.simulate([press(
                 Key::Named(Named::Enter),
@@ -447,6 +476,7 @@ fn search_keys_reach_only_the_focused_search_field_in_each_language() {
             matches!(
                 &events[..],
                 [
+                    Event::Search(42, SearchAction::Open),
                     Event::Search(42, SearchAction::Move(true)),
                     Event::Search(42, SearchAction::Move(false)),
                     Event::Search(42, SearchAction::Close),
