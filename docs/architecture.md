@@ -118,7 +118,8 @@ temporary-file replacement. Native directory selection uses `rfd`. Syntect highl
 bundled `two-face` grammars and the Gerry Darcula palette. `open` delegates approved links to the
 system browser.
 
-Oversized source reads switch to bounded pages through `infrastructure/workspace/pages.rs`. Page
+The local source reader opens each file once to prepare its initial view. It reuses the first
+buffer when the byte or line limit requires paging. Oversized source reads use bounded pages through `infrastructure/workspace/pages.rs`. Page
 boundaries preserve UTF-8 and CRLF, with limits of 512 KiB and 4,096 newline characters. Local pages
 seek directly and compare file metadata before and after reading. Changed snapshots restart at the
 first page. Git pages stream `cat-file` output, discard the preceding bytes, and stop the child

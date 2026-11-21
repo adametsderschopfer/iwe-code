@@ -5,8 +5,9 @@ use crate::domain::{
     changes::{TextCursor, TextPage},
 };
 use std::{
+    fs::{File, Metadata},
     io::{Read, Seek, SeekFrom},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 pub(crate) const PAGE_BYTES: usize = super::PREVIEW_LIMIT as usize;
@@ -69,6 +70,50 @@ pub(crate) fn decode(
     ))
 }
 
+fn version(metadata: &Metadata) -> Result<(u64, u128), Failure> {
+    let modified = metadata.modified().map_err(|_| Failure::Read)?;
+    let stamp = modified
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| Failure::Read)?;
+    Ok((metadata.len(), stamp.as_nanos()))
+}
+
+fn read_bytes(file: &File, size: u64) -> Result<Vec<u8>, Failure> {
+    let mut bytes = Vec::with_capacity(size.min(READ_BYTES as u64) as usize);
+    file.take(READ_BYTES as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|_| Failure::Read)?;
+    Ok(bytes)
+}
+
+fn finish_page(
+    file: &File,
+    snapshot: (u64, u128),
+    bytes: Vec<u8>,
+    cursor: TextCursor,
+) -> Result<(String, TextPage), Failure> {
+    if version(&file.metadata().map_err(|_| Failure::Read)?)? != snapshot {
+        return Err(Failure::Read);
+    }
+    decode(bytes, cursor, snapshot.0, Some(snapshot))
+}
+
+pub(crate) fn first(root: &Path, path: &Path) -> Result<(String, Option<TextPage>), Failure> {
+    let (file, metadata) = super::open_text_file(root, path)?;
+    let bytes = read_bytes(&file, metadata.len())?;
+    let bytes = if metadata.len() <= super::PREVIEW_LIMIT && bytes.len() <= PAGE_BYTES {
+        let text = super::utf8_text(bytes)?;
+        if !super::exceeds_line_limit(&text) {
+            return Ok((text, None));
+        }
+        text.into_bytes()
+    } else {
+        bytes
+    };
+    let (text, page) = finish_page(&file, version(&metadata)?, bytes, TextCursor::default())?;
+    Ok((text, Some(page)))
+}
+
 pub(crate) async fn read(
     root: PathBuf,
     path: PathBuf,
@@ -76,23 +121,7 @@ pub(crate) async fn read(
     expected: Option<(u64, u128)>,
 ) -> Result<(String, TextPage), Failure> {
     tokio::task::spawn_blocking(move || {
-        let root = root.canonicalize().map_err(|_| Failure::Read)?;
-        let path = path.canonicalize().map_err(|_| Failure::Read)?;
-        if !path.starts_with(root) {
-            return Err(Failure::Read);
-        }
-        let mut file = std::fs::File::open(path).map_err(|_| Failure::Read)?;
-        let metadata = file.metadata().map_err(|_| Failure::Read)?;
-        if !metadata.is_file() {
-            return Err(Failure::Read);
-        }
-        let version = |metadata: &std::fs::Metadata| -> Result<(u64, u128), Failure> {
-            let modified = metadata.modified().map_err(|_| Failure::Read)?;
-            let stamp = modified
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_err(|_| Failure::Read)?;
-            Ok((metadata.len(), stamp.as_nanos()))
-        };
+        let (mut file, metadata) = super::open_text_file(&root, &path)?;
         let snapshot = version(&metadata)?;
         let cursor = if expected.is_some_and(|expected| expected != snapshot) {
             TextCursor::default()
@@ -104,15 +133,8 @@ pub(crate) async fn read(
         }
         file.seek(SeekFrom::Start(cursor.offset))
             .map_err(|_| Failure::Read)?;
-        let mut bytes = Vec::new();
-        (&mut file)
-            .take(READ_BYTES as u64)
-            .read_to_end(&mut bytes)
-            .map_err(|_| Failure::Read)?;
-        if version(&file.metadata().map_err(|_| Failure::Read)?)? != snapshot {
-            return Err(Failure::Read);
-        }
-        decode(bytes, cursor, metadata.len(), Some(snapshot))
+        let bytes = read_bytes(&file, metadata.len() - cursor.offset)?;
+        finish_page(&file, snapshot, bytes, cursor)
     })
     .await
     .map_err(|_| Failure::Read)?

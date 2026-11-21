@@ -2956,6 +2956,16 @@
           "es": "El explorador de registros de Docker y la acción Publicar están ocultos temporalmente. IWE conserva las conexiones guardadas."
         },
         "sources": ["src/modules/docker/view.rs"]
+      },
+      {
+        "id": "single-read-local-preview",
+        "category": "changed",
+        "text": {
+          "en": "IWE reads the beginning of a large local text file once when opening its first page.",
+          "ru": "При открытии большого локального текстового файла IWE читает начало файла один раз.",
+          "es": "IWE lee una sola vez el inicio de un archivo de texto local grande al abrir su primera página."
+        },
+        "sources": ["src/infrastructure/workspace/pages.rs"]
       }
     ]
   }

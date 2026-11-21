@@ -189,17 +189,23 @@ pub(crate) fn entries_at(root: &Path, directory: &Path) -> Result<Vec<FileEntry>
     Ok(result)
 }
 
+fn open_text_file(root: &Path, path: &Path) -> Result<(std::fs::File, std::fs::Metadata), Failure> {
+    let root = root.canonicalize().map_err(|_| Failure::Read)?;
+    let path = path.canonicalize().map_err(|_| Failure::Read)?;
+    if !path.starts_with(root) {
+        return Err(Failure::Read);
+    }
+    let file = std::fs::File::open(path).map_err(|_| Failure::Read)?;
+    let metadata = file.metadata().map_err(|_| Failure::Read)?;
+    if !metadata.is_file() {
+        return Err(Failure::Read);
+    }
+    Ok((file, metadata))
+}
+
 pub(crate) async fn read(root: PathBuf, path: PathBuf) -> Result<String, Failure> {
     tokio::task::spawn_blocking(move || {
-        let root = root.canonicalize().map_err(|_| Failure::Read)?;
-        let path = path.canonicalize().map_err(|_| Failure::Read)?;
-        if !path.starts_with(root) {
-            return Err(Failure::Read);
-        }
-        let file = std::fs::File::open(path).map_err(|_| Failure::Read)?;
-        if !file.metadata().map_err(|_| Failure::Read)?.is_file() {
-            return Err(Failure::Read);
-        }
+        let (file, _) = open_text_file(&root, &path)?;
         let mut bytes = Vec::new();
         file.take(PREVIEW_LIMIT + 1)
             .read_to_end(&mut bytes)
@@ -214,19 +220,25 @@ pub(crate) fn decode(bytes: Vec<u8>) -> Result<String, Failure> {
     if bytes.len() as u64 > PREVIEW_LIMIT {
         return Err(Failure::TooLarge);
     }
-    if bytes.contains(&0) {
-        return Err(Failure::Binary);
-    }
-    let text = String::from_utf8(bytes).map_err(|_| Failure::Binary)?;
-    if text
-        .lines()
-        .take(crate::domain::changes::PREVIEW_LINES + 1)
-        .count()
-        > crate::domain::changes::PREVIEW_LINES
-    {
+    let text = utf8_text(bytes)?;
+    if exceeds_line_limit(&text) {
         return Err(Failure::TooLarge);
     }
     Ok(text)
+}
+
+fn utf8_text(bytes: Vec<u8>) -> Result<String, Failure> {
+    if bytes.contains(&0) {
+        return Err(Failure::Binary);
+    }
+    String::from_utf8(bytes).map_err(|_| Failure::Binary)
+}
+
+fn exceeds_line_limit(text: &str) -> bool {
+    let limit = crate::domain::changes::PREVIEW_LINES;
+    text.len() > limit
+        && text.bytes().filter(|&byte| byte == b'\n').count() + usize::from(!text.ends_with('\n'))
+            > limit
 }
 
 #[cfg(test)]

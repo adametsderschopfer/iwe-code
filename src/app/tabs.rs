@@ -78,7 +78,15 @@ impl Source {
                 root,
                 path,
                 compare: false,
-            } => crate::infrastructure::workspace::read(root, path).await,
+            } => {
+                return tokio::task::spawn_blocking(move || {
+                    let (text, page) =
+                        crate::infrastructure::workspace::pages::first(&root, &path)?;
+                    Ok(Document::plain(text).with_page(page))
+                })
+                .await
+                .map_err(|_| Failure::Read)?;
+            }
             Self::Working {
                 root,
                 path,

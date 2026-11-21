@@ -188,10 +188,27 @@ async fn dense_sources_use_pages_without_discarding_content() {
         read(directory.path().to_owned(), path.clone()).await,
         Err(Failure::TooLarge)
     );
-    let (page, cursor) = pages::read(directory.path().to_owned(), path, Default::default(), None)
-        .await
-        .unwrap();
+    let (page, cursor) = pages::first(directory.path(), &path).unwrap();
+    let cursor = cursor.unwrap();
     assert!(text.starts_with(&page));
     assert!(cursor.next.is_some());
     assert_eq!(page.lines().count(), 4096);
+}
+
+#[test]
+fn first_local_read_keeps_the_size_boundary_and_next_cursor() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("source.txt");
+    let prefix = "x".repeat(PREVIEW_LIMIT as usize);
+    std::fs::write(&path, &prefix).unwrap();
+    let (text, page) = pages::first(root.path(), &path).unwrap();
+    assert_eq!(text, prefix);
+    assert!(page.is_none());
+
+    std::fs::write(&path, format!("{prefix}y")).unwrap();
+    let (text, page) = pages::first(root.path(), &path).unwrap();
+    let page = page.unwrap();
+    assert_eq!(text, prefix);
+    assert_eq!(page.next.unwrap().offset, PREVIEW_LIMIT);
+    assert_eq!(page.version.unwrap().0, PREVIEW_LIMIT + 1);
 }
