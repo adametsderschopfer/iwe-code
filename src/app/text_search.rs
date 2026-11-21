@@ -524,7 +524,7 @@ impl App {
 
         if !project {
             let text = self
-                .editor_buffer()
+                .text_buffer()
                 .map(|buffer| buffer.document.text.clone())
                 .or_else(|| {
                     self.preview()

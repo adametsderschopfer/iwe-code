@@ -480,30 +480,9 @@ pub(crate) async fn load_commit(
     if !oid(&id) {
         return Err(Error::InvalidName);
     }
-    let record = run(
-        &root,
-        &[
-            "show",
-            "-s",
-            "--format=%P%x00%s%x00%an%x00%as%x00%ct%x00%D",
-            &id,
-        ],
-    )
-    .await?;
-    let fields: Vec<_> = record.trim_end_matches('\n').split('\0').collect();
-    let [parents, subject, author, date, timestamp, refs] = fields.as_slice() else {
-        return Err(Error::Failed);
-    };
-    Ok(crate::domain::repository::Commit {
-        id,
-        parents: parents.split_whitespace().map(str::to_owned).collect(),
-        subject: (*subject).into(),
-        author: (*author).into(),
-        date: (*date).into(),
-        timestamp: timestamp.parse().map_err(|_| Error::Failed)?,
-        refs: (*refs).into(),
-        graph: Default::default(),
-    })
+    crate::infrastructure::repository::load_commit(&root, &id)
+        .await
+        .map_err(|_| Error::Failed)
 }
 
 #[cfg(test)]

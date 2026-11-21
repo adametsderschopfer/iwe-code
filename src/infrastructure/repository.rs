@@ -144,19 +144,10 @@ pub(crate) async fn load_history(
     }
     let limit = (HISTORY_PAGE_SIZE + 1).to_string();
     let skip = cursor.offset.to_string();
-    let mut args = vec![
-        "log",
-        "--topo-order",
-        "--date=format:%Y-%m-%d %H:%M",
-        "-n",
-        &limit,
-        "--skip",
-        &skip,
-        "--format=%H%x00%P%x00%s%x00%an%x00%ad%x00%D%x00%ct%x00",
-    ];
+    let mut args = vec!["--topo-order", "-n", &limit, "--skip", &skip];
     args.extend(cursor.revisions.iter().map(String::as_str));
     args.push("--");
-    let mut commits = parse_log(&git(&root, &args).await?);
+    let mut commits = read_commits(&root, &args).await?;
     let has_more = commits.len() > HISTORY_PAGE_SIZE;
     commits.truncate(HISTORY_PAGE_SIZE);
     let offset = cursor.offset + commits.len();
@@ -171,27 +162,52 @@ pub(crate) async fn load_history(
     })
 }
 
-fn parse_log(bytes: &[u8]) -> Vec<Commit> {
+pub(crate) async fn load_commit(root: &Path, id: &str) -> Result<Commit, Failure> {
+    if !valid_id(id) {
+        return Err(Failure::Read);
+    }
+    read_commits(root, &["--no-walk", "-1", id, "--"])
+        .await?
+        .pop()
+        .ok_or(Failure::Read)
+}
+
+async fn read_commits(root: &Path, revisions: &[&str]) -> Result<Vec<Commit>, Failure> {
+    let mut args = vec![
+        "log",
+        "--date=format:%Y-%m-%d %H:%M",
+        "--format=%H%x00%P%x00%s%x00%an%x00%ae%x00%aE%x00%ad%x00%D%x00%ct%x00",
+    ];
+    args.extend_from_slice(revisions);
+    let (log, email) = tokio::join!(
+        git(root, &args),
+        git(root, &["config", "--get", "user.email"])
+    );
+    let email = email
+        .as_deref()
+        .ok()
+        .and_then(|v| std::str::from_utf8(v).ok())
+        .map(str::trim)
+        .filter(|v| !v.is_empty());
+    Ok(parse_log(&log?, email))
+}
+
+fn parse_log(bytes: &[u8], current_email: Option<&str>) -> Vec<Commit> {
     let text = String::from_utf8_lossy(bytes);
     let mut fields = text.split('\0');
     let mut result = Vec::new();
-    while let (
+    while let [
         Some(id),
         Some(parents),
         Some(subject),
         Some(author),
+        Some(email),
+        Some(canonical_email),
         Some(date),
         Some(refs),
         Some(timestamp),
-    ) = (
-        fields.next(),
-        fields.next(),
-        fields.next(),
-        fields.next(),
-        fields.next(),
-        fields.next(),
-        fields.next(),
-    ) {
+    ] = std::array::from_fn(|_| fields.next())
+    {
         let id = id.trim();
         if !valid_id(id) {
             continue;
@@ -201,6 +217,9 @@ fn parse_log(bytes: &[u8]) -> Vec<Commit> {
             parents: parents.split_whitespace().map(str::to_owned).collect(),
             subject: subject.to_owned(),
             author: author.to_owned(),
+            is_current_author: current_email.is_some_and(|value| {
+                value.eq_ignore_ascii_case(email) || value.eq_ignore_ascii_case(canonical_email)
+            }),
             date: date.to_owned(),
             timestamp: timestamp.parse().unwrap_or_default(),
             refs: refs.to_owned(),

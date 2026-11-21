@@ -68,6 +68,7 @@ fn graph_tracks_merges_and_closes_parent_lanes() {
         parents: parents.iter().map(|value| (*value).to_owned()).collect(),
         subject: String::new(),
         author: String::new(),
+        is_current_author: false,
         date: String::new(),
         timestamp: 0,
         refs: String::new(),

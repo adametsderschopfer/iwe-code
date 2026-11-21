@@ -109,6 +109,7 @@ pub(crate) struct Commit {
     pub parents: Vec<String>,
     pub subject: String,
     pub author: String,
+    pub is_current_author: bool,
     pub date: String,
     pub timestamp: i64,
     pub refs: String,

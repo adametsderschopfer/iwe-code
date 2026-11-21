@@ -1686,6 +1686,7 @@ fn commit_versions_have_separate_tabs_from_working_files() {
         parents: Vec::new(),
         subject: "Snapshot".to_owned(),
         author: "Author".to_owned(),
+        is_current_author: false,
         date: "2026-11-08".to_owned(),
         timestamp: 0,
         refs: String::new(),
@@ -1919,6 +1920,66 @@ async fn switching_tabs_restores_widget_offsets_and_reveals_overflowed_tabs() {
         for message in messages {
             let _ = app.update(message);
         }
+    }
+}
+
+#[test]
+fn markdown_buttons_stay_beside_the_overflow_menu_in_every_language() {
+    use iced::widget::Id;
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let mut app = app();
+        app.i18n = Rc::new(I18n::new(language));
+        app.panes = iced::widget::pane_grid::State::new(crate::app::Panel::Workspace).0;
+        let markdown = open(&mut app, "guide.markdown");
+        let _ = app.finish_preview(markdown, Ok(Document::new("# Guide".into(), "markdown")));
+        for name in ["first.txt", "second.txt", "third.txt"] {
+            open(&mut app, name);
+        }
+        // Leave enough room for the four tabs and only one additional button.
+        let width = {
+            let mut ui =
+                iced_test::Simulator::with_size(diff_settings(), (2000., 720.), app.view());
+            let header = ui.find(Id::new("file-tabs-header")).unwrap().bounds();
+            2000. - header.width + 4. * theme::FILE_TAB_MIN_WIDTH + theme::FILE_TAB_TOOL_SIZE
+        };
+        let size = (width, 720.);
+        {
+            let mut ui = iced_test::Simulator::with_size(diff_settings(), size, app.view());
+            assert!(ui.find(Id::new("open-tabs")).is_err());
+            assert!(ui.find(Id::new("markdown-source")).is_err());
+        }
+        let _ = app.select_tab(markdown);
+        let mut ui = iced_test::Simulator::with_size(diff_settings(), size, app.view());
+        let menu = ui
+            .find(Id::new("open-tabs"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        let mut right = menu.x + menu.width;
+        for id in ["markdown-source", "markdown-split", "markdown-preview"] {
+            let bounds = ui.click(Id::new(id)).unwrap().visible_bounds().unwrap();
+            assert!(bounds.x >= right);
+            assert_eq!(bounds.width, theme::FILE_TAB_TOOL_HEIGHT);
+            right = bounds.x + bounds.width;
+        }
+        let modes: Vec<_> = ui
+            .into_messages()
+            .map(|message| {
+                let Message::SetMarkdownViewMode(tab, mode) = message else {
+                    panic!("Unexpected tab action");
+                };
+                assert_eq!(tab, markdown);
+                mode
+            })
+            .collect();
+        assert_eq!(
+            modes,
+            [
+                MarkdownViewMode::Source,
+                MarkdownViewMode::Split,
+                MarkdownViewMode::Preview
+            ]
+        );
     }
 }
 
@@ -2540,6 +2601,119 @@ fn tree_previews_reuse_one_slot_and_become_permanent_on_open_or_edit() {
     let _ = app.preview_tree_file(second);
     assert!(!app.preview().temporary);
     assert_eq!(app.tabs.files.len(), 2);
+}
+
+#[test]
+fn local_markdown_links_resolve_relative_to_the_open_file() {
+    let mut app = app();
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("docs").join("index.md");
+    let _ = app.open_standalone_file(path);
+    let tab = app.preview();
+    assert!(matches!(
+        tab.markdown_link("../User%20Guide.md".into()),
+        Message::External(crate::domain::external::Request::File { path })
+            if path == root.path().join("User Guide.md")
+    ));
+    let url = "https://example.org/guide";
+    assert!(matches!(tab.markdown_link(url.into()), Message::OpenUrl(link) if link == url));
+}
+
+#[test]
+fn markdown_modes_retain_each_tabs_draft_cursor_selection_and_undo() {
+    use crate::app::editor::Event;
+    use MarkdownViewMode::{Preview, Source, Split};
+    use iced::widget::text_editor::{Action, Cursor, Edit, Position};
+
+    let mut app = app();
+    let first = open(&mut app, "one.MD");
+    let _ = app.finish_preview(first, Ok(Document::plain("alpha".into())));
+    assert_eq!(app.preview().markdown_view_mode(), Some(Source));
+    let _ = app.update(Message::SetMarkdownViewMode(first, Split));
+    let _ = app.update(Message::Editor(Event::Action(
+        first,
+        Action::Edit(Edit::Insert('#')),
+    )));
+    let cursor = Cursor {
+        position: Position { line: 0, column: 6 },
+        selection: Some(Position { line: 0, column: 1 }),
+    };
+    app.preview_mut()
+        .editor
+        .as_mut()
+        .unwrap()
+        .content
+        .move_to(cursor);
+    let _ = app.update(Message::SetMarkdownViewMode(first, Preview));
+    assert!(app.editor_buffer().is_none());
+    let _ = app.update(Message::Editor(Event::DuplicateLine));
+    let _ = app.update(Message::Editor(Event::Undo(first, false)));
+    let snapshot = crate::app::external::window_snapshot(&app, true);
+    assert_eq!(snapshot["draft"]["text"], "#alpha");
+    assert_eq!(snapshot["selection"]["text"], "alpha");
+
+    let second = open(&mut app, "two.markdown");
+    let _ = app.finish_preview(second, Ok(Document::plain("second".into())));
+    assert_eq!(app.preview().markdown_view_mode(), Some(Source));
+    let _ = app.update(Message::SetMarkdownViewMode(first, Source));
+    assert_eq!(app.preview().markdown_view_mode(), Some(Source));
+    let _ = app.update(Message::SetMarkdownViewMode(second, Split));
+    let _ = app.select_tab(first);
+    assert_eq!(app.preview().markdown_view_mode(), Some(Preview));
+    let _ = app.update(Message::SetMarkdownViewMode(first, Source));
+    let buffer = app.editor_buffer().unwrap();
+    assert_eq!(buffer.content.cursor(), cursor);
+    assert_eq!(buffer.content.selection().as_deref(), Some("alpha"));
+    assert_eq!(buffer.document.saved.as_str(), "alpha");
+    assert!(buffer.document.dirty());
+    let _ = app.update(Message::Editor(Event::Undo(first, false)));
+    assert_eq!(app.editor_buffer().unwrap().content.text(), "alpha");
+    let _ = app.update(Message::Editor(Event::Undo(first, true)));
+    assert_eq!(app.editor_buffer().unwrap().content.text(), "#alpha");
+    let _ = app.select_tab(second);
+    assert_eq!(app.preview().markdown_view_mode(), Some(Split));
+}
+
+#[test]
+fn markdown_modes_support_plain_revisions_and_pages_and_exclude_comparisons() {
+    let mut app = app();
+    let _ = app.open_git_revision("project".into(), "guide.md".into(), "abc".into());
+    let revision = app.preview().id;
+    let _ = app.finish_preview(revision, Ok(Document::plain("# Guide".into())));
+    let _ = app.update(Message::SetMarkdownViewMode(
+        revision,
+        MarkdownViewMode::Preview,
+    ));
+    assert_eq!(
+        app.preview().markdown_view_mode(),
+        Some(MarkdownViewMode::Preview)
+    );
+    assert!(app.preview().editor.is_none());
+
+    let page = open(&mut app, "large.md");
+    let document = Document::plain("## A page".into()).with_page(Some(TextPage {
+        cursor: TextCursor::default(),
+        next: Some(TextCursor { offset: 9, line: 2 }),
+        version: None,
+    }));
+    let _ = app.finish_preview(page, Ok(document));
+    assert_eq!(
+        app.preview().markdown_view_mode(),
+        Some(MarkdownViewMode::Source)
+    );
+    assert!(app.preview().editor.is_none());
+
+    for name in ["plain.txt", "jsx.mdx"] {
+        let id = open(&mut app, name);
+        let _ = app.finish_preview(id, Ok(Document::plain("text".into())));
+        let _ = app.update(Message::SetMarkdownViewMode(id, MarkdownViewMode::Preview));
+        assert!(app.preview().markdown_view_mode().is_none());
+        assert!(app.editor_buffer().is_some());
+    }
+    let diff = open_change(&mut app, "guide.md");
+    let _ = app.finish_preview(diff, Ok(Document::plain("# Unchanged".into())));
+    let _ = app.update(Message::SetMarkdownViewMode(diff, MarkdownViewMode::Split));
+    assert!(app.preview().markdown_view_mode().is_none());
 }
 
 #[test]

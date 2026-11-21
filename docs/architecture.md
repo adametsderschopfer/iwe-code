@@ -684,6 +684,10 @@ replaces local files through temporary files after checking the saved baseline. 
 typed deployment operations and completion effects. The module does not import application state.
 Save completions carry operation tokens and never replace newer draft text.
 
+Each open Markdown tab stores its view mode. The workspace parses the active editor snapshot for the
+formatted view. Read-only tabs use the loaded source text. The workspace reuses the parsed document
+until the source changes. Switching modes keeps the same editor buffer.
+
 `app/tabs.rs` records project-relative local tab paths, comparison mode, and the active tab in
 workspace metadata. It reopens the remembered tabs when their project becomes active. Normal exit
 flushes pending editor writes, then waits for workspace metadata to save. On macOS, Iwe fades out

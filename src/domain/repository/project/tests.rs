@@ -8,6 +8,7 @@ fn commit(root: &str, id: &str, parents: &[&str]) -> ScopedCommit {
             parents: parents.iter().map(|id| (*id).into()).collect(),
             subject: id.into(),
             author: String::new(),
+            is_current_author: false,
             date: String::new(),
             timestamp: 0,
             refs: String::new(),

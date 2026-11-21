@@ -76,7 +76,7 @@ pub(super) fn window_snapshot(app: &App, include_text: bool) -> Value {
         "tabCount": tab_count,
     });
     if include_text {
-        let selection = if let Some(buffer) = app.editor_buffer() {
+        let selection = if let Some(buffer) = app.text_buffer() {
             buffer.content.selection()
         } else {
             active
@@ -84,7 +84,7 @@ pub(super) fn window_snapshot(app: &App, include_text: bool) -> Value {
                 .as_ref()
                 .and_then(|document| active.selection.copy(document))
         };
-        let draft = app.editor_buffer().filter(|buffer| buffer.document.dirty());
+        let draft = app.text_buffer().filter(|buffer| buffer.document.dirty());
         snapshot["selection"] = json!(selection.as_deref().map(text_snapshot));
         snapshot["draft"] = json!(draft.map(|buffer| text_snapshot(&buffer.document.text)));
     }

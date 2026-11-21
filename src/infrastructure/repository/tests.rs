@@ -62,6 +62,32 @@ async fn history_dates_include_hours_and_minutes_in_the_recorded_author_timezone
 }
 
 #[tokio::test]
+async fn history_and_direct_lookup_identify_the_configured_author_by_email() {
+    let directory = long_repository(1);
+    let root = directory.path();
+    std::fs::write(
+        root.join(".mailmap"),
+        "Local User <local@example.invalid> <test@example.invalid>\n",
+    )
+    .unwrap();
+    command(root, &["config", "user.name", "Test Author"]);
+    for (email, own) in [
+        ("other@example.invalid", false),
+        ("", false),
+        ("TEST@example.invalid", true),
+        ("local@example.invalid", true),
+    ] {
+        command(root, &["config", "user.email", email]);
+        let repo = load(root.to_owned(), None).await.unwrap();
+        let row = &repo.commits[0];
+        assert_eq!(row.is_current_author, own);
+        let revealed = load_commit(root, &row.id).await.unwrap();
+        assert_eq!(revealed.is_current_author, own);
+        assert_eq!(revealed.date, row.date);
+    }
+}
+
+#[tokio::test]
 async fn lightweight_and_annotated_tags_open_their_history_without_checkout() {
     let directory = long_repository(3);
     let root = directory.path();

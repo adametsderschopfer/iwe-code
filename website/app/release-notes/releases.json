@@ -2861,6 +2861,26 @@
           "es": "La galería del sitio muestra los controles actualizados del espacio de trabajo."
         },
         "sources": ["website/public/images/search-en.webp", "website/public/images/settings-en.webp"]
+      },
+      {
+        "id": "markdown-tab-views",
+        "category": "added",
+        "text": {
+          "en": "Edit Markdown, preview it as you type, or read the formatted document in the same tab.",
+          "ru": "Редактируйте Markdown, следите за изменениями при вводе или читайте готовый документ в той же вкладке.",
+          "es": "Edita Markdown, consulta la vista previa mientras escribes o lee el documento con formato en la misma pestaña."
+        },
+        "sources": ["src/ui/screens/workspace.rs", "src/app/tabs.rs"]
+      },
+      {
+        "id": "git-history-author-and-date",
+        "category": "changed",
+        "text": {
+          "en": "Git history shows your name in bold and dates in day-month-year order. Hover over an author’s name to see it in full.",
+          "ru": "История Git выделяет ваше имя полужирным и показывает день перед месяцем. Наведите указатель на имя автора, чтобы увидеть его полностью.",
+          "es": "El historial de Git resalta tu nombre en negrita y muestra el día antes del mes. Coloca el puntero sobre un nombre para verlo completo."
+        },
+        "sources": ["src/modules/git/view/mod.rs", "src/infrastructure/repository.rs"]
       }
     ]
   }

@@ -2,6 +2,7 @@
 //! keeps each project's tabs and closure history in a bounded in-memory stash.
 
 use super::{App, Message};
+pub(crate) mod markdown;
 #[cfg(test)]
 use crate::ui::theme;
 use crate::{
@@ -15,6 +16,7 @@ use crate::{
     ui::code::{Document, comparison::Side, folding::Folding, syntax_for},
 };
 use iced::{Task, widget::operation};
+pub(crate) use markdown::MarkdownViewMode;
 use std::{
     collections::VecDeque,
     path::{Component, Path, PathBuf},
@@ -216,6 +218,7 @@ pub(crate) enum PageDirection {
 pub(crate) struct Preview {
     pub temporary: bool,
     pub svg_source: bool,
+    markdown_mode: MarkdownViewMode,
     pub image: Option<iced::widget::image::Handle>,
     pub editor: Option<super::editor::Buffer>,
     pub remote: bool,
@@ -845,6 +848,9 @@ impl App {
         self.file_request += 1;
         let preview = Preview {
             temporary,
+            markdown_mode: existing
+                .map(|index| self.tabs.files[index].markdown_mode)
+                .unwrap_or_default(),
             remote: matches!(source, Source::Remote { .. }),
             id: self.file_request,
             title,

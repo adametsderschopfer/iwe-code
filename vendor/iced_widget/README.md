@@ -25,5 +25,8 @@ dialog interaction tests cover both widget types.
 On macOS, both text widgets use Command combinations for shortcuts and suppress their text.
 The single-line field reads modifiers from each key press, including after focus changes.
 
+The Markdown parser preserves the contents of indented code blocks. Upstream only collects code
+from fenced blocks. IWE uses the parser without its HTML output and command-line dependencies.
+
 Keep other source files identical to the published crate. Remove each patch when upstream provides
 equivalent behavior.

@@ -518,9 +518,9 @@ the selected reference and nested folder states. Selecting a lightweight or anno
 commit history without checking it out.
 
 The vertical toolbar to the left of branches contains refresh, fetch, new branch, update, and push.
-A vertical separator divides the toolbar from the branches. Commit search remains above the history.
-The toolbar scrolls independently when panel height is limited. The toolbar has no hide-panel
-button.
+A vertical separator divides the toolbar from the branches. The first commit appears directly below
+the search field. The toolbar scrolls independently when panel height is limited. The toolbar has no
+hide-panel button.
 
 The local group starts expanded. Remote branches, tags, and nested branch folders start collapsed
 when a project opens or refreshes. Their arrows expand each group independently.
@@ -553,9 +553,10 @@ read-only for Git revisions and comparisons. Local and server text files support
 and saving. IWE Code does not create commits.
 
 Commit titles follow the active graph lanes in each row. Wider sections elsewhere do not add empty
-space before titles. Author and date columns remain aligned. Dates include hours and minutes in the
-format `YYYY-MM-DD HH:MM`, using the author's recorded time zone. The selected commit's details show
-the same timestamp.
+space before titles. Author and date columns stay aligned. Bold names mark commits from the
+repository's configured Git email. Hover over a shortened author name to see the full name. Dates
+use `DD.MM.YYYY, HH:MM` in the author's recorded time zone. The selected commit's details show the
+same timestamp.
 
 Each history row shows a gray seven-character commit identifier after its title. Click the
 identifier to copy the full commit identifier without changing the selected commit. Hover over the
@@ -770,6 +771,25 @@ The editor compares changed lines against Git HEAD on a background worker. The u
 section opens separate comparison tabs for the same paths. Comparison controls appear in comparison
 tabs, including explicit server comparisons. Ordinary file tabs have no comparison controls. Git
 revisions, comparison snapshots, and paged files retain the source viewer.
+
+### Markdown views
+
+Each `.md` or `.markdown` tab opens in **Source** mode. Use the three buttons at the right end of
+the tab bar to switch views. The buttons remain visible when the tabs scroll. Hover over a button to
+see its name.
+
+- **Source** shows the source across the available width.
+- **Side by side** gives the source and formatted document equal space. The preview updates as you
+  type, before autosave.
+- **Preview** shows the formatted document across the available width for reading.
+
+The preview displays headings, paragraphs, lists, quotes, links, emphasis, and code blocks using the
+current theme. Web links open in the browser. Relative file links in local documents open their
+targets in IWE. Each open tab remembers its view. Switching views keeps the draft, cursor,
+selection, and undo history. Read-only revisions and large files keep their source viewer. Large
+files display one page at a time. Comparison tabs keep their comparison controls.
+
+### File tab limits and saving
 
 Each project keeps up to 20 file tabs open. Opening or reopening a file at the limit closes the
 earliest opened tab that has no unsaved changes or save in progress. If every tab has changes to

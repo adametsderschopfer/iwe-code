@@ -66,6 +66,7 @@ fn fixture() -> App {
                 parents: vec![],
                 subject: format!("{name} change"),
                 author: "Author".into(),
+                is_current_author: false,
                 date: "2026-11-09 16:30".into(),
                 timestamp: 1_700_000_000,
                 refs: "HEAD -> main".into(),

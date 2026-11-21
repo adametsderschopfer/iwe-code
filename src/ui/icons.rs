@@ -23,6 +23,9 @@ pub(crate) enum Icon {
     Warning,
     CollapseLines,
     ExpandLines,
+    MarkdownSource,
+    MarkdownSplit,
+    Image,
     SplitDiff,
     Sidebar,
     UnifiedDiff,
@@ -304,6 +307,28 @@ impl Drawing {
                 line(&[(10., 2.), (19., 18.), (1., 18.), (10., 2.)]);
                 line(&[(10., 7.), (10., 11.)]);
                 line(&[(10., 14.), (10., 15.)]);
+            }
+            Icon::MarkdownSource => {
+                for (y, end) in [(4., 17.), (8., 14.), (12., 17.), (16., 11.)] {
+                    line(&[(3., y), (end, y)]);
+                }
+            }
+            Icon::MarkdownSplit => {
+                for (y, end) in [(4., 9.), (8., 7.), (12., 9.), (16., 6.)] {
+                    line(&[(2., y), (end, y)]);
+                }
+                frame.stroke(
+                    &Path::rectangle(Point::new(11., 4.), iced::Size::new(7., 12.)),
+                    stroke,
+                );
+            }
+            Icon::Image => {
+                line(&[(2., 15.), (7., 10.), (10., 13.), (13., 9.), (18., 14.)]);
+                frame.stroke(
+                    &Path::rectangle(Point::new(2., 3.), iced::Size::new(16., 14.)),
+                    stroke,
+                );
+                frame.stroke(&Path::circle(Point::new(7., 7.), 1.), stroke);
             }
             Icon::SplitDiff => {
                 line(&[(2., 3.), (18., 3.), (18., 17.), (2., 17.), (2., 3.)]);

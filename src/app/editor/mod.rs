@@ -175,11 +175,16 @@ impl App {
             })
             .collect()
     }
-    pub(crate) fn editor_buffer(&self) -> Option<&Buffer> {
+    pub(super) fn text_buffer(&self) -> Option<&Buffer> {
         let tab = self.preview();
         tab.editor
             .as_ref()
             .filter(|_| !tab.local_svg() || tab.svg_source)
+    }
+
+    pub(crate) fn editor_buffer(&self) -> Option<&Buffer> {
+        self.text_buffer()
+            .filter(|_| !self.preview().reading_markdown())
     }
 
     pub(crate) fn editor_pending_tab(&self, id: u64) -> bool {
@@ -417,6 +422,15 @@ impl App {
     }
 
     pub(super) fn update_editor(&mut self, event: Event) -> Task<Message> {
+        if let Event::Action(id, _) | Event::Replace(id, _) | Event::Undo(id, _) = &event
+            && self
+                .tabs
+                .files
+                .iter()
+                .any(|tab| tab.id == *id && tab.reading_markdown())
+        {
+            return Task::none();
+        }
         if self.files.operations.busy
             && !matches!(
                 event,

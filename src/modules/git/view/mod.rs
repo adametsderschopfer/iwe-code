@@ -583,6 +583,19 @@ fn commits<'a>(app: View<'a>) -> Element<'a, Message> {
     responsive(move |size| commit_table(app, size.width, size.height)).into()
 }
 
+fn history_date(value: &str) -> std::borrow::Cow<'_, str> {
+    let Some((date, time)) = value.split_once(' ') else {
+        return value.into();
+    };
+    let mut parts = date.split('-');
+    match (parts.next(), parts.next(), parts.next(), parts.next()) {
+        (Some(year), Some(month), Some(day), None) => {
+            format!("{day}.{month}.{year}, {time}").into()
+        }
+        _ => value.into(),
+    }
+}
+
 fn commit_table<'a>(
     app: View<'a>,
     available_width: f32,
@@ -619,6 +632,7 @@ fn commit_table<'a>(
                 ]
                 .iter()
                 .any(|value| value.to_lowercase().contains(&query))
+                || (query.contains(['.', ',']) && history_date(&commit.date).contains(&query))
         })
         .collect::<Vec<_>>();
     if matching.is_empty() {
@@ -652,9 +666,15 @@ fn commit_table<'a>(
     } else {
         68.
     };
-    let table_width = available_width
-        .max(widest_graph + 312. + theme::COMMIT_DATE_WIDTH + theme::COMMIT_HASH_WIDTH + 8.);
-    let start = (((app.state.history_scroll_y - 28.).max(0.) / 30.) as usize)
+    let table_width = available_width.max(
+        widest_graph
+            + 172.
+            + theme::COMMIT_AUTHOR_WIDTH
+            + theme::COMMIT_DATE_WIDTH
+            + theme::COMMIT_HASH_WIDTH
+            + 8.,
+    );
+    let start = ((app.state.history_scroll_y / 30.) as usize)
         .saturating_sub(8)
         .min(matching.len());
     let end = (start + (available_height / 30.).ceil() as usize + 16).min(matching.len());
@@ -668,7 +688,8 @@ fn commit_table<'a>(
         } else {
             68.
         };
-        let subject_width = table_width - graph_width - 140. - theme::COMMIT_DATE_WIDTH - 36.;
+        let subject_width =
+            table_width - graph_width - theme::COMMIT_AUTHOR_WIDTH - theme::COMMIT_DATE_WIDTH - 36.;
         let graph: Element<'_, Message> = if query.is_empty() {
             container(graph::view(&commit.graph, graph_width))
                 .id(format!(
@@ -820,14 +841,23 @@ fn commit_table<'a>(
         let item = row![
             graph,
             subject,
-            text(short(&commit.author, 20))
-                .size(11)
-                .wrapping(text::Wrapping::None)
+            tooltip::view(
+                container(ellipsis::text_with_font(
+                    commit.author.as_str(),
+                    theme::COMMIT_METADATA_SIZE,
+                    if commit.is_current_author {
+                        theme::semibold()
+                    } else {
+                        theme::font()
+                    },
+                ))
+                .width(theme::COMMIT_AUTHOR_WIDTH),
+                text(&commit.author).size(12),
+                tooltip::Position::Bottom,
+            ),
+            text(history_date(&commit.date))
+                .size(theme::COMMIT_METADATA_SIZE)
                 .style(theme::MUTED.text())
-                .width(140),
-            text(&commit.date)
-                .size(11)
-                .style(theme::FAINT.text())
                 .wrapping(text::Wrapping::None)
                 .width(theme::COMMIT_DATE_WIDTH)
         ]
@@ -853,27 +883,9 @@ fn commit_table<'a>(
         ));
     }
     rows = rows.push(space().height((matching.len() - end) as f32 * 30.));
-    let heading = row![
-        text(app.i18n.text(Key::Commit))
-            .size(10)
-            .style(theme::FAINT.text())
-            .width(Length::Fill),
-        text(app.i18n.text(Key::Author))
-            .size(10)
-            .style(theme::FAINT.text())
-            .width(140),
-        text(app.i18n.text(Key::Date))
-            .size(10)
-            .style(theme::FAINT.text())
-            .width(theme::COMMIT_DATE_WIDTH)
-    ]
-    .spacing(8)
-    .padding([7, 12])
-    .height(28);
     container(
         scrollable(
             column![
-                heading,
                 rows,
                 container(history_footer(app)).width(available_width),
                 space().height(16),
@@ -1020,10 +1032,14 @@ fn changed_files_content<'a>(app: View<'a>, width: f32, height: f32) -> Element<
             .push(divider())
             .push(text(short(&commit.subject, 32)).size(11))
             .push(
-                text(format!("{} · {}", &commit.id[..8], commit.date))
-                    .font(Font::MONOSPACE)
-                    .size(10)
-                    .style(theme::FAINT.text()),
+                text(format!(
+                    "{} · {}",
+                    &commit.id[..8],
+                    history_date(&commit.date)
+                ))
+                .font(Font::MONOSPACE)
+                .size(10)
+                .style(theme::FAINT.text()),
             );
     }
     content.height(Length::Fill).into()

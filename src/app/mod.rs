@@ -230,6 +230,7 @@ pub(crate) struct App {
     repository_cache: repository_cache::Cache,
     pub project_changes: project_changes::State,
     pub tabs: tabs::State,
+    pub markdown: tabs::markdown::Cache,
     path_copy_request: u64,
     copied_path: Option<PathBuf>,
     pub editor: editor::State,
@@ -370,6 +371,7 @@ pub(crate) enum Message {
     OpenCommitFile(usize),
     FileLoaded(u64, u64, Result<Document, Failure>),
     ToggleSvgSource(u64),
+    SetMarkdownViewMode(u64, tabs::MarkdownViewMode),
     ImageLoaded(u64, u64, Result<iced::widget::image::Handle, Failure>),
     FilePrepared(u64, u64, tabs::Preparation, Result<Document, Failure>),
     SelectBranch(BranchKey),
@@ -480,6 +482,7 @@ impl App {
             repository_cache: repository_cache::Cache::default(),
             project_changes: project_changes::State::default(),
             tabs: tabs::State::default(),
+            markdown: Default::default(),
             path_copy_request: 0,
             copied_path: None,
             editor: editor::State::default(),
@@ -531,6 +534,12 @@ impl App {
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
+        let task = self.handle_message(message);
+        self.tabs.update_markdown(&mut self.markdown);
+        task
+    }
+
+    fn handle_message(&mut self, message: Message) -> Task<Message> {
         #[cfg(target_os = "macos")]
         if self.exit_fade_started {
             return match message {
@@ -695,6 +704,7 @@ impl App {
                     | Message::Update(updates::Event::Download | updates::Event::Install)
                     | Message::ToggleUnchanged(_)
                     | Message::ToggleDiffView(_)
+                    | Message::SetMarkdownViewMode(..)
                     | Message::ExpandUnchanged(_, _)
                     | Message::Jobs(
                         jobs::Event::Select(_)
@@ -1415,6 +1425,7 @@ impl App {
             Message::OpenWorkingChange(path) => return self.open_working_change(path),
             Message::OpenCommitFile(index) => return self.open_commit_file(index),
             Message::ToggleSvgSource(id) => return self.toggle_svg_source(id),
+            Message::SetMarkdownViewMode(id, mode) => return self.set_markdown_view_mode(id, mode),
             Message::ImageLoaded(generation, request, result) if generation == self.generation => {
                 if let Some(preview) = self.preview_for_request(request) {
                     preview.loading = false;

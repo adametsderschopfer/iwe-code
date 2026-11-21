@@ -1,7 +1,7 @@
 use super::{auth, diff, git, git_actions, pipelines, settings, unified};
 use crate::ui::tooltip;
 use crate::{
-    app::{App, Message, Navigation, Panel, error_key, spaces},
+    app::{App, Message, Navigation, Panel, error_key, spaces, tabs::MarkdownViewMode},
     domain::modules::Placement,
     domain::workspace::{DiffView, Preferences},
     i18n::{FluentArgs, Key},
@@ -1578,6 +1578,28 @@ fn file_tabs(app: &App) -> Element<'_, Message> {
 }
 
 fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
+    const MARKDOWN_BUTTONS: [(MarkdownViewMode, Icon, Key, &str); 3] = [
+        (
+            MarkdownViewMode::Source,
+            Icon::MarkdownSource,
+            Key::MarkdownSource,
+            "markdown-source",
+        ),
+        (
+            MarkdownViewMode::Split,
+            Icon::MarkdownSplit,
+            Key::MarkdownSplit,
+            "markdown-split",
+        ),
+        (
+            MarkdownViewMode::Preview,
+            Icon::Image,
+            Key::MarkdownPreview,
+            "markdown-preview",
+        ),
+    ];
+    let tab = app.preview();
+    let markdown_mode = tab.markdown_view_mode();
     let ready =
         app.preview().error.is_none() && !app.preview().loading && app.preview().editor.is_none();
     let comparison = ready
@@ -1593,6 +1615,11 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
             .as_ref()
             .is_some_and(|document| document.can_fold());
     let controls = usize::from(comparison) + usize::from(folding);
+    let markdown_width = if markdown_mode.is_some() {
+        MARKDOWN_BUTTONS.len() as f32 * theme::FILE_TAB_TOOL_HEIGHT + theme::FILE_TAB_TOOL_GAP
+    } else {
+        0.
+    };
     let tabs_width: f32 = app
         .tabs
         .files
@@ -1604,6 +1631,7 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
         .sum();
     let remaining = (available_width
         - theme::FILE_TAB_TOOL_GAP
+        - markdown_width
         - controls as f32 * (theme::FILE_TAB_TOOL_SIZE + theme::FILE_TAB_TOOL_GAP))
         .max(0.);
     let overflow = tabs_width > remaining + 0.5;
@@ -1758,7 +1786,6 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
     ]
     .spacing(theme::FILE_TAB_TOOL_GAP)
     .align_y(Alignment::Center);
-    let tab = app.preview();
     if tab.local_svg() {
         let label = if tab.svg_source {
             Key::SvgShowImage
@@ -1852,6 +1879,22 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
             .id("fold-unchanged"),
         );
     }
+    if let Some(selected) = markdown_mode {
+        let buttons = MARKDOWN_BUTTONS.into_iter().map(|(mode, icon, label, id)| {
+            let button = IconButton::Inline(theme::FILE_TAB_TOOL_HEIGHT).button(
+                icon,
+                Some(Message::SetMarkdownViewMode(tab.id, mode)),
+                mode == selected,
+            );
+            tooltip::view(
+                container(button).id(id),
+                text(app.i18n.text(label)).size(12),
+                tooltip::Position::Bottom,
+            )
+            .into()
+        });
+        bar = bar.push(Row::with_children(buttons));
+    }
     container(bar)
         .id("file-tabs-header")
         .padding(iced::Padding {
@@ -1863,12 +1906,7 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
         .into()
 }
 
-fn preview(app: &App) -> Element<'_, Message> {
-    let has_tabs = app
-        .tabs
-        .files
-        .iter()
-        .any(|preview| !preview.title.is_empty());
+fn source_pane(app: &App) -> Element<'_, Message> {
     let content: Element<'_, Message> = if let Some(buffer) = app.editor_buffer() {
         crate::ui::editor::view(app, buffer)
     } else if app.preview().loading
@@ -2231,9 +2269,7 @@ fn preview(app: &App) -> Element<'_, Message> {
     } else {
         content
     };
-    let content = if app.preview().editor.is_none()
-        && !app.preview().loading
-        && app.preview().document.is_some()
+    if app.preview().editor.is_none() && !app.preview().loading && app.preview().document.is_some()
     {
         let id = app.preview().id;
         context_menu::trigger(content, move |point| {
@@ -2243,8 +2279,46 @@ fn preview(app: &App) -> Element<'_, Message> {
         })
     } else {
         content
+    }
+}
+
+fn file_panes(app: &App) -> Element<'_, Message> {
+    let Some(mode @ (MarkdownViewMode::Split | MarkdownViewMode::Preview)) =
+        app.preview().markdown_view_mode()
+    else {
+        return source_pane(app);
     };
-    let content = super::text_search::file_panel(app, content);
+    let preferences = &app.workspace.preferences;
+    let formatted = crate::ui::markdown::view(
+        &app.markdown.items,
+        &app.theme(),
+        theme::selected_code_font(preferences.code_font),
+        preferences.code_size,
+    )
+    .map(|url| app.preview().markdown_link(url));
+    if mode == MarkdownViewMode::Preview {
+        return formatted;
+    }
+    row![
+        container(source_pane(app))
+            .width(Length::FillPortion(1))
+            .clip(true),
+        vertical_divider(),
+        container(formatted)
+            .width(Length::FillPortion(1))
+            .clip(true),
+    ]
+    .height(Length::Fill)
+    .into()
+}
+
+fn preview(app: &App) -> Element<'_, Message> {
+    let has_tabs = app
+        .tabs
+        .files
+        .iter()
+        .any(|preview| !preview.title.is_empty());
+    let content = super::text_search::file_panel(app, file_panes(app));
     let content = crate::modules::deployment::target_popup(
         &app.modules.deployment,
         &app.i18n,

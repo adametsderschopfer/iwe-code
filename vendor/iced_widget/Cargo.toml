@@ -80,6 +80,7 @@ optional = true
 [dependencies.pulldown-cmark]
 version = "0.12"
 optional = true
+default-features = false
 
 [dependencies.qrcode]
 version = "0.13"

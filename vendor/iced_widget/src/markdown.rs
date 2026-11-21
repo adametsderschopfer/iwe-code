@@ -692,9 +692,11 @@ fn parse_with<'a>(
 
                 prev
             }
-            pulldown_cmark::Tag::CodeBlock(
-                pulldown_cmark::CodeBlockKind::Fenced(language),
-            ) if !metadata => {
+            pulldown_cmark::Tag::CodeBlock(kind) if !metadata => {
+                let language = match kind {
+                    pulldown_cmark::CodeBlockKind::Fenced(language) => language,
+                    pulldown_cmark::CodeBlockKind::Indented => "".into(),
+                };
                 #[cfg(feature = "highlighter")]
                 {
                     highlighter = Some({

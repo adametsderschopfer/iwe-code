@@ -27,6 +27,94 @@ fn edit(app: &mut App, value: &str) {
     ));
 }
 
+#[test]
+fn markdown_renders_a_typed_link_before_saving_and_returns_to_the_editor() {
+    use iced::widget::Id;
+    const DRAFT: &str = "[Unsaved link](https://example.org/draft)";
+
+    fn screen(app: &App) -> iced_test::Simulator<'_, Message> {
+        iced_test::Simulator::with_size(iced::Settings::default(), (1600., 900.), app.view())
+    }
+
+    let mut app = app();
+    let _ = app.open_file(PathBuf::from("project/notes.md"));
+    let id = app.preview().id;
+    let _ = app.finish_preview(id, Ok(Document::new(String::new(), "md")));
+    let editor = Id::from(format!("text-editor-{id}"));
+    let formatted = Id::new("markdown-preview-pane");
+
+    let mut ui = screen(&app);
+    let source = ui.find(editor.clone()).unwrap().bounds();
+    assert!(ui.find(formatted.clone()).is_err());
+    ui.click(Id::new("markdown-split")).unwrap();
+    for message in ui.into_messages() {
+        let _ = app.update(message);
+    }
+
+    let mut ui = screen(&app);
+    let left = ui.click(editor.clone()).unwrap().bounds();
+    let right = ui
+        .find(formatted.clone())
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    let header = ui.find(Id::new("file-tabs-header")).unwrap().bounds();
+    assert!(left.x + left.width <= right.x);
+    assert!((2. * right.width - header.width).abs() <= 2.);
+    ui.typewrite(DRAFT);
+    for message in ui.into_messages() {
+        let _ = app.update(message);
+    }
+    let buffer = app.editor_buffer().unwrap();
+    assert_eq!(buffer.document.text.as_str(), DRAFT);
+    assert!(buffer.document.saved.is_empty());
+    let cursor = buffer.content.cursor();
+
+    for (next, read_only) in [("markdown-preview", false), ("markdown-source", true)] {
+        let mut ui = screen(&app);
+        let pane = ui
+            .find(formatted.clone())
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        assert_eq!(ui.find(editor.clone()).is_err(), read_only);
+        if read_only {
+            assert!((pane.width - header.width).abs() <= 1.);
+        }
+        // Click the first link on the first line of the formatted document.
+        ui.point_at((pane.x + 28., pane.y + 25.));
+        ui.simulate(iced_test::simulator::click());
+        if read_only {
+            ui.typewrite("x");
+        }
+        ui.click(Id::new(next)).unwrap();
+        let mut opened = None;
+        for message in ui.into_messages() {
+            match message {
+                Message::OpenUrl(url) => opened = Some(url),
+                action => {
+                    let _ = app.update(action);
+                }
+            }
+        }
+        assert_eq!(opened.as_deref(), Some("https://example.org/draft"));
+    }
+
+    let buffer = app.editor_buffer().unwrap();
+    assert_eq!(buffer.content.cursor(), cursor);
+    assert_eq!(buffer.document.text.as_str(), DRAFT);
+    let mut ui = screen(&app);
+    assert!(ui.find(formatted).is_err());
+    assert_eq!(ui.click(editor).unwrap().bounds(), source);
+    ui.typewrite("!");
+    for message in ui.into_messages() {
+        let _ = app.update(message);
+    }
+    let buffer = app.editor_buffer().unwrap();
+    assert!(buffer.document.text.contains('!'));
+    assert!(buffer.document.saved.is_empty());
+}
+
 #[tokio::test]
 async fn diagnostics_stop_when_the_last_local_language_document_closes() {
     let mut app = app();
@@ -661,12 +749,7 @@ fn command_chords_do_not_type_in_fields_or_the_code_editor() {
     let chords = [
         press(Key::Character("f".into()), key::Code::KeyF, "f", false),
         press(Key::Character("f".into()), key::Code::KeyF, "f", true),
-        press(
-            Key::Character("ж".into()),
-            key::Code::Semicolon,
-            "ж",
-            false,
-        ),
+        press(Key::Character("ж".into()), key::Code::Semicolon, "ж", false),
     ];
 
     let field = text_input("", "seed").id("field").on_input(|value| value);

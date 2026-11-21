@@ -249,18 +249,32 @@ fn branch_folders_remotes_and_tags_start_collapsed() {
 }
 
 #[test]
-fn commit_dates_with_time_fit_one_line_and_remain_visible() {
+fn commit_history_starts_with_author_and_time_on_the_first_row() {
     for width in [1080., 1440.] {
         let mut app = history_state(1, false);
         app.i18n = Rc::new(I18n::new(Language::Russian));
         let mut ui = iced_test::Simulator::with_size(ui_settings(), (width, 720.), app.view());
         let date = ui
-            .find("2026-11-08 14:37")
+            .find("08.11.2026, 14:37")
             .unwrap()
             .visible_bounds()
             .unwrap();
         assert!(date.width >= theme::COMMIT_DATE_WIDTH - 0.1);
-        assert!(date.height <= 11. * 1.3 + 0.1);
+        let author = ui.find("Test Author").unwrap().visible_bounds().unwrap();
+        let history = ui
+            .find(iced::widget::Id::new("commit-history"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        let row = ui
+            .find(iced::widget::Id::from(format!("git-commit-{:040x}", 1)))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        assert!((row.y - history.y).abs() < 1.);
+        assert!((author.center_y() - date.center_y()).abs() < 1.);
+        assert!(author.x + author.width <= date.x);
+        assert!(date.height <= theme::COMMIT_METADATA_SIZE * 1.3 + 0.1);
         assert!(date.x + date.width <= width);
         if width == 1080.
             && let Some(output) = std::env::var_os("IWE_RENDER_DIR").map(PathBuf::from)
@@ -271,11 +285,24 @@ fn commit_dates_with_time_fit_one_line_and_remain_visible() {
                 .unwrap();
         }
         drop(ui);
+        for query in ["08.11.2026, 14:37", "2026-11-08", "test author"] {
+            app.modules.git.query = query.into();
+            let mut filtered =
+                iced_test::Simulator::with_size(ui_settings(), (width, 720.), app.view());
+            assert!(
+                filtered
+                    .find("Commit 0001")
+                    .unwrap()
+                    .visible_bounds()
+                    .is_some()
+            );
+        }
+        app.modules.git.query.clear();
         let id = app.repository.as_ref().unwrap().commits[0].key();
         let _ = app.update(Message::SelectCommit(id.clone()));
         let mut ui = iced_test::Simulator::with_size(ui_settings(), (width, 720.), app.view());
         assert!(
-            ui.find(format!("{} · 2026-11-08 14:37", &id.id[..8]))
+            ui.find(format!("{} · 08.11.2026, 14:37", &id.id[..8]))
                 .unwrap()
                 .visible_bounds()
                 .is_some()
@@ -1736,6 +1763,7 @@ fn history_state(count: usize, more: bool) -> App {
                 .collect(),
             subject: format!("Commit {number:04}"),
             author: "Test Author".to_owned(),
+            is_current_author: false,
             date: "2026-11-08 14:37".to_owned(),
             timestamp: 0,
             refs: String::new(),
@@ -2092,7 +2120,7 @@ fn commit_history_scroll_reaches_the_oldest_row_and_requests_more() {
                 .visible_bounds()
                 .unwrap()
         };
-        state.modules.git.history_scroll_y = (28. + 1000. * 30. - bounds.height).max(0.);
+        state.modules.git.history_scroll_y = (1000. * 30. - bounds.height).max(0.);
         let mut ui = iced_test::Simulator::with_size(ui_settings(), size, state.view());
         ui.point_at(bounds.center());
         ui.simulate([Event::Mouse(mouse::Event::WheelScrolled {
@@ -2150,6 +2178,7 @@ fn commit_titles_follow_the_graph_in_each_row() {
             parents: parents.into_iter().map(id).collect(),
             subject,
             author: format!("Author {number}"),
+            is_current_author: false,
             date: format!("2026-10-{number:02} 09:05"),
             timestamp: 0,
             refs: String::new(),
@@ -2177,7 +2206,11 @@ fn commit_titles_follow_the_graph_in_each_row() {
         ("history-compact", (1080., 720.)),
     ] {
         let mut ui = iced_test::Simulator::with_size(ui_settings(), size, state.view());
-        let heading = ui.find("Commit").unwrap().visible_bounds().unwrap();
+        let graph = ui
+            .find(iced::widget::Id::from(format!("commit-graph--{}", id(1))))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
         let recent = ui.find("Recent change").unwrap().visible_bounds().unwrap();
         let hash = ui
             .find(iced::widget::Id::from(format!("copy-commit-id--{}", id(1))))
@@ -2192,7 +2225,7 @@ fn commit_titles_follow_the_graph_in_each_row() {
         let merged = ui.find("Merge feature").unwrap().visible_bounds().unwrap();
         let shared = ui.find("Shared history").unwrap().visible_bounds().unwrap();
         assert!(
-            recent.x - heading.x < 32.,
+            recent.x - graph.x <= 32.1,
             "Later branches must not indent earlier titles"
         );
         assert!(merged.x > recent.x && merged.x - recent.x < 20.);
@@ -2200,7 +2233,7 @@ fn commit_titles_follow_the_graph_in_each_row() {
         if size.0 > 1080. {
             for (first, second) in [
                 ("Author 1", "Author 2"),
-                ("2026-10-01 09:05", "2026-10-02 09:05"),
+                ("01.10.2026, 09:05", "02.10.2026, 09:05"),
             ] {
                 assert_eq!(
                     ui.find(first).unwrap().visible_bounds().unwrap().x,
@@ -3114,6 +3147,7 @@ async fn history_hash_click_copies_the_full_identifier_without_selecting_the_com
                     parents: Vec::new(),
                     subject: "A long commit title ".repeat(30),
                     author: "Author".into(),
+                    is_current_author: false,
                     date: "2026-11-10 12:00".into(),
                     timestamp: 0,
                     refs: "HEAD -> main".into(),
