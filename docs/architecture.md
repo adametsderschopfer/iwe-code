@@ -592,10 +592,10 @@ corners and round switch handles keep their platform or widget geometry.
 
 Use `text_field` for forms and `compact_field` for toolbars and dense lists. Use `labeled_field` to
 place a label above its control. Use `multiline_field` for editable messages. The source editor uses
-`code_editor` with its own font, syntax colors, and editing commands. Each field uses an accent
-outline for focus. Use `validated_input` when validation identifies a specific field. The error
-outline thickens when that field has focus. Show the corresponding error message beside the field or
-in its form.
+`code_editor` with its own font, syntax colors, and editing commands. The source editor stays
+borderless while editing. Form and toolbar fields use an accent outline for focus. Use
+`validated_input` when validation identifies a specific field. The error outline thickens when that
+field has focus. Show the corresponding error message beside the field or in its form.
 
 Use `Select` for standard and compact lists, `switch` for switches, and `checkbox` for checkboxes.
 

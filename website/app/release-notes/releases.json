@@ -2881,6 +2881,16 @@
           "es": "El historial de Git resalta tu nombre en negrita y muestra el día antes del mes. Coloca el puntero sobre un nombre para verlo completo."
         },
         "sources": ["src/modules/git/view/mod.rs", "src/infrastructure/repository.rs"]
+      },
+      {
+        "id": "borderless-source-editor",
+        "category": "fixed",
+        "text": {
+          "en": "The source editor keeps its borderless appearance while you edit a file.",
+          "ru": "При редактировании файла синяя рамка вокруг текста больше не появляется.",
+          "es": "El editor de código conserva su aspecto sin borde mientras editas un archivo."
+        },
+        "sources": ["src/ui/theme/fields.rs"]
       }
     ]
   }

@@ -18,6 +18,16 @@ fn contrast(foreground: Color, background: Color) -> f32 {
 }
 
 #[test]
+fn source_editor_stays_borderless_when_focused() {
+    use iced::widget::text_editor::Status::Focused;
+    for theme in [Theme::Light, Theme::Dark] {
+        for is_hovered in [false, true] {
+            assert_eq!(code_editor(&theme, Focused { is_hovered }).border.width, 0.);
+        }
+    }
+}
+
+#[test]
 fn field_focus_and_validation_remain_visible_in_both_themes() {
     use iced::widget::text_input::Status::*;
     let focused = Focused { is_hovered: false };

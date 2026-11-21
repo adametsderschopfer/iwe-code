@@ -108,15 +108,7 @@ pub(crate) fn code_editor(theme: &Theme, status: text_editor::Status) -> text_ed
     let field = multiline_input(theme, status);
     text_editor::Style {
         background: CODE_BACKGROUND.resolve(theme).into(),
-        border: Border {
-            width: if matches!(status, text_editor::Status::Focused { .. }) {
-                1.
-            } else {
-                0.
-            },
-            radius: Default::default(),
-            ..field.border
-        },
+        border: Border::default(),
         value: syntax::TEXT.resolve(theme),
         selection: CODE_SELECTION.resolve(theme),
         ..field
