@@ -13,8 +13,8 @@ choose **Create space**. Select several folders in one directory dialog. IWE Cod
 once within the space. You can also create an empty space and add projects later. Canceling the form
 discards its name, folder choices, and project order.
 
-In **Add project**, choose the folder button to add local folders. Choose the Git branch button to
-clone a repository.
+In the space form, choose **Add project**, then the folder button to add local folders. Choose the
+Git branch button to clone a repository.
 
 Use the settings button beside a space name to edit that space in the same form. Change its name,
 add project folders, or remove projects, then choose **Save changes**. Cancel keeps the saved space
@@ -90,11 +90,14 @@ Drag a space heading to change the space order. A line marks the drop position. 
 immediately. The open project and collapsed spaces keep their state. Dragging project rows still
 changes only their order within that space.
 
-Choose **Add project** to select existing folders or clone a remote repository. The space form
-offers the same choice. Cloning accepts HTTPS and SSH repository URLs. The dialog derives the
-repository folder name from the URL. Before a valid URL is entered, the destination field shows the
-suggested parent folder. Entering a valid URL appends the repository folder name to that parent. You
-can edit the complete destination or choose another parent folder before cloning.
+In the **Spaces** sidebar, **Add project** opens a menu to the right of its row. Choose **Open local
+folder** to select folders or **Clone repository** to enter a repository URL. The space context menu
+offers the same choices beside its **Add project** item. Press Escape to return to the space menu,
+or click outside both menus to close them. At the window edge, the choices open to the left. Cloning
+accepts HTTPS and SSH repository URLs. The dialog derives the repository folder name from the URL.
+Before a valid URL is entered, the destination field shows the suggested parent folder. Entering a
+valid URL appends the repository folder name to that parent. You can edit the complete destination
+or choose another parent folder before cloning.
 
 The suggested parent is the most common parent folder among projects in the target space. The space
 form uses its current folder choices. Empty or ambiguous choices use `IWE Code` inside the user's

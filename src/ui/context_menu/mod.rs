@@ -107,7 +107,7 @@ struct Trigger<'a, Message> {
     content: Element<'a, Message>,
     on_open: Option<Box<dyn Fn(Point, Point) -> Message + 'a>>,
     on_key: Option<KeyHandler<'a, Message>>,
-    popup_position: Option<Point>,
+    popup_position: Option<Placement>,
     anchored: bool,
     fallback: bool,
 }
@@ -137,10 +137,7 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
         };
         let available = limits.max();
         let panel = node.size();
-        node.move_to(Point::new(
-            popup_origin(position.x, panel.width, available.width),
-            popup_origin(position.y, panel.height, available.height),
-        ))
+        node.move_to(position.origin(panel, available))
     }
     fn operate(
         &mut self,
@@ -322,6 +319,39 @@ fn popup_origin(anchor: f32, extent: f32, available: f32) -> f32 {
     }
 }
 
+#[derive(Clone, Copy)]
+enum Placement {
+    Cursor(Point),
+    Beside(Rectangle),
+}
+
+impl Placement {
+    fn origin(self, panel: Size, available: Size) -> Point {
+        match self {
+            Self::Cursor(point) => Point::new(
+                popup_origin(point.x, panel.width, available.width),
+                popup_origin(point.y, panel.height, available.height),
+            ),
+            Self::Beside(anchor) => {
+                let right = anchor.x + anchor.width + 4.;
+                let left = anchor.x - panel.width - 4.;
+                let max_x = (available.width - panel.width).max(0.);
+                let x = if right <= max_x || (left < 0. && right - max_x <= -left) {
+                    right
+                } else {
+                    left
+                };
+                Point::new(
+                    x.clamp(0., max_x),
+                    anchor
+                        .y
+                        .clamp(0., (available.height - panel.height).max(0.)),
+                )
+            }
+        }
+    }
+}
+
 pub(crate) fn overlay<'a, Message: Clone + 'a>(
     base: Element<'a, Message>,
     position: Point,
@@ -329,16 +359,64 @@ pub(crate) fn overlay<'a, Message: Clone + 'a>(
     content: impl Fn() -> Element<'a, Message> + 'a,
     dismiss: Message,
 ) -> Element<'a, Message> {
-    let popup = responsive(move |available| {
+    overlay_with(
+        base,
+        position,
+        move |available| surface(content(), size.width.min(available)),
+        dismiss,
+    )
+}
+
+/// Position a module-styled menu using the same event handling and screen bounds.
+pub(crate) fn overlay_with<'a, Message: Clone + 'a>(
+    base: Element<'a, Message>,
+    position: Point,
+    content: impl Fn(f32) -> Element<'a, Message> + 'a,
+    dismiss: Message,
+) -> Element<'a, Message> {
+    modal(base, panel(Placement::Cursor(position), content), dismiss)
+}
+
+pub(crate) fn beside<'a, Message: Clone + 'a>(
+    base: Element<'a, Message>,
+    anchor: Rectangle,
+    width: f32,
+    content: impl Fn() -> Element<'a, Message> + 'a,
+    dismiss: Message,
+    has_parent: bool,
+) -> Element<'a, Message> {
+    let popup = panel(Placement::Beside(anchor), move |available| {
+        surface(content(), width.min(available))
+    });
+    if has_parent {
+        dismiss_on_escape(stack![base, popup], dismiss)
+    } else {
+        modal(base, popup, dismiss)
+    }
+}
+
+fn panel<'a, Message: 'a>(
+    placement: Placement,
+    content: impl Fn(f32) -> Element<'a, Message> + 'a,
+) -> Element<'a, Message> {
+    responsive(move |available| {
         Element::new(Trigger {
-            content: surface(content(), size.width.min(available.width)),
+            content: content(available.width),
             on_open: None,
             on_key: None,
-            popup_position: Some(position),
+            popup_position: Some(placement),
             anchored: false,
             fallback: false,
         })
-    });
+    })
+    .into()
+}
+
+fn modal<'a, Message: Clone + 'a>(
+    base: Element<'a, Message>,
+    popup: Element<'a, Message>,
+    dismiss: Message,
+) -> Element<'a, Message> {
     let content = stack![
         base,
         opaque(

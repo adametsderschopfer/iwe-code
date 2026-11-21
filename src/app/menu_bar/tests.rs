@@ -32,7 +32,7 @@ fn header_menus_open_exclusively_and_close_on_other_messages() {
 #[test]
 fn opening_a_header_menu_closes_anchored_menus() {
     let mut app = app();
-    app.space_menu = Some((0, Point::new(4., 4.)));
+    app.space_menu = Some((0, crate::app::spaces::Menu::Context(Point::new(4., 4.))));
     let _ = app.update(Message::OpenMenuBar(Menu::File, Point::new(12., 40.)));
     assert!(app.space_menu.is_none());
     assert_eq!(app.menu_bar, Some((Menu::File, Point::new(12., 40.))));

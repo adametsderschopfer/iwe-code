@@ -2601,6 +2601,16 @@
           "es": "Los menús contextuales muestran iconos para acciones habituales y etiquetas rojas para comandos destructivos."
         },
         "sources": ["src/ui/context_menu/item.rs"]
+      },
+      {
+        "id": "spaces-project-source-menu",
+        "category": "changed",
+        "text": {
+          "en": "Add a local folder or clone a repository from the menu beside Add project.",
+          "ru": "Добавляйте локальную папку или клонируйте репозиторий из бокового меню «Добавить проект».",
+          "es": "Añade una carpeta local o clona un repositorio desde el menú lateral de Añadir proyecto."
+        },
+        "sources": ["src/app/spaces.rs"]
       }
     ]
   }

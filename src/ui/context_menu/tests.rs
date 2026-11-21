@@ -77,6 +77,19 @@ fn a_short_menu_stays_next_to_its_anchor_near_the_window_bottom() {
 }
 
 #[test]
+fn side_menu_fits_at_the_right_and_bottom_window_edges() {
+    let available = Size::new(640., 320.);
+    let panel = Size::new(220., 78.);
+    for (anchor, expected) in [
+        (Point::new(100., 90.), Point::new(204., 90.)),
+        (Point::new(520., 284.), Point::new(296., 242.)),
+    ] {
+        let placement = Placement::Beside(Rectangle::new(anchor, Size::new(100., 26.)));
+        assert_eq!(placement.origin(panel, available), expected);
+    }
+}
+
+#[test]
 fn menu_icons_align_labels_and_preserve_disabled_actions() {
     use crate::i18n::Key;
     let menu = column![

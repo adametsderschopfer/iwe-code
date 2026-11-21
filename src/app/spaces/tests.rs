@@ -605,6 +605,108 @@ fn translated_space_forms_fit_and_block_the_background() {
 }
 
 #[test]
+fn sidebar_and_space_menu_open_project_choices_beside_the_selected_row() {
+    use iced::widget::Id;
+
+    for from_context in [false, true] {
+        for clone in [false, true] {
+            let mut app = state(Language::English);
+            app.workspace.create_space("Target".into(), Vec::new());
+            app.workspace.create_space("Current".into(), Vec::new());
+            let parent = from_context.then_some(iced::Point::new(80., 110.));
+            if let Some(point) = parent {
+                let _ = app.update(AppMessage::SpaceMenu(0, point));
+            }
+            let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+            let anchor = ui
+                .click(add_project_id(0, from_context))
+                .unwrap()
+                .visible_bounds()
+                .unwrap();
+            for message in ui.into_messages() {
+                let _ = app.update(message);
+            }
+            assert_eq!(
+                app.space_menu,
+                Some((
+                    0,
+                    Menu::AddProject {
+                        parent,
+                        anchor: None
+                    }
+                ))
+            );
+            let _ = app.update(AppMessage::SpaceAddAnchor(0, parent, Some(anchor)));
+            let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+            let local = ui
+                .find(Id::new("space-add-local"))
+                .unwrap()
+                .visible_bounds()
+                .unwrap();
+            assert!(local.x >= anchor.x + anchor.width);
+            assert!((local.y - anchor.y).abs() < local.height);
+            assert_eq!(ui.find(Id::new("space-menu-edit")).is_ok(), from_context);
+            ui.click(Id::new(if clone {
+                "space-add-clone"
+            } else {
+                "space-add-local"
+            }))
+            .unwrap();
+            for message in ui.into_messages() {
+                assert!(
+                    matches!(message, AppMessage::AddProjectFromMenu(0, value) if value == clone)
+                );
+                let _ = app.update(message);
+            }
+            assert!(app.space_menu.is_none());
+            if clone {
+                let draft = app.project_add.as_ref().unwrap();
+                assert!(draft.cloning);
+                assert_eq!(draft.space, Some(0));
+            } else {
+                assert!(app.picking);
+            }
+        }
+    }
+}
+
+#[test]
+fn escape_and_outside_click_dismiss_project_choices() {
+    for from_context in [false, true] {
+        for escape in [false, true] {
+            let mut app = state(Language::English);
+            app.workspace.create_space("Target".into(), Vec::new());
+            let parent = from_context.then_some(iced::Point::new(40., 60.));
+            let anchor =
+                iced::Rectangle::new(iced::Point::new(46., 66.), iced::Size::new(220., 28.));
+            app.space_menu = Some((
+                0,
+                Menu::AddProject {
+                    parent,
+                    anchor: Some(anchor),
+                },
+            ));
+            let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+            if escape {
+                ui.tap_key(iced::keyboard::key::Named::Escape);
+            } else {
+                ui.point_at(iced::Point::new(1040., 680.));
+                ui.simulate(iced_test::simulator::click());
+            }
+            for message in ui.into_messages() {
+                let _ = app.update(message);
+            }
+            let expected = parent
+                .filter(|_| escape)
+                .map(|point| (0, Menu::Context(point)));
+            assert_eq!(app.space_menu, expected);
+            let _ = app.update(AppMessage::SpaceAddAnchor(0, parent, Some(anchor)));
+            assert_eq!(app.space_menu, expected);
+        }
+    }
+}
+
+#[test]
 fn space_context_menu_and_edit_form_delete_only_workspace_metadata() {
     use iced::{Event, mouse, widget::Id};
     for language in [Language::English, Language::Russian, Language::Spanish] {

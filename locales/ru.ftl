@@ -64,7 +64,6 @@ code = Код
 sidebar-menu-back = ‹ Назад
 project-open-folder = Открыть папку проекта
 project-move-to-space = Переместить в пространство ›
-space-add-project-menu = Добавить проект ›
 space-add-local-project = Открыть локальную папку
 space-expand-projects = Развернуть проекты
 space-collapse-projects = Свернуть проекты

@@ -223,7 +223,7 @@ pub(crate) struct App {
     pub explain: explain::State,
     pub sidebar_menu_choices: bool,
     pub project_menu: Option<(usize, PathBuf, iced::Point)>,
-    pub space_menu: Option<(usize, iced::Point)>,
+    pub space_menu: Option<(usize, spaces::Menu)>,
     pub repository_menu: Option<iced::Point>,
     #[cfg(target_os = "windows")]
     pub(crate) menu_bar: Option<(menu_bar::Menu, iced::Point)>,
@@ -317,6 +317,9 @@ pub(crate) enum Message {
     BranchSelection(branch_selection::Event),
     ProjectMenu(usize, PathBuf, iced::Point),
     SpaceMenu(usize, iced::Point),
+    OpenSpaceAddMenu(usize),
+    SpaceAddAnchor(usize, Option<iced::Point>, Option<iced::Rectangle>),
+    CloseSpaceAddMenu,
     CloseSpaceMenu,
     TogglePinned,
     RemoveProjectFromSpace,
@@ -777,7 +780,7 @@ impl App {
                 return Task::batch([open, self.update_project_add(source)]);
             }
             Message::CloseProjectMenu => self.project_menu = None,
-            Message::SpaceMenu(index, point)
+            Message::SpaceMenu(index, _) | Message::OpenSpaceAddMenu(index)
                 if self.loaded
                     && !self.picking
                     && self.space_draft.is_none()
@@ -791,7 +794,52 @@ impl App {
                 self.modules.git.git_actions.bulk.menu = None;
                 self.files.menu = None;
                 self.sidebar_menu_choices = false;
-                self.space_menu = Some((index, point));
+                if let Message::SpaceMenu(_, point) = message {
+                    self.space_menu = Some((index, spaces::Menu::Context(point)));
+                } else {
+                    let parent = self.space_menu.and_then(|(owner, menu)| {
+                        (owner == index).then(|| menu.parent()).flatten()
+                    });
+                    self.space_menu = Some((
+                        index,
+                        spaces::Menu::AddProject {
+                            parent,
+                            anchor: None,
+                        },
+                    ));
+                    return iced::widget::selector::find(spaces::add_project_id(
+                        index,
+                        parent.is_some(),
+                    ))
+                    .map(move |target| {
+                        Message::SpaceAddAnchor(
+                            index,
+                            parent,
+                            target.and_then(|item| item.visible_bounds()),
+                        )
+                    });
+                }
+            }
+            Message::SpaceAddAnchor(index, parent, anchor)
+                if self.space_menu
+                    == Some((
+                        index,
+                        spaces::Menu::AddProject {
+                            parent,
+                            anchor: None,
+                        },
+                    )) =>
+            {
+                self.space_menu = match anchor {
+                    Some(_) => Some((index, spaces::Menu::AddProject { parent, anchor })),
+                    None => parent.map(|point| (index, spaces::Menu::Context(point))),
+                };
+            }
+            Message::CloseSpaceAddMenu => {
+                self.space_menu = self.space_menu.and_then(|(index, menu)| {
+                    menu.parent()
+                        .map(|point| (index, spaces::Menu::Context(point)))
+                });
             }
             Message::CloseSpaceMenu => self.space_menu = None,
             #[cfg(target_os = "windows")]

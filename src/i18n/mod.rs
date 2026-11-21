@@ -463,7 +463,6 @@ message_keys! {
     SidebarMenuBack => "sidebar-menu-back",
     ProjectOpenFolder => "project-open-folder",
     ProjectMoveToSpace => "project-move-to-space",
-    SpaceAddProjectMenu => "space-add-project-menu",
     SpaceAddLocalProject => "space-add-local-project",
     SpaceExpandProjects => "space-expand-projects",
     SpaceCollapseProjects => "space-collapse-projects",

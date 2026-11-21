@@ -2,6 +2,31 @@ use super::{App, Message as AppMessage, Navigation};
 use crate::infrastructure::workspace;
 use iced::{Task, widget::operation};
 use std::path::PathBuf;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum Menu {
+    Context(iced::Point),
+    AddProject {
+        parent: Option<iced::Point>,
+        anchor: Option<iced::Rectangle>,
+    },
+}
+
+impl Menu {
+    pub(crate) fn parent(self) -> Option<iced::Point> {
+        match self {
+            Self::Context(point) => Some(point),
+            Self::AddProject { parent, .. } => parent,
+        }
+    }
+}
+
+pub(crate) fn add_project_id(index: usize, from_context: bool) -> iced::widget::Id {
+    if from_context {
+        iced::widget::Id::new("space-menu-add-project")
+    } else {
+        iced::widget::Id::from(format!("space-add-project-{index}"))
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Draft {

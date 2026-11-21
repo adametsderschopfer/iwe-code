@@ -64,7 +64,6 @@ code = Código
 sidebar-menu-back = ‹ Atrás
 project-open-folder = Abrir carpeta del proyecto
 project-move-to-space = Mover a un espacio ›
-space-add-project-menu = Añadir proyecto ›
 space-add-local-project = Abrir carpeta local
 space-expand-projects = Expandir proyectos
 space-collapse-projects = Contraer proyectos

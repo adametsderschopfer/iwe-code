@@ -1,7 +1,7 @@
 use super::{auth, diff, git, git_actions, pipelines, settings, unified};
 use crate::ui::tooltip;
 use crate::{
-    app::{App, Message, Navigation, Panel, error_key},
+    app::{App, Message, Navigation, Panel, error_key, spaces},
     domain::modules::Placement,
     domain::workspace::{DiffView, Preferences},
     i18n::{FluentArgs, Key},
@@ -672,20 +672,21 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                 );
             }
             group_body = group_body.push(
-                button(
-                    row![
-                        icon(Icon::Plus, theme::MUTED),
-                        text(app.i18n.text(Key::AddProject)).size(12)
-                    ]
-                    .spacing(8)
-                    .align_y(Alignment::Center),
-                )
-                .on_press_maybe((!app.picking).then_some(Message::ProjectAdd(
-                    crate::app::project_add::Message::Open(Some(space_index)),
-                )))
-                .style(theme::action(false))
-                .padding([4, 9])
-                .width(Length::Fill),
+                container(
+                    button(
+                        row![
+                            icon(Icon::Plus, theme::MUTED),
+                            text(app.i18n.text(Key::AddProject)).size(12).width(Length::Fill),
+                            sized_icon(Icon::Right, theme::MUTED, 12.),
+                        ]
+                        .spacing(8)
+                        .align_y(Alignment::Center),
+                    )
+                    .on_press_maybe((!app.picking).then_some(Message::OpenSpaceAddMenu(space_index)))
+                    .style(theme::action(matches!(app.space_menu, Some((index, spaces::Menu::AddProject { parent: None, .. })) if index == space_index)))
+                    .padding([4, 9])
+                    .width(Length::Fill),
+                ).id(spaces::add_project_id(space_index, false)),
             );
             groups = groups.push(group_body);
         }
@@ -1185,75 +1186,120 @@ fn project_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Mes
 }
 
 fn space_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
-    let Some((index, point)) = app.space_menu else {
-        return base;
+    let layers = widget::stack![base];
+    let Some((index, menu)) = app.space_menu else {
+        return layers.into();
     };
-    let Some(space) = app.workspace.spaces.get(index) else {
-        return base;
+    let Some(group) = app.workspace.spaces.get(index) else {
+        return layers.into();
     };
-    context_menu::overlay(
-        base,
-        point,
-        iced::Size::new(252., if app.sidebar_menu_choices { 100. } else { 185. }),
-        move || {
-            use crate::app::spaces::Message as Space;
-            let item = |key, message| sidebar_menu_item(app.i18n.text(key), Some(message), false);
-            if app.sidebar_menu_choices {
-                return column![
-                    item(Key::SidebarMenuBack, Message::SidebarMenuChoices(false)),
-                    item(
-                        Key::SpaceAddLocalProject,
-                        Message::AddProjectFromMenu(index, false)
-                    ),
-                    item(
-                        Key::CloneRepository,
-                        Message::AddProjectFromMenu(index, true)
-                    ),
-                ]
-                .into();
-            }
-            let mut items = column![
-                item(Key::SpaceAddProjectMenu, Message::SidebarMenuChoices(true)),
-                container(item(Key::EditSpace, Message::Space(Space::Edit(index))))
-                    .id("space-menu-edit"),
-            ];
-            if !space.projects.is_empty() {
-                let key = if app.collapsed_spaces.contains(&index) {
-                    Key::SpaceExpandProjects
-                } else {
-                    Key::SpaceCollapseProjects
+    // Keep the scrolling sidebar in the same widget tree while either menu is open.
+    let background = space().width(Length::Fill).height(Length::Fill).into();
+    let parent = menu.parent();
+    let menu_layer = if let Some(point) = parent {
+        context_menu::overlay(
+            background,
+            point,
+            iced::Size::new(252. + context_menu::ICON_COLUMN_WIDTH, 185.),
+            move || {
+                use crate::app::spaces::Message as Space;
+                let item =
+                    |key, message| context_menu::action(key, app.i18n.text(key)).on_press(message);
+                let mut items = column![
+                    container(
+                        context_menu::row(
+                            context_menu::label(Key::AddProject, app.i18n.text(Key::AddProject))
+                                .push(sized_icon(Icon::Right, theme::MUTED, 12.))
+                        )
+                        .style(theme::action(matches!(
+                            menu,
+                            spaces::Menu::AddProject { .. }
+                        )))
+                        .on_press(Message::OpenSpaceAddMenu(index))
+                    )
+                    .id(spaces::add_project_id(index, true)),
+                    container(item(Key::EditSpace, Message::Space(Space::Edit(index))))
+                        .id("space-menu-edit"),
+                ];
+                if !group.projects.is_empty() {
+                    let key = if app.collapsed_spaces.contains(&index) {
+                        Key::SpaceExpandProjects
+                    } else {
+                        Key::SpaceCollapseProjects
+                    };
+                    items = items.push(item(key, Message::ToggleSpace(index)));
+                }
+                items
+                    .push(
+                        container(item(
+                            Key::DeploymentSettings,
+                            crate::app::modules::deployment_message(
+                                crate::modules::deployment::Event::SpaceSettings(index),
+                            ),
+                        ))
+                        .id("space-menu-deployment"),
+                    )
+                    .push(crate::ui::explain::submenu(
+                        &app.i18n,
+                        crate::domain::explain::Target::Space(index),
+                        crate::ui::explain::choose,
+                    ))
+                    .push(context_menu::separator())
+                    .push(
+                        container(
+                            context_menu::action(Key::DeleteSpace, app.i18n.text(Key::DeleteSpace))
+                                .on_press_maybe(
+                                    (!app.modules.git.git_actions.pending && !app.picking)
+                                        .then_some(Message::Space(Space::Delete(index))),
+                                ),
+                        )
+                        .id("space-menu-delete"),
+                    )
+                    .into()
+            },
+            Message::CloseSpaceMenu,
+        )
+    } else {
+        background
+    };
+    let spaces::Menu::AddProject {
+        anchor: Some(anchor),
+        ..
+    } = menu
+    else {
+        return layers.push(menu_layer).into();
+    };
+    layers
+        .push(context_menu::beside(
+            menu_layer,
+            anchor,
+            228.,
+            move || {
+                let action = |symbol, key, clone, id| {
+                    container(
+                        context_menu::row(context_menu::icon_label(
+                            Some(symbol),
+                            app.i18n.text(key),
+                        ))
+                        .on_press(Message::AddProjectFromMenu(index, clone)),
+                    )
+                    .id(id)
                 };
-                items = items.push(item(key, Message::ToggleSpace(index)));
-            }
-            items
-                .push(
-                    container(item(
-                        Key::DeploymentSettings,
-                        crate::app::modules::deployment_message(
-                            crate::modules::deployment::Event::SpaceSettings(index),
-                        ),
-                    ))
-                    .id("space-menu-deployment"),
-                )
-                .push(crate::ui::explain::submenu(
-                    &app.i18n,
-                    crate::domain::explain::Target::Space(index),
-                    crate::ui::explain::choose,
-                ))
-                .push(context_menu::separator())
-                .push(
-                    container(sidebar_menu_item(
-                        app.i18n.text(Key::DeleteSpace),
-                        (!app.modules.git.git_actions.pending && !app.picking)
-                            .then_some(Message::Space(Space::Delete(index))),
-                        true,
-                    ))
-                    .id("space-menu-delete"),
-                )
+                column![
+                    action(
+                        Icon::Folder,
+                        Key::SpaceAddLocalProject,
+                        false,
+                        "space-add-local"
+                    ),
+                    action(Icon::Branch, Key::CloneRepository, true, "space-add-clone"),
+                ]
                 .into()
-        },
-        Message::CloseSpaceMenu,
-    )
+            },
+            Message::CloseSpaceAddMenu,
+            parent.is_some(),
+        ))
+        .into()
 }
 
 pub(crate) fn navigation_button<'a>(
