@@ -397,6 +397,7 @@ fn git_event(event: crate::modules::git::Event) -> Message {
 fn pipelines_event(event: crate::modules::pipelines::Event) -> Message {
     use crate::modules::pipelines::Event as E;
     match event {
+        E::Search(value) => Message::PipelineSearch(value),
         E::RefreshPipelines => Message::RefreshPipelines,
         E::Jobs(v) => Message::Jobs(v),
         E::SignIn => Message::SignIn,

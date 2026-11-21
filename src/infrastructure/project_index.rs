@@ -355,7 +355,7 @@ fn load_at(path: &Path, root: &Path) -> Option<Tree> {
                             .path
                             .file_name()
                             .is_some_and(|name| name.to_string_lossy() == entry.name)
-                        && entry.name != ".git"
+                        && !matches!(entry.name.as_str(), ".git" | ".DS_Store")
                         && valid_directory(root, &entry.path)
                 })
         })

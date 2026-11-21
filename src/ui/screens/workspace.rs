@@ -61,6 +61,11 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
         .spacing(1)
         .style(theme::panes)
         .on_resize(6, Message::Resize);
+        let panes = if app.module_open(ModuleId::Git) || app.module_open(ModuleId::Pipelines) {
+            panes.on_click(Message::PaneClicked)
+        } else {
+            panes
+        };
         let mut body = column![
             container(panes)
                 .style(theme::separator)
@@ -73,9 +78,6 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
                     .width(Length::Fill)
                     .clip(true),
             );
-        }
-        if app.workspace.directory().is_some() {
-            body = body.push(divider()).push(footer(app));
         }
         body.into()
     };
@@ -147,7 +149,11 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
         header(app),
     ])
     .style(theme::surface);
-    let base = container(column![header, divider(), body])
+    let mut layout = column![header, divider(), body];
+    if app.navigation != Navigation::Settings && app.workspace.directory().is_some() {
+        layout = layout.push(divider()).push(footer(app));
+    }
+    let base = container(layout)
         .width(Length::Fill)
         .height(Length::Fill)
         .style(theme::surface)
@@ -1685,53 +1691,48 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
             }
             let select = tooltip::view(
                 container(
-                    button(
-                        row![
-                            if preview.remote {
-                                icon(Icon::Server, theme::MUTED)
+                    row![
+                        if preview.remote {
+                            icon(Icon::Server, theme::MUTED)
+                        } else {
+                            file_icons::file(Path::new(&preview.title))
+                        },
+                        text(label)
+                            .font(if preview.temporary {
+                                iced::Font {
+                                    style: iced::font::Style::Italic,
+                                    ..theme::font()
+                                }
                             } else {
-                                file_icons::file(Path::new(&preview.title))
-                            },
-                            text(label)
-                                .font(if preview.temporary {
-                                    iced::Font {
-                                        style: iced::font::Style::Italic,
-                                        ..theme::font()
-                                    }
-                                } else {
-                                    theme::font()
-                                })
-                                .style(
-                                    preview
-                                        .path
-                                        .as_deref()
-                                        .filter(|_| !preview.remote && preview.revision.is_none())
-                                        .and_then(|path| app.changes.status.status(path, false))
-                                        .or_else(|| preview
-                                            .editor
-                                            .as_ref()
-                                            .filter(|buffer| buffer.document.dirty())
-                                            .map(|_| crate::domain::changes::FileStatus::Modified))
-                                        .map(theme::file_status)
-                                        .unwrap_or(theme::TEXT)
-                                        .text()
-                                )
-                                .size(theme::FILE_TAB_TEXT_SIZE)
-                                .shaping(text::Shaping::Advanced)
-                                .wrapping(text::Wrapping::None),
-                        ]
-                        .spacing(theme::FILE_TAB_LABEL_GAP)
-                        .height(Length::Fill)
-                        .align_y(Alignment::Center),
-                    )
-                    .on_press(Message::SelectTab(preview.id))
-                    .padding([4., theme::FILE_TAB_PADDING])
-                    .width(Length::Fill)
-                    .height(theme::FILE_TABS_HEIGHT - 2.)
-                    .style(theme::file_tab_button),
+                                theme::font()
+                            })
+                            .style(
+                                preview
+                                    .path
+                                    .as_deref()
+                                    .filter(|_| !preview.remote && preview.revision.is_none())
+                                    .and_then(|path| app.changes.status.status(path, false))
+                                    .or_else(|| preview
+                                        .editor
+                                        .as_ref()
+                                        .filter(|buffer| buffer.document.dirty())
+                                        .map(|_| crate::domain::changes::FileStatus::Modified))
+                                    .map(theme::file_status)
+                                    .unwrap_or(theme::TEXT)
+                                    .text()
+                            )
+                            .size(theme::FILE_TAB_TEXT_SIZE)
+                            .shaping(text::Shaping::Advanced)
+                            .wrapping(text::Wrapping::None),
+                    ]
+                    .spacing(theme::FILE_TAB_LABEL_GAP)
+                    .height(Length::Fill)
+                    .align_y(Alignment::Center),
                 )
-                .id(format!("file-tab-{}", preview.id))
-                .width(Length::Fill),
+                .padding([4., theme::FILE_TAB_PADDING])
+                .width(Length::Fill)
+                .height(theme::FILE_TABS_HEIGHT - 2.)
+                .id(format!("file-tab-{}", preview.id)),
                 text(description).size(12),
                 tooltip::Position::Bottom,
             );
@@ -1772,7 +1773,7 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
                 tooltip::Position::Bottom,
             );
             mouse_area(
-                container(column![
+                button(column![
                     row![select, close, space().width(theme::FILE_TAB_END_GAP)]
                         .align_y(Alignment::Center),
                     container(space())
@@ -1781,6 +1782,8 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
                         .style(theme::tab_indicator(active)),
                 ])
                 .width(width)
+                .padding(0)
+                .on_press(Message::SelectTab(preview.id))
                 .style(theme::file_tab(active)),
             )
             .on_middle_press(Message::CloseTab(preview.id))

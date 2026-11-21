@@ -6,3 +6,4 @@ pipeline-stage-title = Stage: { $name }
 pipeline-job-title = Job: { $name }
 job-action-pending = Sending the action…
 job-action-access = Sign in with permission to run and stop jobs in this project.
+search-pipelines = Search runs

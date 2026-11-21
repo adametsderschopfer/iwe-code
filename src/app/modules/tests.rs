@@ -51,6 +51,39 @@ fn module_panels_start_collapsed_and_git_header_preserves_module_state_when_coll
 }
 
 #[test]
+fn find_follows_the_clicked_git_or_pipelines_panel() {
+    let mut app = app();
+    app.repository = Some(
+        crate::domain::repository::Repository {
+            root: app.workspace.directory().unwrap().clone(),
+            branches: vec![],
+            commits: vec![],
+            next_history: None,
+            remote: crate::domain::repository::Remote::parse(
+                "https://github.com/example/project.git",
+            ),
+            remotes: vec![],
+            head: "main".into(),
+        }
+        .into(),
+    );
+    for (module, input) in [
+        (ModuleId::Git, "git-search"),
+        (ModuleId::Pipelines, "pipeline-search"),
+    ] {
+        let _ = app.update_module(Event::Toggle(module));
+        assert_eq!(app.panel_search_input(), Some(input));
+        let workspace = app
+            .panes
+            .iter()
+            .find_map(|(pane, panel)| (*panel == crate::app::Panel::Workspace).then_some(*pane))
+            .unwrap();
+        let _ = app.update(Message::PaneClicked(workspace));
+        assert!(app.panel_search_input().is_none());
+    }
+}
+
+#[test]
 fn deployment_panel_is_independent_and_preserves_source_width_when_hidden() {
     for language in [Language::English, Language::Russian, Language::Spanish] {
         let mut app = app();

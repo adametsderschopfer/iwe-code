@@ -1,5 +1,5 @@
 use super::PipelineState;
-use crate::ui::presentation::{center_message, divider, error_key, icon_button, short};
+use crate::ui::presentation::{IconButton, center_message, divider, error_key, icon_button, short};
 use crate::ui::tooltip;
 use crate::{
     domain::{
@@ -59,26 +59,44 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
             .size(14)
             .font(theme::semibold()),
         text(provider).size(12).style(theme::FAINT.text()),
+        container(
+            theme::compact_field(
+                &app.i18n.text(if app.state.jobs.selected.is_some() {
+                    Key::Jobs
+                } else {
+                    Key::SearchPipelines
+                }),
+                if app.state.jobs.selected.is_some() {
+                    &app.state.job_query
+                } else {
+                    &app.state.query
+                }
+            )
+            .id("pipeline-search")
+            .on_input(Message::Search)
+        )
+        .width(Length::Fill)
+        .max_width(320.),
         space().width(Length::Fill),
         text(short(&remote.project, 24))
             .size(12)
             .style(theme::MUTED.text()),
         account,
-        icon_button(
+        IconButton::Compact.view(
             app.i18n,
             Icon::Refresh,
             Key::Refresh,
-            Message::Jobs(crate::modules::pipelines::jobs::Event::Overview(
-                crate::modules::pipelines::jobs::overview::Event::RefreshVisible
-            )),
-            false
+            Some(Message::Jobs(
+                crate::modules::pipelines::jobs::Event::Overview(
+                    crate::modules::pipelines::jobs::overview::Event::RefreshVisible
+                )
+            ))
         ),
-        container(icon_button(
+        container(IconButton::Compact.view(
             app.i18n,
             Icon::Minus,
             Key::HidePanel,
-            Message::Hide,
-            false
+            Some(Message::Hide)
         ))
         .id("pipelines-hide")
     ]
@@ -154,7 +172,11 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
             }
             PipelineState::Ready(runs) => {
                 let mut rows = Column::new();
-                for run in runs {
+                let mut matches = super::filtered_runs(runs, &app.state.query).peekable();
+                if matches.peek().is_none() {
+                    rows = rows.push(center_message(app.i18n, Key::FindNoResults));
+                }
+                for run in matches {
                     rows = rows.push(pipeline_row(app, run));
                 }
                 scrollable(rows)
@@ -178,7 +200,10 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
         }
     };
     container(column![
-        container(header).padding([8, 24]),
+        container(header)
+            .height(theme::PANEL_HEADER_HEIGHT)
+            .align_y(Alignment::Center)
+            .padding([0, 8]),
         divider(),
         content
     ])
@@ -304,6 +329,7 @@ impl View<'_> {
 }
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
+    Search(String),
     RefreshPipelines,
     Jobs(super::jobs::Event),
     SignIn,

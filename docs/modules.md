@@ -20,6 +20,11 @@ Deployment start collapsed after each application restart.
 
 ## Git and Pipelines
 
+Git, Pipelines, and Docker use 34-pixel panel headers. Click in Git or Pipelines and press **Cmd+F**
+on macOS or **Ctrl+F** on Windows and Linux to focus the panel search. Git searches commits.
+Pipelines searches runs by title, branch, status, commit, or number. Inside a run, search filters
+its jobs.
+
 Git owns history panels, branch selection, branch operations, and their presentation state.
 Pipelines owns run lists, job details, status popups, caches, and provider adapters.
 
@@ -41,10 +46,10 @@ Docker becomes available again.
 
 Git and Docker share a 42-pixel toolbar with 16-pixel icons. Use the icons on the left to select a
 resource type. Clicking the active resource or tab preserves its current view. Hover over an icon to
-see its name. The first load shows a message in the center of the list. Revisiting a section
-displays its last results while Docker refreshes them. Changing connections clears these results.
-The adjacent list shows matching resources and their count. Select a row to open **Properties** with
-the available actions. Thin dividers separate the sections. Each section scrolls independently. In a
+see its name. A slow load shows a message at the bottom of the list. Revisiting a section displays
+its last results while Docker refreshes them. Changing connections clears these results. The
+adjacent list shows matching resources and their count. Select a row to open **Properties** with the
+available actions. Thin dividers separate the sections. Each section scrolls independently. In a
 narrow panel, properties occupy the list area. In wider panels, drag the divider to resize the
 properties. Container properties initially use 30% of the space beside the navigation. Click the
 image name in container properties to reveal the exact image in the inventory. In image properties,
@@ -69,12 +74,13 @@ refreshes every minute and keeps node positions. **Reset view** restores its ini
 Click a resource to open its properties. Right-click a row to act on it while keeping the current
 properties. The menu follows the pointer even in a scrolled list. Removing a running or paused
 container requires confirmation and stops it immediately. Use the filter in the resource heading to
-search by name, identifier, driver, image, or status. Lists display forty results per page. Refresh
-updates the selected section. The visible panel also checks idle lists every twelve seconds. Choose
-**Logs** or **Inspect** from a resource's context menu or properties to open a separate dialog. The
-title identifies the resource. Log requests retrieve the latest 500 lines per container. Scroll
-through the output or use the page arrows for long results. **Refresh** reads the same resource
-again. Press **Escape** or click the close button to return to the previous selection.
+search by name, identifier, driver, image, or status. Scroll toward the end of the list to reveal
+the next forty rows. Refresh updates the selected section. The visible panel also checks idle lists
+every twelve seconds. Choose **Logs** or **Inspect** from a resource's context menu or properties to
+open a separate dialog. The title identifies the resource. Log requests retrieve the latest 500
+lines per container. Scroll through the output or use the page arrows for long results. **Refresh**
+reads the same resource again. Press **Escape** or click the close button to return to the previous
+selection.
 
 Terminal sessions run the selected executable inside the container. Enter its path if the image
 lacks the default shell. Closing the terminal tab ends the session. Removing a Compose project

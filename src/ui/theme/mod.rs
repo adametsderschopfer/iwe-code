@@ -130,7 +130,8 @@ pub(crate) const NOTIFICATION_SETTLE_DURATION: std::time::Duration =
 pub(crate) const NOTIFICATION_PADDING: f32 = 14.0;
 pub(crate) const FILE_PANEL_TOOL_SIZE: f32 = 40.0;
 pub(crate) const FILE_PANEL_TOOL_INSET: f32 = 4.0;
-pub(crate) const FILE_PANEL_HEADER_HEIGHT: f32 = 34.0;
+pub(crate) const PANEL_HEADER_HEIGHT: f32 = 34.0;
+pub(crate) const FILE_PANEL_HEADER_HEIGHT: f32 = PANEL_HEADER_HEIGHT;
 pub(crate) const FILE_TABS_HEIGHT: f32 = FILE_PANEL_HEADER_HEIGHT + 1.0;
 pub(crate) const SOURCE_MIN_WIDTH: f32 = 320.0;
 pub(crate) const FILE_PANEL_RESIZE_GRAB: f32 = 5.0;
@@ -370,30 +371,19 @@ pub(crate) fn panel(theme: &Theme) -> container::Style {
     surface(theme)
 }
 
-pub(crate) fn file_tab(active: bool) -> impl Fn(&Theme) -> container::Style {
-    move |theme| container::Style {
+pub(crate) fn file_tab(active: bool) -> impl Fn(&Theme, button::Status) -> button::Style {
+    move |theme, status| button::Style {
         background: Some(
-            if active {
-                BACKGROUND.resolve(theme)
-            } else {
-                SIDEBAR.resolve(theme)
+            match status {
+                button::Status::Hovered | button::Status::Pressed => ELEVATED,
+                _ if active => BACKGROUND,
+                _ => SIDEBAR,
             }
+            .resolve(theme)
             .into(),
         ),
-        text_color: Some(if active {
-            TEXT.resolve(theme)
-        } else {
-            MUTED.resolve(theme)
-        }),
+        text_color: if active { TEXT } else { MUTED }.resolve(theme),
         ..Default::default()
-    }
-}
-
-pub(crate) fn file_tab_button(theme: &Theme, status: button::Status) -> button::Style {
-    button::Style {
-        background: matches!(status, button::Status::Hovered | button::Status::Pressed)
-            .then_some(ELEVATED.resolve(theme).into()),
-        ..action(false)(theme, status)
     }
 }
 

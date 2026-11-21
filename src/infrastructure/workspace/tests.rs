@@ -115,6 +115,7 @@ async fn directory_reads_are_shallow_sorted_and_exclude_git_metadata() {
     let root = tempfile::tempdir().unwrap();
     std::fs::create_dir(root.path().join("src")).unwrap();
     std::fs::create_dir(root.path().join(".git")).unwrap();
+    std::fs::write(root.path().join(".DS_Store"), [0, 1]).unwrap();
     std::fs::write(root.path().join("a.rs"), "fn main() {}").unwrap();
     std::fs::write(root.path().join("src/nested.rs"), "nested").unwrap();
     let entries = entries(root.path().to_owned(), root.path().to_owned())

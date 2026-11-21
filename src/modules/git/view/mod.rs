@@ -3,7 +3,7 @@ use super::{
     selection::{Event as SelectionEvent, Target as SelectionTarget},
 };
 use crate::ui::presentation::{
-    IconButton, center_message, divider, error_key, icon_button, short, vertical_divider,
+    IconButton, center_message, divider, error_key, short, vertical_divider,
 };
 use Event as Message;
 
@@ -131,12 +131,11 @@ fn header<'a>(app: View<'a>, width: f32) -> Element<'a, Message> {
         .unwrap_or_default();
     let commits_x = commits.x + toolbar_width;
     let controls = row![
-        container(icon_button(
+        container(IconButton::Compact.view(
             app.i18n,
             Icon::Minus,
             Key::HidePanel,
-            Message::Hide,
-            false,
+            Some(Message::Hide),
         ))
         .id("git-hide")
     ];
@@ -159,10 +158,10 @@ fn header<'a>(app: View<'a>, width: f32) -> Element<'a, Message> {
     }
     let title = container(title)
         .width(commits_x)
-        .height(56)
+        .height(theme::PANEL_HEADER_HEIGHT)
         .padding(iced::Padding {
-            top: 8.,
-            bottom: 8.,
+            top: 0.,
+            bottom: 0.,
             left: 24.,
             right: 8.,
         })
@@ -176,12 +175,12 @@ fn header<'a>(app: View<'a>, width: f32) -> Element<'a, Message> {
         .min(width - commits_x - reserved - 24.)
         .clamp(0., 560.);
     let search = container(
-        theme::text_field(&app.i18n.text(Key::SearchCommits), &app.state.query)
+        theme::compact_field(&app.i18n.text(Key::SearchCommits), &app.state.query)
             .id("git-search")
             .on_input(Message::Search)
             .width(search_width),
     )
-    .padding([8, 12]);
+    .padding([0, 12]);
     let mut header = row![title, search, space().width(Length::Fill)].align_y(Alignment::Center);
     if let Some(controls) = controls {
         header = header.push(container(controls).padding(iced::Padding {

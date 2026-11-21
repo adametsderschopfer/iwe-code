@@ -898,6 +898,23 @@ fn daemon_errors_distinguish_local_sockets_remote_connections_and_permissions() 
 }
 
 #[test]
+fn scrolling_extends_only_the_current_inventory_once_per_batch() {
+    let mut state = State {
+        filtered: (0..95).collect(),
+        ..Default::default()
+    };
+    let root = Path::new(".");
+    let _ = state.update(Event::MoreRows(Kind::Images, PAGE), root, false);
+    assert_eq!(state.extra_batches, 0);
+    for limit in [PAGE, PAGE, PAGE * 2, PAGE * 3] {
+        let _ = state.update(Event::MoreRows(Kind::Containers, limit), root, false);
+    }
+    assert_eq!(state.extra_batches, 2);
+    let _ = state.update(Event::Search("other".into()), root, false);
+    assert_eq!(state.extra_batches, 0);
+}
+
+#[test]
 fn switching_resource_lists_restores_cached_rows_and_ignores_an_obsolete_refresh() {
     let root = Path::new(".");
     let containers = Arc::new(
@@ -919,6 +936,7 @@ fn switching_resource_lists_restores_cached_rows_and_ignores_an_obsolete_refresh
     assert!(state.loading_inventory());
 
     let i18n = crate::i18n::I18n::new(crate::i18n::Language::English);
+    state.started = Some(std::time::Instant::now() - std::time::Duration::from_secs(2));
     let mut ui = iced_test::Simulator::with_size(
         iced::Settings::default(),
         (900., 420.),
@@ -935,7 +953,7 @@ fn switching_resource_lists_restores_cached_rows_and_ignores_an_obsolete_refresh
         .visible_bounds()
         .unwrap();
     assert!((label.center_x() - list.center_x()).abs() <= 1.);
-    assert!((label.center_y() - list.center_y()).abs() < 22.);
+    assert!(label.center_y() > list.center_y());
     drop(ui);
 
     let _ = state.update(Event::Kind(Kind::Containers), root, false);
@@ -1222,7 +1240,7 @@ fn following_a_container_image_reveals_its_page_and_links_back_to_running_contai
         root,
         true,
     );
-    assert_eq!(state.page, 1);
+    assert_eq!(state.extra_batches, 1);
     assert_eq!(state.query, "");
     assert_eq!(state.selected().unwrap().detail, "sha49");
     let i18n = I18n::new(Language::English);

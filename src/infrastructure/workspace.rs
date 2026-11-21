@@ -166,7 +166,7 @@ pub(crate) fn entries_at(root: &Path, directory: &Path) -> Result<Vec<FileEntry>
         let entry = entry.map_err(|_| Failure::Read)?;
         let kind = entry.file_type().map_err(|_| Failure::Read)?;
         let name = entry.file_name().to_string_lossy().into_owned();
-        if name == ".git" || kind.is_symlink() {
+        if matches!(name.as_str(), ".git" | ".DS_Store") || kind.is_symlink() {
             continue;
         }
         if !kind.is_dir() && !kind.is_file() {

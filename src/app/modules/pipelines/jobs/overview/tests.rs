@@ -186,3 +186,12 @@ fn summaries_stop_loading_when_hidden_and_only_allow_current_cached_job_actions(
     app.modules.pipelines.pipelines = PipelineState::Ready(Vec::new());
     assert!(app.job_details(1).is_none());
 }
+
+#[test]
+fn search_refreshes_overviews_for_the_matching_runs() {
+    let mut app = app();
+    let _ = app.update(Message::PipelineSearch("rUN 7".into()));
+    let entries = &app.modules.pipelines.jobs.overview.entries;
+    assert_eq!(entries.len(), 1);
+    assert!(entries[&7].loading.is_some());
+}

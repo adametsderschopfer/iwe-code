@@ -62,13 +62,13 @@ pub(crate) enum Event {
     Kind(Kind),
     Listed(u64, Result<Arc<Vec<Item>>, Error>),
     Search(String),
-    Page(bool),
+    MoreRows(Kind, usize),
     Select(String),
     BackToList,
     ResizeProperties(f32),
     ShowRunning(bool),
     RunningLoaded(u64, Result<Arc<Vec<relations::Running>>, Error>),
-    RunningPage(bool),
+    MoreRunningRows(usize),
     ProjectGraph(String),
     GraphLoaded(u64, Result<Arc<graph::Data>, Error>),
     Diagram(graph::Interaction),
@@ -126,12 +126,12 @@ pub(crate) struct State {
     inventory_request: Option<u64>,
     filtered: Vec<usize>,
     query: String,
-    page: usize,
+    extra_batches: usize,
     properties_width: Option<f32>,
     project_graph: Option<graph::Project>,
     show_running: bool,
     running: Option<Arc<Vec<relations::Running>>>,
-    running_page: usize,
+    running_batches: usize,
     selected: Option<String>,
     menu: Option<(String, Point)>,
     draft: Option<Draft>,
@@ -146,7 +146,7 @@ pub(crate) struct State {
 
 impl State {
     pub(crate) fn refresh_interval(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(if self.busy.is_some() {
+        std::time::Duration::from_secs(if self.busy.is_some() || self.loading_inventory() {
             1
         } else if self.project_graph.is_some() {
             60
@@ -203,13 +203,15 @@ impl State {
             .filter(|(_, item)| item.search.contains(&query))
             .map(|(i, _)| i)
             .collect();
-        self.page = self.page.min(self.filtered.len().saturating_sub(1) / PAGE);
+        self.extra_batches = self
+            .extra_batches
+            .min(self.filtered.len().saturating_sub(1) / PAGE);
     }
     fn clear_selection(&mut self) {
         self.selected = None;
         self.show_running = false;
         self.running = None;
-        self.running_page = 0;
+        self.running_batches = 0;
         self.menu = None;
         self.draft = None;
         self.completed = None;
@@ -294,7 +296,7 @@ impl State {
         self.set_inventory(items);
         self.query.clear();
         self.filter();
-        self.page = index / PAGE;
+        self.extra_batches = index / PAGE;
         self.selected = Some(id);
         crate::ui::reveal_file::in_list("docker-rows".into(), "docker-selected-row".into(), 0.)
     }
@@ -416,8 +418,9 @@ impl State {
                 self.busy = None;
                 match result {
                     Ok(rows) => {
-                        self.running_page =
-                            self.running_page.min(rows.len().saturating_sub(1) / PAGE);
+                        self.running_batches = self
+                            .running_batches
+                            .min(rows.len().saturating_sub(1) / PAGE);
                         self.running = Some(rows);
                     }
                     Err(error) => self.list_failed(error),
@@ -465,29 +468,25 @@ impl State {
             }
             Event::Search(query) => {
                 self.query = query;
-                self.page = 0;
+                self.extra_batches = 0;
                 self.filter();
             }
             Event::ResizeProperties(width) if width.is_finite() => {
                 self.properties_width = Some(width)
             }
-            Event::Page(next) => {
-                self.page = if next {
-                    (self.page + 1).min(self.filtered.len().saturating_sub(1) / PAGE)
-                } else {
-                    self.page.saturating_sub(1)
-                };
+            Event::MoreRows(kind, shown)
+                if kind == self.kind
+                    && shown == (self.extra_batches + 1) * PAGE
+                    && shown < self.filtered.len() =>
+            {
+                self.extra_batches += 1;
             }
-            Event::RunningPage(next) => {
-                self.running_page = if next {
-                    (self.running_page + 1).min(
-                        self.running
-                            .as_ref()
-                            .map_or(0, |rows| rows.len().saturating_sub(1) / PAGE),
-                    )
-                } else {
-                    self.running_page.saturating_sub(1)
-                };
+            Event::MoreRunningRows(shown)
+                if self.show_running
+                    && shown == (self.running_batches + 1) * PAGE
+                    && self.running.as_ref().is_some_and(|rows| shown < rows.len()) =>
+            {
+                self.running_batches += 1;
             }
             Event::ShowRunning(false)
                 if self.show_running
@@ -509,7 +508,7 @@ impl State {
 
                 self.kind = kind;
                 self.items = self.inventories.get(&kind).cloned().unwrap_or_default();
-                self.page = 0;
+                self.extra_batches = 0;
                 self.query.clear();
                 self.clear_selection();
                 self.filter();

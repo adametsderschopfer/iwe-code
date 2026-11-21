@@ -725,6 +725,7 @@ message_keys! {
     AllRepositories => "all-repositories",
     RemoteBranches => "remote-branches",
     Tags => "tags",
+    SearchPipelines => "search-pipelines",
     SearchCommits => "search-commits",
     ChangedFiles => "changed-files",
     NoCommits => "no-commits",

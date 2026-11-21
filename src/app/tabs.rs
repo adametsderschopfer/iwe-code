@@ -795,6 +795,7 @@ impl App {
                 format!("{label}: {remote}"),
                 Some(format!("{identity}:{remote}")),
             ),
+            Source::Working { path, .. } if path.ends_with(".DS_Store") => return Task::none(),
             Source::Working { root, path, .. } => (
                 path.clone(),
                 path.strip_prefix(root)
@@ -1534,7 +1535,8 @@ impl App {
         let mut reads = Vec::new();
         let mut active = None;
         for (index, tab) in session.files.into_iter().take(OPEN_FILE_LIMIT).enumerate() {
-            if tab.path.as_os_str().is_empty()
+            if tab.path.ends_with(".DS_Store")
+                || tab.path.as_os_str().is_empty()
                 || !tab
                     .path
                     .components()

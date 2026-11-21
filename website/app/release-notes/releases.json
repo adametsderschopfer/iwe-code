@@ -2926,9 +2926,9 @@
         "id": "docker-inventory-refresh-and-registry-dialog",
         "category": "changed",
         "text": {
-          "en": "Docker keeps previously loaded lists visible during refresh. Initial loading appears in the center.",
-          "ru": "Docker показывает предыдущий список во время обновления. При первой загрузке сообщение появляется в центре.",
-          "es": "Docker conserva las listas visibles al actualizarlas. La carga inicial se indica en el centro."
+          "en": "Docker keeps previously loaded lists visible during refresh.",
+          "ru": "Docker показывает предыдущий список во время обновления.",
+          "es": "Docker conserva las listas visibles al actualizarlas."
         },
         "sources": [
           "src/modules/docker/view.rs",
@@ -2966,6 +2966,44 @@
           "es": "IWE lee una sola vez el inicio de un archivo de texto local grande al abrir su primera página."
         },
         "sources": ["src/infrastructure/workspace/pages.rs"]
+      },
+      {
+        "id": "compact-panel-search",
+        "category": "changed",
+        "text": {
+          "en": "Git and Pipelines use compact headers. Press the search shortcut in either panel to focus its search field.",
+          "ru": "В Git и Pipelines уменьшилась высота заголовков. Сочетание клавиш поиска переводит фокус в поле выбранной панели.",
+          "es": "Git y Pipelines usan cabeceras compactas. El atajo de búsqueda activa el campo del panel seleccionado."
+        },
+        "sources": [
+          "src/modules/git/view/mod.rs",
+          "src/modules/pipelines/view/mod.rs"
+        ]
+      },
+      {
+        "id": "docker-scroll-resources",
+        "category": "changed",
+        "text": {
+          "en": "Scroll to reveal more Docker resources. Slow requests show a loading message below the list.",
+          "ru": "Прокрутите список Docker, чтобы увидеть больше ресурсов. При долгой загрузке внизу появляется сообщение.",
+          "es": "Desplázate para ver más recursos de Docker. Las solicitudes lentas muestran un mensaje debajo de la lista."
+        },
+        "sources": [
+          "src/modules/docker/view.rs"
+        ]
+      },
+      {
+        "id": "workspace-tabs-footer-and-finder-files",
+        "category": "changed",
+        "text": {
+          "en": "File tabs highlight across their full width. The status bar extends beneath Spaces. The project tree skips Finder metadata files.",
+          "ru": "Подсветка охватывает всю файловую вкладку. Строка состояния проходит под списком пространств. Дерево проекта скрывает файлы .DS_Store.",
+          "es": "Las pestañas se resaltan en toda su anchura. La barra de estado se extiende bajo los espacios. El árbol oculta los archivos .DS_Store."
+        },
+        "sources": [
+          "src/ui/screens/workspace.rs",
+          "src/infrastructure/workspace.rs"
+        ]
       }
     ]
   }

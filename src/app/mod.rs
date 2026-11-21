@@ -207,6 +207,7 @@ pub(crate) struct App {
     pub shortcuts: shortcuts::State,
     pub modules: modules::State,
     pub panes: pane_grid::State<Panel>,
+    focused_panel: Panel,
     pub repository: Option<RepositorySet>,
     pub repository_error: Option<Failure>,
     pub loading: bool,
@@ -385,6 +386,8 @@ pub(crate) enum Message {
     ToggleBranchFolder(String),
     ChangesLoaded(u64, u64, Result<Vec<ChangedFile>, Failure>),
     TogglePanel(Panel),
+    PaneClicked(pane_grid::Pane),
+    PipelineSearch(String),
     Resize(pane_grid::ResizeEvent),
     ResizeGit(pane_grid::ResizeEvent),
     RefreshPipelines,
@@ -460,6 +463,7 @@ impl App {
             window_zoom_preview: None,
             shortcuts: shortcuts::State::default(),
             modules: modules::State::default(),
+            focused_panel: Panel::Workspace,
             panes: pane_grid::State::new(Panel::Workspace).0,
             repository: None,
             repository_error: None,
@@ -625,6 +629,7 @@ impl App {
             | Message::Worktree(_)
             | Message::ProjectChanges(_) => Some(ModuleId::Git),
             Message::Jobs(_)
+            | Message::PipelineSearch(_)
             | Message::RefreshPipelines
             | Message::PollPipelines
             | Message::PipelinesLoaded(..)
@@ -1011,6 +1016,13 @@ impl App {
                     };
                 }
                 if self.window_id == Some(id) {
+                    if matches!(
+                        *message,
+                        Message::TextSearch(text_search::Event::Open(false))
+                    ) && let Some(input) = self.panel_search_input()
+                    {
+                        return iced::widget::operation::focus(input);
+                    }
                     return self.update(*message);
                 }
             }
@@ -1576,6 +1588,11 @@ impl App {
                     self.modules.git.branch_attention = None;
                 }
             }
+            Message::PaneClicked(pane) => {
+                if let Some(panel) = self.panes.get(pane) {
+                    self.focused_panel = *panel;
+                }
+            }
             Message::TogglePanel(panel) => {
                 self.modules.git.branch_attention = None;
                 self.modules.pipelines.jobs.overview.popup = None;
@@ -1583,6 +1600,7 @@ impl App {
                     return Task::none();
                 };
                 let open = !self.module_open(id);
+                self.focused_panel = if open { panel } else { Panel::Workspace };
                 match id {
                     ModuleId::Git => self.workspace.preferences.show_git = open,
                     ModuleId::Pipelines => self.workspace.preferences.show_pipelines = open,
@@ -1619,6 +1637,23 @@ impl App {
                 .resize(event.split, event.ratio.clamp(0.12, 0.88)),
             Message::RefreshPipelines => return self.request_pipelines(true),
             Message::PollPipelines => return self.load_pipelines(),
+            Message::PipelineSearch(value) => {
+                if self.modules.pipelines.jobs.selected.is_some() {
+                    self.modules.pipelines.job_query = value;
+                } else {
+                    self.modules.pipelines.query = value;
+                    let overview = &mut self.modules.pipelines.jobs.overview;
+                    overview.visible = 0..overview.visible.len().max(1);
+                    overview.popup = None;
+                    return Task::batch([
+                        iced::widget::operation::scroll_to(
+                            "pipelines-list",
+                            iced::widget::operation::AbsoluteOffset { x: 0., y: 0. },
+                        ),
+                        self.refresh_pipeline_overviews(false),
+                    ]);
+                }
+            }
             Message::Jobs(event) => return self.update_jobs(event),
             Message::PipelinesLoaded(generation, request, result)
                 if generation == self.generation
@@ -2049,6 +2084,8 @@ impl App {
             self.editor.menu = None;
             self.editor.rename = None;
             self.modules.docker.reset();
+            self.modules.pipelines.query.clear();
+            self.modules.pipelines.job_query.clear();
             self.file_panel = self.workspace.preferences.file_panels[0];
             self.file_panel_visible = true;
             self.collapsed_worktree_folders.clear();

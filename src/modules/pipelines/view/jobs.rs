@@ -143,9 +143,25 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
                     .style(theme::MUTED.text()),
             );
         }
+        let query = app.state.job_query.trim().to_lowercase();
+        let mut found = false;
         for (index, stage) in details.stages.iter().enumerate() {
             let stage_key = stage.name.clone().unwrap_or_default();
-            let expanded = !app.state.jobs.collapsed.contains(&stage_key);
+            let jobs: Vec<_> = stage
+                .jobs
+                .iter()
+                .filter(|job| {
+                    query.is_empty()
+                        || stage_key.to_lowercase().contains(&query)
+                        || job.name.to_lowercase().contains(&query)
+                        || job.status.to_lowercase().contains(&query)
+                })
+                .collect();
+            if !query.is_empty() && jobs.is_empty() {
+                continue;
+            }
+            found = true;
+            let expanded = !query.is_empty() || !app.state.jobs.collapsed.contains(&stage_key);
             body = body.push(
                 container(
                     button(
@@ -159,7 +175,7 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
                             )
                             .size(13)
                             .font(theme::semibold()),
-                            text(stage.jobs.len()).size(11).style(theme::FAINT.text()),
+                            text(jobs.len()).size(11).style(theme::FAINT.text()),
                         ]
                         .spacing(8)
                         .align_y(Alignment::Center),
@@ -174,7 +190,7 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
             if !expanded {
                 continue;
             }
-            for job in &stage.jobs {
+            for job in jobs {
                 let (key, color) = status(&job.status);
                 let mut item = row![
                     text(app.i18n.text(key))
@@ -218,6 +234,9 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
                     job,
                 ));
             }
+        }
+        if !found && !query.is_empty() {
+            body = body.push(text(app.i18n.text(Key::FindNoResults)).size(13));
         }
     } else if app.state.jobs.error.is_none() {
         return column![

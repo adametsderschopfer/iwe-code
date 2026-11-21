@@ -39,18 +39,18 @@ impl App {
         {
             state.popup = None;
         }
-        let mut visible = runs
-            .iter()
-            .enumerate()
-            .filter(|(index, run)| {
-                state.visible.contains(index)
-                    || state
-                        .popup
-                        .as_ref()
-                        .is_some_and(|popup| popup.pipeline == run.id)
-            })
-            .map(|(_, run)| run)
-            .collect::<Vec<_>>();
+        let mut visible =
+            crate::modules::pipelines::filtered_runs(runs, &self.modules.pipelines.query)
+                .enumerate()
+                .filter(|(index, run)| {
+                    state.visible.contains(index)
+                        || state
+                            .popup
+                            .as_ref()
+                            .is_some_and(|popup| popup.pipeline == run.id)
+                })
+                .map(|(_, run)| run)
+                .collect::<Vec<_>>();
         if let Some(popup) = &state.popup {
             visible.sort_by_key(|run| run.id != popup.pipeline);
         }

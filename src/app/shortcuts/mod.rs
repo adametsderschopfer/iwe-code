@@ -75,6 +75,33 @@ pub(super) fn key_message(
 }
 
 impl App {
+    pub(super) fn panel_search_input(&self) -> Option<&'static str> {
+        use crate::modules::ModuleId;
+        let super::Panel::Module(id) = self.focused_panel else {
+            return None;
+        };
+        if !self.module_open(id)
+            || !self.panel_available(id)
+            || self.navigation == Navigation::Settings
+            || self.auth_dialog.is_some()
+            || self.space_draft.is_some()
+            || self.project_add.is_some()
+            || self.text_search.project.is_some()
+            || self.search_everywhere.dialog.is_some()
+            || self.editor.pending.is_some()
+            || self.line_navigation.is_some()
+            || self.files.operations.draft.is_some()
+            || self.modules.git.git_actions.has_dialog()
+        {
+            return None;
+        }
+        match id {
+            ModuleId::Git => Some("git-search"),
+            ModuleId::Pipelines => Some("pipeline-search"),
+            _ => None,
+        }
+    }
+
     pub(super) fn update_shortcuts(&mut self, event: Event) -> Task<Message> {
         match event {
             Event::Record(command) => {

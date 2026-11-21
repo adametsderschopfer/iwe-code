@@ -36,7 +36,7 @@ pub(super) fn error_key(error: Error) -> Key {
 }
 
 const GUTTER: f32 = 8.;
-const HEADER: f32 = 34.;
+const HEADER: f32 = theme::PANEL_HEADER_HEIGHT;
 
 const COMPACT_WIDTH: f32 = 720.;
 
@@ -242,7 +242,8 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
             .push(context_menu::separator());
     }
     let mut rows = column![].spacing(1).padding([2, 4]);
-    for &index in state.filtered.iter().skip(state.page * PAGE).take(PAGE) {
+    let shown = (state.extra_batches + 1) * PAGE;
+    for &index in state.filtered.iter().take(shown) {
         let item = &state.items[index];
         let id = &item.id;
         let color = if item.state == "running" {
@@ -275,19 +276,27 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
     }
     let initial_load =
         state.busy == Some(Key::Loading) && (state.loading_inventory() || state.context.is_none());
-    if state.filtered.is_empty() && (ready || initial_load) && state.error.is_none() {
-        let message = if initial_load {
-            Key::Loading
-        } else if state.query.trim().is_empty() {
+    if state.filtered.len() > shown {
+        rows = rows.push(load_more(shown, Event::MoreRows(state.kind, shown)));
+    }
+    let loading = state.loading_inventory() || initial_load;
+    let delayed = loading && slow_request(state);
+    if state.filtered.is_empty() && loading {
+        content = content.push(loading_footer(i18n, delayed));
+    } else if state.filtered.is_empty() && ready && state.error.is_none() {
+        let key = if state.query.trim().is_empty() {
             Key::DockerEmptyList
         } else {
             Key::DockerEmpty
         };
         content = content.push(
-            container(text(i18n.text(message)).size(13).style(theme::MUTED.text()))
+            container(text(i18n.text(key)).size(13).style(theme::MUTED.text()))
                 .center(Length::Fill),
         );
     } else {
+        if delayed {
+            rows = rows.push(loading_label(i18n));
+        }
         content = content.push(context_menu::window_anchor(
             scrollable(rows)
                 .id("docker-rows")
@@ -300,20 +309,42 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
             },
         ));
     }
-    if state.filtered.len() > PAGE {
-        content = content.push(context_menu::separator()).push(pagination(
-            state.page,
-            state.filtered.len().div_ceil(PAGE),
-            i18n,
-            Event::Page,
-        ));
-    }
     section(
         "docker-inventory",
         header.into(),
         content.into(),
         Length::Fill,
     )
+}
+
+fn load_more<'a>(shown: usize, event: Event) -> Element<'a, Event> {
+    iced::widget::sensor(space().width(Length::Fill).height(1))
+        .key(shown)
+        .anticipate(100.)
+        .on_show(move |_| event.clone())
+        .into()
+}
+
+fn slow_request(state: &State) -> bool {
+    state
+        .started
+        .is_some_and(|start| start.elapsed() >= std::time::Duration::from_secs(1))
+}
+
+fn loading_label<'a>(i18n: &I18n) -> Element<'a, Event> {
+    container(
+        text(i18n.text(Key::Loading))
+            .size(13)
+            .style(theme::MUTED.text()),
+    )
+    .padding(GUTTER)
+    .center_x(Length::Fill)
+    .into()
+}
+
+fn loading_footer<'a>(i18n: &I18n, visible: bool) -> Element<'a, Event> {
+    let label = visible.then(|| loading_label(i18n));
+    container(column(label)).align_bottom(Length::Fill).into()
 }
 
 fn pagination<'a>(
@@ -346,46 +377,39 @@ fn pagination<'a>(
 
 fn running_list<'a>(state: &'a State, i18n: &I18n) -> Element<'a, Event> {
     let mut contents = column![].height(Length::Fill);
+    let shown = (state.running_batches + 1) * PAGE;
     if let Some(rows) = &state.running
         && !rows.is_empty()
     {
-        let buttons = iced::widget::Column::with_children(
-            rows.iter()
-                .skip(state.running_page * PAGE)
-                .take(PAGE)
-                .map(|item| {
-                    button(ellipsis::text(&item.name, 13.))
-                        .width(Length::Fill)
-                        .padding([5, 8])
-                        .on_press_maybe(
-                            state
-                                .busy
-                                .is_none()
-                                .then(|| Event::OpenContainer(item.id.clone())),
-                        )
-                        .style(theme::tree_item(false))
-                        .into()
-                }),
-        );
+        let mut buttons =
+            iced::widget::Column::with_children(rows.iter().take(shown).map(|item| {
+                button(ellipsis::text(&item.name, 13.))
+                    .width(Length::Fill)
+                    .padding([5, 8])
+                    .on_press_maybe(
+                        state
+                            .busy
+                            .is_none()
+                            .then(|| Event::OpenContainer(item.id.clone())),
+                    )
+                    .style(theme::tree_item(false))
+                    .into()
+            }));
+        if rows.len() > shown {
+            buttons = buttons.push(load_more(shown, Event::MoreRunningRows(shown)));
+        }
+        if state.busy == Some(Key::Loading) && slow_request(state) {
+            buttons = buttons.push(loading_label(i18n));
+        }
         contents = contents.push(
             scrollable(buttons)
                 .height(Length::Fill)
                 .style(theme::scroll),
         );
-        if rows.len() > PAGE {
-            contents = contents.push(context_menu::separator()).push(pagination(
-                state.running_page,
-                rows.len().div_ceil(PAGE),
-                i18n,
-                Event::RunningPage,
-            ));
-        }
+    } else if state.running.is_none() && state.busy == Some(Key::Loading) {
+        contents = contents.push(loading_footer(i18n, slow_request(state)));
     } else if state.error.is_none() {
-        let key = if state.running.is_none() && state.busy.is_some() {
-            Key::Loading
-        } else {
-            Key::DockerNoRunningContainers
-        };
+        let key = Key::DockerNoRunningContainers;
         contents = contents.push(
             container(text(i18n.text(key)).size(13).style(theme::MUTED.text()))
                 .padding(GUTTER)
@@ -603,7 +627,8 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
         let status = if let Some(error) = state.error {
             Some((Icon::Warning, theme::RED, i18n.text(error_key(error))))
         } else if let Some(key) = state.busy.filter(|&key| {
-            key != Key::Loading || (!state.loading_inventory() && state.context.is_some())
+            key != Key::Loading
+                || (!state.loading_inventory() && !state.show_running && state.context.is_some())
         }) {
             let mut args = crate::i18n::FluentArgs::new();
             args.set("operation", i18n.text(key));

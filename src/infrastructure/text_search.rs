@@ -116,7 +116,9 @@ fn scan(request: Request) -> Results {
                             results.limited = true;
                             break;
                         }
-                        paths.push(entry.path());
+                        if entry.file_name() != ".DS_Store" {
+                            paths.push(entry.path());
+                        }
                     }
                     paths.sort();
                     queue.extend(paths.into_iter().rev());

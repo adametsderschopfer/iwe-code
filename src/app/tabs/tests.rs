@@ -1046,6 +1046,15 @@ fn switching_tabs_reuses_documents_and_restores_both_scroll_axes() {
 }
 
 #[test]
+fn finder_metadata_cannot_replace_the_current_file() {
+    let mut app = app();
+    let id = open(&mut app, "source.rs");
+    let path = app.workspace.directory().unwrap().join(".DS_Store");
+    let _ = app.open_file(path);
+    assert_eq!(app.preview().id, id);
+}
+
+#[test]
 fn wide_commit_tab_keeps_its_label_clear_of_the_close_button() {
     use iced::widget::Id;
     let mut app = app();

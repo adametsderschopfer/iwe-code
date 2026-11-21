@@ -273,6 +273,10 @@ Use **Edit SVG** to change its source. After saving, **Show image** displays the
 SVG previews render text, shapes, and embedded raster images. External image references remain
 unloaded.
 
+Hovering over a file tab highlights the full tab, including the close button area. The status bar
+spans the full window below the spaces sidebar. The project tree and search skip macOS Finder
+metadata files named `.DS_Store`.
+
 The source viewer displays UTF-8 text. Files larger than 512 KiB or 100,000 lines open in parts. Use
 **Previous part**, **Next part**, and **Refresh** above the text to navigate or reload a part. Each
 part contains at most 512 KiB and 4,096 newline characters. Long lines can continue into the next
