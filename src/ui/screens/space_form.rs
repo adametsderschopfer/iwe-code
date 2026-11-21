@@ -11,7 +11,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{Column, button, column, container, row, scrollable, text},
+    widget::{Column, button, column, container, row, scrollable, space, text},
 };
 
 pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
@@ -131,7 +131,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         )
         .id("space-add-project"),
     );
-    let mut actions = modal::actions();
+    let mut actions = row![].spacing(8).align_y(Alignment::Center);
     if let Some(index) = draft.editing {
         actions = actions.push(
             container(
@@ -145,7 +145,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
             .id("space-delete"),
         );
     }
-    let actions = actions.extend([
+    let actions = actions.push(space().width(Length::Fill)).extend([
         container(
             theme::text_button(app.i18n.text(Key::Cancel))
                 .on_press(Message::Space(spaces::Message::Cancel)),

@@ -766,6 +766,8 @@ fn space_context_menu_and_edit_form_delete_only_workspace_metadata() {
                     .visible_bounds()
                     .unwrap();
                 assert!(delete.x + delete.width < cancel.x);
+                let add = ui.find(Id::new("space-add-project")).unwrap().bounds();
+                assert!((delete.x - add.x).abs() < 1.);
                 ui.click(Id::new("space-delete")).unwrap();
                 for message in ui.into_messages() {
                     let _ = app.update(message);

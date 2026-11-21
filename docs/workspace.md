@@ -149,11 +149,12 @@ entries. Moving projects preserves their order within each source space, their p
 editor. The destination menu lists spaces that can accept the group without duplicate folders.
 
 Open the space menu to add a local folder, clone a repository, or collapse its project list. The
-menu also provides **Edit space** and **Delete space**. The edit form also places **Delete space**
-at the left of its bottom action row. Deleting a space removes its saved project entries, including
-pinned entries, while preserving all project files on disk. Other spaces retain their project
-entries. Deleting the active space selects another available project or opens the empty workspace.
-Deleting another space preserves the active project and the remaining spaces' collapsed states.
+menu also provides **Edit space** and **Delete space**. The edit form aligns **Delete space** with
+the left edge of the project list. **Cancel** and **Save changes** sit on the right. Deleting a
+space removes its saved project entries, including pinned entries, while preserving all project
+files on disk. Other spaces retain their project entries. Deleting the active space selects another
+available project or opens the empty workspace. Deleting another space preserves the active project
+and the remaining spaces' collapsed states.
 
 Empty space lists align their message with the **Spaces** heading.
 
