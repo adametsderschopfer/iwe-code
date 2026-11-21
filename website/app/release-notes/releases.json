@@ -2516,7 +2516,11 @@
           "ru": "Исходные файлы открываются быстрее. Во время загрузки текста и подсветки можно работать в других вкладках.",
           "es": "Abre archivos de código más rápido y usa otras pestañas mientras el editor carga el texto y sus colores."
         },
-        "sources": ["src/app/tabs.rs", "src/app/editor/loading.rs", "src/ui/editor/syntax/worker.rs"]
+        "sources": [
+          "src/app/tabs.rs",
+          "src/app/editor/loading.rs",
+          "src/ui/editor/syntax/worker.rs"
+        ]
       },
       {
         "id": "local-platform-checks-before-commit",
@@ -2706,9 +2710,9 @@
         "id": "docker-repeat-selection",
         "category": "changed",
         "text": {
-          "en": "Clicking the active Docker tab or resource preserves its filter, page, and properties.",
-          "ru": "Повторный клик по активной вкладке или ресурсу Docker сохраняет фильтр, страницу и свойства.",
-          "es": "Pulsar la pestaña o el recurso activo de Docker conserva el filtro, la página y las propiedades."
+          "en": "Clicking the active Docker tab or resource preserves its filter and properties.",
+          "ru": "Повторный клик по активной вкладке или ресурсу Docker сохраняет фильтр и свойства.",
+          "es": "Pulsar la pestaña o el recurso activo de Docker conserva el filtro y las propiedades."
         },
         "sources": ["src/modules/docker/mod.rs"]
       },
@@ -2763,36 +2767,6 @@
         "sources": ["src/modules/docker/output.rs"]
       },
       {
-        "id": "docker-image-registries",
-        "category": "added",
-        "text": {
-          "en": "Browse repositories and tags on Docker Hub and private registries. Inspect digests and platforms, pull images, or publish a local image.",
-          "ru": "Просматривайте репозитории и теги в Docker Hub и частных реестрах. Проверяйте дайджесты и платформы, скачивайте и публикуйте образы.",
-          "es": "Explora repositorios y etiquetas en Docker Hub y registros privados. Consulta digests y plataformas, descarga imágenes o publica una imagen local."
-        },
-        "sources": ["src/modules/docker/registry/mod.rs"]
-      },
-      {
-        "id": "kubernetes-resource-management",
-        "category": "added",
-        "text": {
-          "en": "Browse cluster resources, inspect events and logs, open terminals, and forward ports. Review manifest changes and manage Deployment rollouts.",
-          "ru": "Просматривайте ресурсы кластера, события и логи. Открывайте терминалы, перенаправляйте порты, проверяйте изменения манифестов и управляйте обновлениями Deployment.",
-          "es": "Explora recursos del clúster, eventos y registros. Abre terminales, reenvía puertos, revisa manifiestos y gestiona despliegues de Kubernetes."
-        },
-        "sources": ["src/modules/kubernetes/mod.rs"]
-      },
-      {
-        "id": "kubernetes-registry-images",
-        "category": "added",
-        "text": {
-          "en": "Choose a registry tag or digest for a Deployment, or open a running container’s image in its registry.",
-          "ru": "Выбирайте тег или дайджест из реестра для Deployment. Открывайте образ работающего контейнера в реестре.",
-          "es": "Elige una etiqueta o un digest del registro para un Deployment, o abre la imagen de un contenedor en su registro."
-        },
-        "sources": ["src/app/modules/mod.rs"]
-      },
-      {
         "id": "project-terminal-sessions",
         "category": "changed",
         "text": {
@@ -2806,9 +2780,9 @@
         "id": "terminal-tab-names",
         "category": "added",
         "text": {
-          "en": "Local tabs use numbered names. Docker tabs show the container name, and Kubernetes tabs show the pod and container. Rename any tab from its menu.",
-          "ru": "Локальные вкладки получают номера. Вкладки Docker показывают имя контейнера, а вкладки Kubernetes — имена пода и контейнера. Любую вкладку можно переименовать через меню.",
-          "es": "Las pestañas locales se numeran. Las de Docker muestran el contenedor y las de Kubernetes muestran el pod y el contenedor. Cambia el nombre de cualquier pestaña desde su menú."
+          "en": "Local terminal tabs use numbered names. Docker terminal tabs show the container name. Rename a tab from its menu.",
+          "ru": "Локальные вкладки терминала получают номера. Вкладки терминала Docker показывают имя контейнера. Вкладку можно переименовать через меню.",
+          "es": "Las pestañas del terminal local se numeran. Las de Docker muestran el nombre del contenedor. Puedes cambiar el nombre desde el menú."
         },
         "sources": ["src/modules/terminal/state/title.rs"]
       },
@@ -2870,7 +2844,10 @@
           "ru": "Галерея сайта показывает обновлённые элементы управления приложения.",
           "es": "La galería del sitio muestra los controles actualizados del espacio de trabajo."
         },
-        "sources": ["website/public/images/search-en.webp", "website/public/images/settings-en.webp"]
+        "sources": [
+          "website/public/images/search-en.webp",
+          "website/public/images/settings-en.webp"
+        ]
       },
       {
         "id": "markdown-tab-views",
@@ -2940,10 +2917,7 @@
           "ru": "Docker показывает предыдущий список во время обновления.",
           "es": "Docker conserva las listas visibles al actualizarlas."
         },
-        "sources": [
-          "src/modules/docker/view.rs",
-          "src/modules/docker/registry/view.rs"
-        ]
+        "sources": ["src/modules/docker/view.rs", "src/modules/docker/registry/view.rs"]
       },
       {
         "id": "temporarily-hide-kubernetes-module",
@@ -2954,7 +2928,9 @@
           "es": "El módulo Kubernetes se oculta temporalmente en la navegación y los ajustes de módulos."
         },
         "sources": [
-          "src/modules/catalog/mod.rs"
+          "src/modules/catalog/mod.rs",
+          "src/modules/kubernetes/mod.rs",
+          "src/app/modules/mod.rs"
         ]
       },
       {
@@ -2965,7 +2941,7 @@
           "ru": "Раздел реестров Docker и действие публикации образа временно скрыты. IWE сохраняет подключения к реестрам.",
           "es": "El explorador de registros de Docker y la acción Publicar están ocultos temporalmente. IWE conserva las conexiones guardadas."
         },
-        "sources": ["src/modules/docker/view.rs"]
+        "sources": ["src/modules/docker/view.rs", "src/modules/docker/registry/mod.rs"]
       },
       {
         "id": "single-read-local-preview",
@@ -2985,10 +2961,7 @@
           "ru": "В Git и Pipelines уменьшилась высота заголовков. Сочетание клавиш поиска переводит фокус в поле выбранной панели.",
           "es": "Git y Pipelines usan cabeceras compactas. El atajo de búsqueda activa el campo del panel seleccionado."
         },
-        "sources": [
-          "src/modules/git/view/mod.rs",
-          "src/modules/pipelines/view/mod.rs"
-        ]
+        "sources": ["src/modules/git/view/mod.rs", "src/modules/pipelines/view/mod.rs"]
       },
       {
         "id": "docker-scroll-resources",
@@ -2998,9 +2971,7 @@
           "ru": "Прокрутите список Docker, чтобы увидеть больше ресурсов. При долгой загрузке внизу появляется сообщение.",
           "es": "Desplázate para ver más recursos de Docker. Las solicitudes lentas muestran un mensaje debajo de la lista."
         },
-        "sources": [
-          "src/modules/docker/view.rs"
-        ]
+        "sources": ["src/modules/docker/view.rs"]
       },
       {
         "id": "workspace-tabs-footer-and-finder-files",
@@ -3010,10 +2981,7 @@
           "ru": "Подсветка охватывает всю файловую вкладку. Строка состояния проходит под списком пространств. Дерево проекта скрывает файлы .DS_Store.",
           "es": "Las pestañas se resaltan en toda su anchura. La barra de estado se extiende bajo los espacios. El árbol oculta los archivos .DS_Store."
         },
-        "sources": [
-          "src/ui/screens/workspace.rs",
-          "src/infrastructure/workspace.rs"
-        ]
+        "sources": ["src/ui/screens/workspace.rs", "src/infrastructure/workspace.rs"]
       }
     ]
   }
