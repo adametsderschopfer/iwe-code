@@ -3,6 +3,7 @@
 mod catalog;
 pub(crate) mod deployment;
 pub(crate) mod docker;
+pub(crate) mod kubernetes;
 pub(crate) mod terminal;
 
 pub(crate) use catalog::{MODULES, ModuleId, Origin};

@@ -423,6 +423,12 @@ fn panel_buttons(app: &App) -> Element<'_, Message> {
             Key::Terminal,
             "nav-terminal",
         ),
+        (
+            ModuleId::Kubernetes,
+            Icon::Kubernetes,
+            Key::Kubernetes,
+            "nav-kubernetes",
+        ),
         (ModuleId::Docker, Icon::Docker, Key::Docker, "nav-docker"),
         (ModuleId::Git, Icon::Branch, Key::Git, "nav-git"),
         (

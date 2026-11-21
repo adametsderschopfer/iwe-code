@@ -1,4 +1,4 @@
-//! Compact controls for browsing service resources.
+//! Compact controls shared by the Docker registry and Kubernetes resource browsers.
 use super::theme;
 use crate::i18n::{I18n, Key};
 use iced::{

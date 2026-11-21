@@ -12,6 +12,7 @@ use iced::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Icon {
     Docker,
+    Kubernetes,
     Cube,
     Network,
     Relationships,
@@ -132,6 +133,17 @@ impl Drawing {
             frame.stroke(&path, stroke);
         };
         match self.0 {
+            Icon::Kubernetes => {
+                for i in 0..7 {
+                    let angle = std::f32::consts::TAU * i as f32 / 7.;
+                    line(&[
+                        (10. + 2. * angle.sin(), 10. - 2. * angle.cos()),
+                        (10. + 8. * angle.sin(), 10. - 8. * angle.cos()),
+                    ]);
+                }
+                frame.stroke(&Path::circle(Point::new(10., 10.), 5.8), stroke);
+                frame.stroke(&Path::circle(Point::new(10., 10.), 2.), stroke);
+            }
             Icon::Minus => line(&[(3., 10.), (17., 10.)]),
             Icon::Duplicate => {
                 line(&[(7., 7.), (17., 7.), (17., 18.), (7., 18.), (7., 7.)]);

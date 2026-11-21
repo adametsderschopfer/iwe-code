@@ -49,7 +49,7 @@ impl Language {
         }
     }
 
-    fn sources(self) -> [&'static str; 6] {
+    fn sources(self) -> [&'static str; 7] {
         let terminal = match self {
             Self::English => include_str!("../modules/terminal/locales/en.ftl"),
             Self::Russian => include_str!("../modules/terminal/locales/ru.ftl"),
@@ -75,7 +75,20 @@ impl Language {
             Self::Russian => include_str!("../modules/docker/locales/ru.ftl"),
             Self::Spanish => include_str!("../modules/docker/locales/es.ftl"),
         };
-        [self.source(), terminal, deployment, git, pipelines, docker]
+        let kube = match self {
+            Self::English => include_str!("../modules/kubernetes/locales/en.ftl"),
+            Self::Russian => include_str!("../modules/kubernetes/locales/ru.ftl"),
+            Self::Spanish => include_str!("../modules/kubernetes/locales/es.ftl"),
+        };
+        [
+            self.source(),
+            terminal,
+            deployment,
+            git,
+            pipelines,
+            docker,
+            kube,
+        ]
     }
 }
 
@@ -129,6 +142,45 @@ message_keys! {
     RegistryPlatforms => "registry-platforms",
     RegistryPullTag => "registry-pull-tag",
     RegistryPullDigest => "registry-pull-digest",
+    Kubernetes => "kubernetes",
+    KubeDenied => "kube-denied",
+    KubeMissing => "kube-missing",
+    KubeConflict => "kube-conflict",
+    KubeOffline => "kube-offline",
+    KubeFailed => "kube-failed",
+    KubeInstall => "kube-install",
+    KubeManifestError => "kube-manifest-error",
+    KubeNamespaceMismatch => "kube-namespace-mismatch",
+    KubePartial => "kube-partial",
+    KubeNoContexts => "kube-no-contexts",
+    KubeScale => "kube-scale",
+    KubeRestart => "kube-restart",
+    KubeChangeImage => "kube-change-image",
+    KubeForward => "kube-forward",
+    KubeContext => "kube-context",
+    KubeConfig => "kube-config",
+    KubeStandard => "kube-standard",
+    KubeManifest => "kube-manifest",
+    KubePreview => "kube-preview",
+    KubeSecretChange => "kube-secret-change",
+    KubeNoDiff => "kube-no-diff",
+    KubeApply => "kube-apply",
+    KubeNamespace => "kube-namespace",
+    KubeContainer => "kube-container",
+    KubeOldImage => "kube-old-image",
+    KubeNewImage => "kube-new-image",
+    KubeReplicas => "kube-replicas",
+    KubeLocalPort => "kube-local-port",
+    KubeRemotePort => "kube-remote-port",
+    KubeConfirm => "kube-confirm",
+    KubeAll => "kube-all",
+    KubeEmpty => "kube-empty",
+    KubeEvents => "kube-events",
+    KubeYaml => "kube-yaml",
+    KubeRollout => "kube-rollout",
+    KubePods => "kube-pods",
+    KubeEnded => "kube-ended",
+    KubeLive => "kube-live",
     DeploymentCompareLocal => "deployment-compare-local",
     DeploymentOpenLocal => "deployment-open-local",
     DeploymentOpenRemote => "deployment-open-remote",

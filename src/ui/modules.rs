@@ -17,6 +17,7 @@ pub(crate) fn title(id: ModuleId) -> Key {
         ModuleId::Git => Key::Git,
         ModuleId::Pipelines => Key::Pipelines,
         ModuleId::Docker => Key::Docker,
+        ModuleId::Kubernetes => Key::Kubernetes,
         ModuleId::Terminal => Key::Terminal,
         ModuleId::Deployment => Key::Deployment,
     }
@@ -24,6 +25,12 @@ pub(crate) fn title(id: ModuleId) -> Key {
 
 pub(crate) fn panel(app: &App, id: ModuleId) -> Element<'_, Message> {
     match id {
+        ModuleId::Kubernetes => crate::modules::kubernetes::panel(
+            &app.modules.kubernetes,
+            &app.i18n,
+            app.module_enabled(ModuleId::Terminal),
+        )
+        .map(|e| Message::Module(Event::Kubernetes(e))),
         ModuleId::Docker => crate::modules::docker::panel(
             &app.modules.docker,
             &app.i18n,

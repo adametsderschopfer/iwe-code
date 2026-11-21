@@ -2761,6 +2761,16 @@
           "es": "Explora repositorios y etiquetas en Docker Hub y registros privados. Consulta digests y plataformas, descarga imágenes o publica una imagen local."
         },
         "sources": ["src/modules/docker/registry/mod.rs"]
+      },
+      {
+        "id": "kubernetes-resource-management",
+        "category": "added",
+        "text": {
+          "en": "Browse cluster resources, inspect events and logs, open terminals, and forward ports. Review manifest changes and manage Deployment rollouts.",
+          "ru": "Просматривайте ресурсы кластера, события и логи. Открывайте терминалы, перенаправляйте порты, проверяйте изменения манифестов и управляйте обновлениями Deployment.",
+          "es": "Explora recursos del clúster, eventos y registros. Abre terminales, reenvía puertos, revisa manifiestos y gestiona despliegues de Kubernetes."
+        },
+        "sources": ["src/modules/kubernetes/mod.rs"]
       }
     ]
   }

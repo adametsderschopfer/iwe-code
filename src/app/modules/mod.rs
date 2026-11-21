@@ -1,6 +1,6 @@
 //! Compose enabled module runtimes and route their typed events.
 
-use crate::modules::terminal;
+use crate::modules::{kubernetes, terminal};
 
 use super::{App, Message};
 use crate::modules::ModuleId;
@@ -15,6 +15,7 @@ pub(crate) struct State {
     pub git: crate::modules::git::State,
     pub pipelines: crate::modules::pipelines::State,
     pub terminal: terminal::State,
+    pub kubernetes: kubernetes::State,
     pub docker: crate::modules::docker::State,
     pub deployment: crate::modules::deployment::State,
     pub external: external::State,
@@ -23,6 +24,7 @@ pub(crate) struct State {
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
     Toggle(ModuleId),
+    Kubernetes(kubernetes::Event),
     SetEnabled(ModuleId, bool),
     Git(crate::modules::git::Event),
     Pipelines(crate::modules::pipelines::Event),
@@ -50,6 +52,17 @@ impl App {
                 match id {
                     ModuleId::Git | ModuleId::Pipelines => {
                         self.update(Message::TogglePanel(super::Panel::Module(id)))
+                    }
+                    ModuleId::Kubernetes => {
+                        self.modules.kubernetes.open = !self.modules.kubernetes.open;
+                        let task = if self.modules.kubernetes.open {
+                            self.hide_other_bottom_panels(id);
+                            self.update_module(Event::Kubernetes(kubernetes::Event::Open))
+                        } else {
+                            Task::none()
+                        };
+                        self.sync_panels();
+                        task
                     }
                     ModuleId::Docker => {
                         self.modules.docker.open = !self.modules.docker.open;
@@ -85,6 +98,42 @@ impl App {
                 self.update_terminal(event)
             }
             Event::Terminal(_) => Task::none(),
+            Event::Kubernetes(event) if self.module_enabled(ModuleId::Kubernetes) => {
+                use kubernetes::Event as K;
+                match event {
+                    K::Hide => {
+                        self.modules.kubernetes.open = false;
+                        self.sync_panels();
+                        Task::none()
+                    }
+                    K::Shell if self.module_enabled(ModuleId::Terminal) => {
+                        if let Some(args) = self.modules.kubernetes.shell() {
+                            let task = self.update_terminal(terminal::Event::StartProgram(
+                                crate::infrastructure::process::executable("kubectl"),
+                                args,
+                            ));
+                            if let Some(id) = self.modules.terminal.active {
+                                self.modules.kubernetes.terminal_tabs.push(id)
+                            }
+                            return task;
+                        }
+                        Task::none()
+                    }
+                    e => {
+                        let old = self.modules.kubernetes.scope_id();
+                        let task = self
+                            .modules
+                            .kubernetes
+                            .update(e)
+                            .map(|e| Message::Module(Event::Kubernetes(e)));
+                        if old != self.modules.kubernetes.scope_id() {
+                            self.close_cluster_terminals()
+                        }
+                        task
+                    }
+                }
+            }
+            Event::Kubernetes(_) => Task::none(),
             Event::Docker(event) if self.module_enabled(ModuleId::Docker) => {
                 use crate::modules::docker::Event as Docker;
                 let terminal = self.module_enabled(ModuleId::Terminal);
@@ -135,6 +184,14 @@ impl App {
         }
     }
 
+    fn close_cluster_terminals(&mut self) {
+        for id in std::mem::take(&mut self.modules.kubernetes.terminal_tabs) {
+            let _ = self.modules.terminal.update(
+                terminal::Event::Close(id),
+                self.workspace.directory().map(std::path::PathBuf::as_path),
+            );
+        }
+    }
     pub(super) fn module_subscription(&self) -> Subscription<Message> {
         Subscription::batch([
             if self.module_enabled(ModuleId::Terminal) {
@@ -161,6 +218,12 @@ impl App {
     }
 
     fn update_terminal(&mut self, event: terminal::Event) -> Task<Message> {
+        if let terminal::Event::Close(id) = &event {
+            self.modules
+                .kubernetes
+                .terminal_tabs
+                .retain(|tab| tab != id);
+        }
         match event {
             terminal::Event::Focus(request) => {
                 if self.modules.terminal.active == Some(request) {
@@ -225,6 +288,7 @@ impl App {
         match id {
             ModuleId::Git => self.workspace.preferences.show_git,
             ModuleId::Pipelines => self.workspace.preferences.show_pipelines,
+            ModuleId::Kubernetes => self.modules.kubernetes.open,
             ModuleId::Docker => self.modules.docker.open,
             ModuleId::Terminal => self.modules.terminal.open,
             ModuleId::Deployment => self.modules.deployment.open,
@@ -313,6 +377,10 @@ impl App {
         let mut tasks = Vec::new();
         if !enabled {
             match id {
+                ModuleId::Kubernetes => {
+                    self.close_cluster_terminals();
+                    self.modules.kubernetes.reset();
+                }
                 ModuleId::Docker => self.modules.docker.reset(),
                 ModuleId::Terminal => self.modules.terminal.reset(),
                 ModuleId::Deployment => {

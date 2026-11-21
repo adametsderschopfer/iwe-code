@@ -131,11 +131,18 @@ fn bottom_toolbar_buttons_stay_in_place_when_opening_switching_and_closing_panel
         }
         .into(),
     );
-    let buttons = ["nav-terminal", "nav-docker", "nav-git", "nav-pipelines"];
+    let buttons = [
+        "nav-terminal",
+        "nav-kubernetes",
+        "nav-docker",
+        "nav-git",
+        "nav-pipelines",
+    ];
     let mut closed_bounds = None;
     for (button, module, opened) in [
         ("nav-terminal", ModuleId::Terminal, true),
         ("nav-terminal", ModuleId::Terminal, false),
+        ("nav-kubernetes", ModuleId::Kubernetes, true),
         ("nav-docker", ModuleId::Docker, true),
         ("nav-git", ModuleId::Git, true),
         ("nav-pipelines", ModuleId::Pipelines, true),
@@ -169,7 +176,7 @@ fn bottom_toolbar_buttons_stay_in_place_when_opening_switching_and_closing_panel
                     .unwrap()
             });
             assert_eq!((files.x, files.width), (bottom.x, bottom.width));
-            let last = bounds[3];
+            let last = bounds[4];
             assert!(
                 (bottom.y + bottom.height
                     - last.y

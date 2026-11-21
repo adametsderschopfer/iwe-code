@@ -1,11 +1,11 @@
 # Modules
 
-IWE Code provides Git, Pipelines, Terminal, Docker, and Deployment under **Settings → Modules**.
-Each module is enabled by default. Each row provides an activation switch and a **System** badge.
-Changes apply immediately and persist across restarts. Modules remain installed when disabled. Saved
-connections, profiles, credentials, shortcuts, and panel preferences remain unchanged. Unknown
-module identifiers survive settings updates. Older settings without activation preferences enable
-every module.
+IWE Code provides Git, Pipelines, Terminal, Docker, Kubernetes, and Deployment under **Settings →
+Modules**. Each module is enabled by default. Each row provides an activation switch and a
+**System** badge. Changes apply immediately and persist across restarts. Modules remain installed
+when disabled. Saved connections, profiles, credentials, shortcuts, and panel preferences remain
+unchanged. Unknown module identifiers survive settings updates. Older settings without activation
+preferences enable every module.
 
 Disabling hides module controls and panels. It also stops subscriptions and rejects new module
 actions. Terminal sessions end. Deployment transfers receive cancellation, and queued transfers are
@@ -14,9 +14,9 @@ cannot replace current module state. Re-enabling never repeats a write operation
 Existing source and comparison tabs remain available.
 
 Module panels start collapsed when no visibility preference exists. Use the bottom toolbar to toggle
-Terminal, Git, or Pipelines. Only one bottom panel can open at a time. Deployment uses the right
-server icon. The minus button in each panel header collapses that panel. Terminal and Deployment
-start collapsed after each application restart.
+Terminal, Docker, Kubernetes, Git, or Pipelines. Only one bottom panel can open at a time.
+Deployment uses the right server icon. The minus button in each panel header collapses that panel.
+Terminal and Deployment start collapsed after each application restart.
 
 ## Git and Pipelines
 
@@ -108,6 +108,29 @@ stopped. Pull requires an active Docker connection.
 
 Select a local image and choose **Publish**. Review the connection and full destination before
 confirming. The registry browser refreshes the tags and offers the published address for copying.
+
+## Kubernetes
+
+Enable **Kubernetes** in **Settings → Modules** and open its toolbar button. Install kubectl on the
+application's command path. Choose a context from the default kubeconfig or select a file. The
+default uses KUBECONFIG when set. IWE passes the context to each command. Select a namespace, enter
+its exact name, or choose **All namespaces**. Node resources belong to the cluster.
+
+Browse workloads, Pods, Services, Ingresses, ConfigMaps, Secrets, and Nodes. Select a row to see
+properties, events, and YAML. IWE masks Secret values in resource views and manifest comparisons.
+
+Use **Related Pods** on a Deployment to follow its ReplicaSet ownership. On a Pod, select the
+container before opening logs or a terminal. Pod and Service port forwarding binds to localhost.
+Stop each forward in the panel. Closing a terminal or log session ends its process. Switching
+context or disabling Kubernetes ends its sessions.
+
+Review the target before scaling, restarting, or replacing a Deployment image. Enter an image
+address manually. Kubernetes uses the cluster's image pull credentials. Inspect Pod status and
+events if a rollout cannot pull its image.
+
+Use **Compare local YAML** for a server-side preview. Review each resource and confirm to apply the
+reviewed file contents. Multi-resource changes run in order. Review the file again after a partial
+failure.
 
 ## External modules
 

@@ -406,12 +406,12 @@ rendering. Workspace metadata never contains credentials. See
 ## Bundled modules
 
 `modules/catalog/` defines stable module identifiers and the bundled catalog. Each entry declares
-its system origin. Git, Pipelines, Terminal, Docker, and Deployment are enabled by default. The
-activation switches persist disabled identifiers in preferences. Unknown identifiers remain intact.
-Disabling stops subscriptions, hides controls, and invalidates asynchronous results. Configuration
-remains intact. Disabling Terminal ends its sessions. Disabling Deployment cancels transfers and
-clears its queue. Submitted Git and provider writes can finish externally; enabling never resubmits
-them. Module availability alone does not start a terminal process.
+its system origin. Git, Pipelines, Terminal, Docker, Kubernetes, and Deployment are enabled by
+default. The activation switches persist disabled identifiers in preferences. Unknown identifiers
+remain intact. Disabling stops subscriptions, hides controls, and invalidates asynchronous results.
+Configuration remains intact. Disabling Terminal ends its sessions. Disabling Deployment cancels
+transfers and clears its queue. Submitted Git and provider writes can finish externally; enabling
+never resubmits them. Module availability alone does not start a terminal process.
 
 Git owns history, selection, and action state under `modules/git/`. Pipelines owns run and job state
 under `modules/pipelines/`. Their views accept explicit read-only projections and emit module
@@ -432,7 +432,9 @@ layout preserves existing node slots across refreshes. The canvas tracks pan, zo
 positions. The module refreshes visible lists and rejects stale completions using request
 identifiers. The host opens a terminal tab for explicit Docker shell requests using separate
 executable arguments. See [Docker operations](modules.md#docker). The registry browser belongs to
-Docker and accesses registry endpoints independently of the daemon.
+Docker and accesses registry endpoints independently of the daemon. Kubernetes owns kubeconfig
+selection, resource browsing, manifest previews, and streaming processes. The host attaches shell
+sessions to Terminal.
 
 The local image reader decodes raster images and renders SVG files on bounded background workers.
 Tab identifiers and project generations protect image results. The host releases image handles when
@@ -567,8 +569,8 @@ and every space's projects, and activates them by opening files or switching pro
 interlocks with the other workspace dialogs like Go to Line. `ui/screens/search_everywhere/` renders
 the popup and routes popup keys before the focused search input.
 
-Terminal, Docker, Git, and Pipelines share one optional bottom panel position. The workspace guide
-lists platform-specific keyboard shortcuts. Middle-click closes the targeted tab.
+Terminal, Docker, Kubernetes, Git, and Pipelines share one optional bottom panel position. The
+workspace guide lists platform-specific keyboard shortcuts. Middle-click closes the targeted tab.
 
 The launcher tries these backends in order:
 
