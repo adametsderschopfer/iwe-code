@@ -55,6 +55,9 @@ Right-click a file or folder in the project tree to open its context menu. Right
 to work in the project root. Use **New** to create a file or folder. A new file opens in the editor.
 A new folder becomes selected.
 
+Choose **Open terminal here** to run a shell in the selected folder or a file's parent folder. See
+[Terminal](modules.md#terminal) for tab names, search, and project switching.
+
 Use **Copy**, **Cut**, and **Paste** to work with one file or folder inside the current project.
 **Duplicate** suggests an available name beside the original. **Rename** changes the name in place.
 **Move** opens a folder picker and lets you confirm the destination name. If the name is already in

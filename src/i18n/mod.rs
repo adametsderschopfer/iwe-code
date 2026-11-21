@@ -577,6 +577,7 @@ message_keys! {
     FileMove => "project-file-move",
     FileTrash => "project-file-trash",
     FileReveal => "project-file-reveal",
+    FileOpenTerminal => "project-file-open-terminal",
     FileTrashPrompt => "project-file-trash-prompt",
     FileInvalidName => "project-file-invalid-name",
     FileProtected => "project-file-protected",

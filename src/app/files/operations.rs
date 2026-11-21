@@ -22,6 +22,7 @@ pub(crate) enum Command {
     Move,
     Trash,
     Reveal,
+    OpenTerminal,
 }
 
 #[derive(Debug, Clone)]
@@ -229,6 +230,7 @@ impl App {
             return Task::none();
         }
         match command {
+            Command::OpenTerminal => self.start_local_terminal(&parent),
             Command::CreateFile => self.file_draft(
                 Key::FileNewFile,
                 Operation::CreateFile,

@@ -252,6 +252,25 @@ impl App {
         ])
     }
 
+    pub(super) fn start_local_terminal(&mut self, directory: &std::path::Path) -> Task<Message> {
+        if !self.module_enabled(ModuleId::Terminal) {
+            return Task::none();
+        }
+        let start = self
+            .modules
+            .terminal
+            .update(terminal::Event::Start, Some(directory))
+            .map(terminal_message);
+        let focus = self
+            .modules
+            .terminal
+            .active_tab_mut()
+            .map_or_else(Task::none, |tab| tab.focus_screen().map(terminal_message));
+        let save = self.select_terminal_panel();
+        self.sync_panels();
+        Task::batch([start, save, focus])
+    }
+
     fn update_terminal(&mut self, event: terminal::Event) -> Task<Message> {
         match event {
             terminal::Event::Focus(request) => {

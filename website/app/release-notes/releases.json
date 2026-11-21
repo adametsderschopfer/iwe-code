@@ -2813,6 +2813,16 @@
         "sources": ["src/modules/terminal/search/mod.rs"]
       },
       {
+        "id": "file-tree-open-terminal",
+        "category": "added",
+        "text": {
+          "en": "Open a terminal from the project tree. The shell starts in the selected folder or the folder containing the selected file.",
+          "ru": "Открывайте терминал из дерева проекта. Оболочка запускается в выбранной папке или в папке выбранного файла.",
+          "es": "Abre un terminal desde el árbol del proyecto. El intérprete se inicia en la carpeta seleccionada o en la que contiene el archivo."
+        },
+        "sources": ["src/app/files/operations.rs"]
+      },
+      {
         "id": "skip-disabled-editor-focus",
         "category": "fixed",
         "text": {

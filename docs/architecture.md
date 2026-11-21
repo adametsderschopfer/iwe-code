@@ -471,9 +471,10 @@ actions. Terminal contents never enter saved workspace data or diagnostics.
 
 The panel heading's minus button hides the panel while retaining every session. A tab's cross
 removes its session and selects a neighboring tab when needed. Closing the last tab hides the panel.
-The plus creates a tab at the active project root. Opening an empty panel creates its first tab.
-Each tab searches its own retained screen and history. See [the module guide](modules.md) for
-controls, resource limits, and platform requirements. See [the module decision](adr/0001-bundled-modules.md) for the extension boundary.
+The plus creates a tab at the active project root. The file tree passes a directory directly to
+shell startup. Opening an empty panel creates its first tab. Each tab searches its own retained
+screen and history. See [the module guide](modules.md) for controls, resource limits, and platform
+requirements. See [the module decision](adr/0001-bundled-modules.md) for the extension boundary.
 
 ## Window and graphics
 

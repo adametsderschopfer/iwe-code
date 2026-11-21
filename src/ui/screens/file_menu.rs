@@ -34,10 +34,12 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         let width = (250. + context_menu::ICON_COLUMN_WIDTH).min(available.width);
         let protected = app.file_source_protected(&menu.path);
         let is_root = app.workspace.directory() == Some(&menu.path);
+        let terminal = app.module_enabled(crate::modules::ModuleId::Terminal);
         let deployment = !is_root && app.module_enabled(crate::modules::ModuleId::Deployment);
         let items = 4
             + if protected { 0 } else { 6 }
             + if deployment { 2 } else { 0 }
+            + usize::from(terminal)
             + usize::from(!is_root);
         let height = (items as f32 * 27. + 12.).min(available.height);
         let action =
@@ -97,6 +99,12 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
             .push(context_menu::separator())
             .push(main_path)
             .push(action(Key::FileReveal, command(Command::Reveal)));
+        if terminal {
+            main = main.push(action(
+                Key::FileOpenTerminal,
+                command(Command::OpenTerminal),
+            ));
+        }
         if !is_root {
             main = main.push(crate::ui::explain::submenu(
                 &app.i18n,

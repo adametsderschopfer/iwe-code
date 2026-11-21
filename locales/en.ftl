@@ -232,6 +232,7 @@ project-file-rename = Rename
 project-file-move = Move…
 project-file-trash = Move to Trash
 project-file-reveal = Show in file manager
+project-file-open-terminal = Open terminal here
 project-file-trash-prompt = Move “{ $name }” to the system Trash?
 project-file-invalid-name = Enter a valid file or folder name.
 project-file-protected = Choose a regular file or folder inside the project.

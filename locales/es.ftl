@@ -232,6 +232,7 @@ project-file-rename = Cambiar nombre
 project-file-move = Mover…
 project-file-trash = Mover a la papelera
 project-file-reveal = Mostrar en el gestor de archivos
+project-file-open-terminal = Abrir terminal aquí
 project-file-trash-prompt = ¿Mover «{ $name }» a la papelera del sistema?
 project-file-invalid-name = Introduce un nombre válido para el archivo o la carpeta.
 project-file-protected = Elige un archivo o una carpeta normal dentro del proyecto.

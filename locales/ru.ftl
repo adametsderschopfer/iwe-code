@@ -232,6 +232,7 @@ project-file-rename = Переименовать
 project-file-move = Переместить…
 project-file-trash = Переместить в корзину
 project-file-reveal = Показать в файловом менеджере
+project-file-open-terminal = Открыть терминал здесь
 project-file-trash-prompt = Переместить «{ $name }» в системную корзину?
 project-file-invalid-name = Введите допустимое имя файла или папки.
 project-file-protected = Выберите обычный файл или папку внутри проекта.

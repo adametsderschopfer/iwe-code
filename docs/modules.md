@@ -221,6 +221,10 @@ container names. IWE adds a number to repeated container titles, such as `api (2
 Right-click a tab and choose **Rename**. Press **Enter** to save or **Escape** to cancel. Clear the
 name and press **Enter** to restore the automatic name.
 
+In the project tree, right-click a folder or file and choose **Open terminal here**. IWE opens and
+focuses a new local tab. For a file, the shell starts in the parent folder. The plus always starts a
+shell in the active project root.
+
 ### Find terminal output
 
 Focus the terminal and press **Command+F** on macOS or **Ctrl+Shift+F** on Windows and Linux. The

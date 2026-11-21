@@ -49,7 +49,7 @@ fn symbol(key: Key) -> Option<Icon> {
         DockerStart | DockerResume => Icon::Play,
         DockerPause => Icon::Pause,
         DockerStop => Icon::Stop,
-        Terminal => Icon::Terminal,
+        Terminal | FileOpenTerminal => Icon::Terminal,
         _ => return None,
     })
 }

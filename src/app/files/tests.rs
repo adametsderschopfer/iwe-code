@@ -420,7 +420,82 @@ fn root_and_file_menus_expose_only_applicable_commands() {
             iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
         assert!(ui.find(app.i18n.text(Key::FileNew).as_str()).is_ok());
         assert!(ui.find(app.i18n.text(Key::CopyPathMenu).as_str()).is_ok());
+        assert!(
+            ui.find(app.i18n.text(Key::FileOpenTerminal).as_str())
+                .is_ok()
+        );
         assert!(ui.find(app.i18n.text(Key::FileTrash).as_str()).is_err());
+    }
+}
+
+#[tokio::test]
+async fn tree_terminals_start_shells_in_the_chosen_directory_and_plus_uses_the_root() {
+    use crate::{app::modules, modules::terminal};
+    use iced::futures::StreamExt;
+    use iced_test::runtime::{Action, task};
+
+    let fixture = tempfile::tempdir().unwrap();
+    let root = fixture.path();
+    let folder = root.join("папка с 'кавычками'");
+    let file = folder.join("data.txt");
+    std::fs::create_dir(&folder).unwrap();
+    std::fs::write(&file, "").unwrap();
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.loaded = true;
+    app.workspace.create_space("Work".into(), vec![root.into()]);
+    app.workspace.preferences.show_git = false;
+    app.workspace.preferences.show_pipelines = false;
+    let _ = app.load_file_tree();
+    directory(
+        &mut app,
+        root.to_str().unwrap(),
+        vec![entry(folder.to_str().unwrap(), true)],
+    );
+    directory(
+        &mut app,
+        folder.to_str().unwrap(),
+        vec![entry(file.to_str().unwrap(), false)],
+    );
+
+    for (index, selected) in [Some(&folder), Some(&file), None].into_iter().enumerate() {
+        let start = match selected {
+            Some(path) => {
+                let _ = app.update_files(Event::OpenMenu(path.clone(), iced::Point::ORIGIN));
+                app.update_files(Event::Operation(operations::Event::Command(
+                    operations::Command::OpenTerminal,
+                )))
+            }
+            None => app.update_module(modules::Event::Terminal(terminal::Event::Start)),
+        };
+        assert!(app.files.menu.is_none());
+        assert!(app.modules.terminal.open);
+        assert_eq!(app.modules.terminal.tabs.len(), index + 1);
+        let mut actions = task::into_stream(start).unwrap();
+        while let Some(action) = actions.next().await {
+            if let Action::Output(
+                message @ Message::Module(modules::Event::Terminal(terminal::Event::Started(..))),
+            ) = action
+            {
+                let _ = app.update(message);
+                break;
+            }
+        }
+        let tab = app.modules.terminal.active_tab().unwrap();
+        assert!(tab.running());
+        let marker = format!("terminal-cwd-{index}");
+        let input = format!("echo ready > {marker}\r");
+        let _ = app.update_module(modules::Event::Terminal(terminal::Event::Input(
+            tab.request,
+            input.into_bytes(),
+        )));
+        let expected = if selected.is_some() { &folder } else { root };
+        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            while !expected.join(&marker).is_file() {
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            }
+        })
+        .await
+        .expect("the shell should create its marker in its startup directory");
     }
 }
 
