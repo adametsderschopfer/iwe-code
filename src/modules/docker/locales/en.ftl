@@ -59,6 +59,7 @@ docker-back = Back to list
 docker-status = Status
 docker-size = Size
 docker-scope = Scope
+docker-no-running-containers = No running containers use this image.
 docker-empty-list = No resources in this section
 docker-close = Close Docker panel
 docker-image-label = Image

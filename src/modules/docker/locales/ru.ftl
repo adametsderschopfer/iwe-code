@@ -59,6 +59,7 @@ docker-back = К списку
 docker-status = Состояние
 docker-size = Размер
 docker-scope = Область
+docker-no-running-containers = Нет запущенных контейнеров из этого образа.
 docker-empty-list = В этом разделе пока нет ресурсов
 docker-close = Закрыть панель Docker
 docker-image-label = Образ

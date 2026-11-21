@@ -3,6 +3,7 @@
 mod adapter;
 mod container;
 mod model;
+mod relations;
 mod view;
 use crate::i18n::Key;
 use adapter::Error;
@@ -60,6 +61,12 @@ pub(crate) enum Event {
     Select(String),
     BackToList,
     ResizeProperties(f32),
+    ShowRunning(bool),
+    RunningLoaded(u64, Result<Arc<Vec<relations::Running>>, Error>),
+    RunningPage(bool),
+    OpenImage,
+    OpenContainer(String),
+    Linked(u64, Kind, Result<(Arc<Vec<Item>>, String), Error>),
     Menu(String, Point),
     Dismiss,
     Act(Action),
@@ -106,6 +113,9 @@ pub(crate) struct State {
     query: String,
     page: usize,
     properties_width: Option<f32>,
+    show_running: bool,
+    running: Option<Arc<Vec<relations::Running>>>,
+    running_page: usize,
     selected: Option<String>,
     menu: Option<(String, Point)>,
     draft: Option<Draft>,
@@ -155,6 +165,9 @@ impl State {
     }
     fn clear_selection(&mut self) {
         self.selected = None;
+        self.show_running = false;
+        self.running = None;
+        self.running_page = 0;
         self.detail = None;
         self.output_page = 0;
         self.menu = None;
@@ -187,15 +200,35 @@ impl State {
         let root = root.to_owned();
         let id = self.begin(Key::Loading);
         Task::perform(
-            async move {
-                let output =
-                    adapter::run(Some(&context), &kind.list(), &root, false, false).await?;
-                tokio::task::spawn_blocking(move || adapter::parse(kind, &output).map(Arc::new))
-                    .await
-                    .map_err(|_| Error::Unavailable)?
-            },
+            async move { relations::inventory(&context, &root, kind).await },
             move |result| Event::Listed(id, result),
         )
+    }
+    fn load_running(&mut self, root: &Path) -> Task<Event> {
+        let (Some(context), Some(image)) = (self.context.clone(), self.selected()) else {
+            return Task::none();
+        };
+        let digest = image.detail.clone();
+        let id = self.begin(Key::Loading);
+        let root = root.to_owned();
+        Task::perform(
+            async move { relations::running(&context, &root, &digest).await },
+            move |result| Event::RunningLoaded(id, result),
+        )
+    }
+    fn reveal_link(&mut self, kind: Kind, items: Arc<Vec<Item>>, id: String) -> Task<Event> {
+        let Some(index) = items.iter().position(|row| row.id == id) else {
+            self.error = Some(Error::NotFound);
+            return Task::none();
+        };
+        self.clear_selection();
+        self.kind = kind;
+        self.items = items;
+        self.query.clear();
+        self.filter();
+        self.page = index / PAGE;
+        self.selected = Some(id);
+        crate::ui::reveal_file::in_list("docker-rows".into(), "docker-selected-row".into(), 0.)
     }
     fn connections(&mut self, root: &Path) -> Task<Event> {
         let id = self.begin(Key::Loading);
@@ -232,11 +265,30 @@ impl State {
                         self.connection_error = None;
                         self.items = items;
                         self.filter();
-                        if self.selected().is_none() {
-                            self.selected = None;
-                            self.menu = None;
+                        if self.selected.is_some() && self.selected().is_none() {
+                            self.clear_selection();
+                        } else if self.show_running {
+                            return self.load_running(root);
                         }
                     }
+                    Err(error) => self.list_failed(error),
+                }
+            }
+            Event::RunningLoaded(id, result) if id == self.request => {
+                self.busy = None;
+                match result {
+                    Ok(rows) => {
+                        self.running_page =
+                            self.running_page.min(rows.len().saturating_sub(1) / PAGE);
+                        self.running = Some(rows);
+                    }
+                    Err(error) => self.list_failed(error),
+                }
+            }
+            Event::Linked(id, kind, result) if id == self.request => {
+                self.busy = None;
+                match result {
+                    Ok((items, target)) => return self.reveal_link(kind, items, target),
                     Err(error) => self.list_failed(error),
                 }
             }
@@ -259,6 +311,8 @@ impl State {
                         if action.writes() {
                             return self.list(root);
                         }
+                        self.clear_selection();
+                        self.completed = Some(action);
                         self.selected = form.and_then(|draft| draft.target);
                         self.detail = Some(output);
                         self.output_page = 0;
@@ -301,7 +355,65 @@ impl State {
                     self.output_page.saturating_sub(1)
                 };
             }
+            Event::RunningPage(next) => {
+                self.running_page = if next {
+                    (self.running_page + 1).min(
+                        self.running
+                            .as_ref()
+                            .map_or(0, |rows| rows.len().saturating_sub(1) / PAGE),
+                    )
+                } else {
+                    self.running_page.saturating_sub(1)
+                };
+            }
+            Event::ShowRunning(false)
+                if self.show_running
+                    && (self.busy.is_none() || self.busy == Some(Key::Loading)) =>
+            {
+                self.request += 1;
+                self.busy = None;
+                self.show_running = false;
+                self.error = None;
+            }
             _ if self.busy.is_some() => {}
+            Event::ShowRunning(true) if self.kind == Kind::Images && self.selected().is_some() => {
+                self.show_running = true;
+                return self.load_running(root);
+            }
+            Event::OpenImage if self.kind == Kind::Containers => {
+                let (Some(context), Some(container)) =
+                    (self.context.clone(), self.selected().cloned())
+                else {
+                    return Task::none();
+                };
+                let id = self.begin(Key::Loading);
+                let root = root.to_owned();
+                return Task::perform(
+                    async move { relations::open_image(&context, &root, &container).await },
+                    move |res| Event::Linked(id, Kind::Images, res),
+                );
+            }
+            Event::OpenContainer(target)
+                if self.show_running
+                    && self
+                        .running
+                        .as_ref()
+                        .is_some_and(|list| list.iter().any(|row| row.id == target)) =>
+            {
+                let Some(context) = self.context.clone() else {
+                    return Task::none();
+                };
+                let id = self.begin(Key::Loading);
+                let root = root.to_owned();
+                return Task::perform(
+                    async move {
+                        relations::inventory(&context, &root, Kind::Containers)
+                            .await
+                            .map(|items| (items, target))
+                    },
+                    move |res| Event::Linked(id, Kind::Containers, res),
+                );
+            }
             Event::Tick
                 if !self.open
                     || self.error.is_some()

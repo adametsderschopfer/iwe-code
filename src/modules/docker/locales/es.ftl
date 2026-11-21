@@ -59,6 +59,7 @@ docker-back = Volver a la lista
 docker-status = Estado
 docker-size = Tamaño
 docker-scope = Ámbito
+docker-no-running-containers = Ningún contenedor en ejecución usa esta imagen.
 docker-empty-list = No hay recursos en esta sección
 docker-close = Cerrar el panel de Docker
 docker-image-label = Imagen

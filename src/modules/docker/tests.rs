@@ -137,6 +137,18 @@ async fn live_resource_lifecycle() {
         "",
     )
     .await;
+    let (images, image_key) = relations::open_image(&context, root, &container)
+        .await
+        .unwrap();
+    assert_eq!(image_key, tag);
+    let digest = &images.iter().find(|row| row.id == tag).unwrap().detail;
+    assert!(
+        relations::running(&context, root, digest)
+            .await
+            .unwrap()
+            .iter()
+            .any(|row| row.id == container.id && row.name == name)
+    );
     for kind in [Kind::Networks, Kind::Volumes] {
         invoke(root, &context, kind, Action::Create, None, &name, "").await;
         let item = resource(root, &context, kind, &name).await;
@@ -772,4 +784,133 @@ fn dragging_the_properties_divider_resizes_the_pane_without_changing_selection()
         .unwrap();
     assert!((after.width - before.width - 70.).abs() < 1.);
     assert_eq!(state.selected.as_deref(), Some("c"));
+}
+
+#[test]
+fn image_links_follow_the_digest_when_tags_move_and_exclude_descendants() {
+    let rows = adapter::parse(Kind::Images, r#"[{"ID":"new","Repository":"app","Tag":"latest"},{"ID":"old","Repository":"app","Tag":"saved"},{"ID":"old","Repository":"alt","Tag":"v1"}]"#).unwrap();
+    assert_eq!(
+        relations::matching_image(&rows, "new", "app").unwrap().name,
+        "app:latest"
+    );
+    assert_eq!(
+        relations::matching_image(&rows, "old", "app:saved")
+            .unwrap()
+            .name,
+        "app:saved"
+    );
+    assert_eq!(
+        relations::matching_image(&rows, "old", "app:latest")
+            .unwrap()
+            .detail,
+        "old"
+    );
+    assert!(relations::matching_image(&rows, "missing", "app:latest").is_none());
+    let list = relations::exact_running(
+        "a old running /web\nb old paused /paused\nc child running /other\nd old exited /ended",
+        "old",
+    )
+    .unwrap();
+    assert_eq!(
+        list,
+        [relations::Running {
+            id: "a".into(),
+            name: "web".into()
+        }]
+    );
+}
+#[test]
+fn following_a_container_image_reveals_its_page_and_links_back_to_running_containers() {
+    use crate::i18n::{I18n, Language};
+    use iced::widget::Id;
+    let mut state = State {
+        open: true,
+        context: Some("local".into()),
+        items: Arc::new(
+            adapter::parse(
+                Kind::Containers,
+                r#"{"ID":"a","Names":"web","Image":"app:v1","State":"running"}"#,
+            )
+            .unwrap(),
+        ),
+        selected: Some("a".into()),
+        query: "web".into(),
+        ..Default::default()
+    };
+    state.filter();
+    let root = Path::new(".");
+    for lang in [Language::English, Language::Russian, Language::Spanish] {
+        let i18n = I18n::new(lang);
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            (1000., 460.),
+            panel(&state, &i18n, true),
+        );
+        ui.click(Id::new("docker-open-image")).unwrap();
+        assert!(
+            ui.into_messages()
+                .any(|message| matches!(message, Event::OpenImage))
+        );
+    }
+    let old = state.items.clone();
+    let _ = state.update(Event::OpenImage, root, true);
+    let json = (0..51)
+        .map(|i| format!(r#"{{"ID":"sha{i:02}","Repository":"img","Tag":"{i:02}"}}"#))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let items = Arc::new(adapter::parse(Kind::Images, &json).unwrap());
+    let _ = state.update(
+        Event::Linked(state.request, Kind::Images, Ok((items, "img:49".into()))),
+        root,
+        true,
+    );
+    assert_eq!(state.page, 1);
+    assert_eq!(state.query, "");
+    assert_eq!(state.selected().unwrap().detail, "sha49");
+    let i18n = I18n::new(Language::English);
+    let mut ui = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        (1000., 460.),
+        panel(&state, &i18n, true),
+    );
+    ui.click(i18n.text(Key::DockerContainers)).unwrap();
+    for e in ui.into_messages() {
+        let _ = state.update(e, root, true);
+    }
+    assert!(state.show_running);
+    let _ = state.update(
+        Event::RunningLoaded(
+            state.request,
+            Ok(Arc::new(vec![relations::Running {
+                id: "a".into(),
+                name: "web".into(),
+            }])),
+        ),
+        root,
+        true,
+    );
+    let mut ui = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        (1000., 460.),
+        panel(&state, &i18n, true),
+    );
+    ui.click("web").unwrap();
+    for e in ui.into_messages() {
+        let _ = state.update(e, root, true);
+    }
+    let req = state.request;
+    let _ = state.update(
+        Event::Linked(req, Kind::Containers, Ok((old, "a".into()))),
+        root,
+        true,
+    );
+    assert_eq!(state.kind, Kind::Containers);
+    assert_eq!(state.selected().unwrap().name, "web");
+    assert!(!state.show_running);
+    let _ = state.update(
+        Event::RunningLoaded(req - 1, Ok(Arc::default())),
+        root,
+        true,
+    );
+    assert!(state.running.is_none());
 }

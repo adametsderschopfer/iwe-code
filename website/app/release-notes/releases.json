@@ -2681,6 +2681,16 @@
           "es": "Arrastra el separador para ajustar las propiedades. Las propiedades del contenedor ocupan inicialmente el 30 % del ancho disponible."
         },
         "sources": ["src/modules/docker/view.rs"]
+      },
+      {
+        "id": "docker-image-container-links",
+        "category": "added",
+        "text": {
+          "en": "Open the exact image from a container or browse its running containers in a separate tab.",
+          "ru": "Перейдите из контейнера к его образу или откройте вкладку запущенных контейнеров образа.",
+          "es": "Abre la imagen exacta de un contenedor o consulta sus contenedores en ejecución en una pestaña."
+        },
+        "sources": ["src/modules/docker/relations.rs"]
       }
     ]
   }

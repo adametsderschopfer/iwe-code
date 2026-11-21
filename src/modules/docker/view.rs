@@ -292,9 +292,12 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
             .style(style::button(theme::tree_item(
                 state.selected.as_ref() == Some(id),
             )));
-        rows = rows.push(context_menu::trigger(row, move |point| {
-            Event::Menu(id.clone(), point)
-        }));
+        let resource = context_menu::trigger(row, move |point| Event::Menu(id.clone(), point));
+        let mut resource = container(resource).width(Length::Fill);
+        if state.selected.as_ref() == Some(id) {
+            resource = resource.id("docker-selected-row");
+        }
+        rows = rows.push(resource);
     }
     if state.filtered.is_empty() && ready && state.error.is_none() {
         let message = if state.query.trim().is_empty() {
@@ -307,7 +310,12 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
                 .center(Length::Fill),
         );
     } else {
-        content = content.push(scrollable(rows).height(Length::Fill).style(style::scroll));
+        content = content.push(
+            scrollable(rows)
+                .id("docker-rows")
+                .height(Length::Fill)
+                .style(style::scroll),
+        );
     }
     if state.filtered.len() > PAGE {
         content = content.push(context_menu::separator()).push(pagination(
@@ -353,6 +361,57 @@ fn pagination<'a>(
     .into()
 }
 
+fn running_list<'a>(state: &'a State, i18n: &I18n) -> Element<'a, Event> {
+    let mut contents = column![].height(Length::Fill);
+    if let Some(rows) = &state.running
+        && !rows.is_empty()
+    {
+        let buttons = iced::widget::Column::with_children(
+            rows.iter()
+                .skip(state.running_page * PAGE)
+                .take(PAGE)
+                .map(|item| {
+                    button(ellipsis::text(&item.name, 13.))
+                        .width(Length::Fill)
+                        .padding([5, 8])
+                        .on_press_maybe(
+                            state
+                                .busy
+                                .is_none()
+                                .then(|| Event::OpenContainer(item.id.clone())),
+                        )
+                        .style(style::button(theme::tree_item(false)))
+                        .into()
+                }),
+        );
+        contents = contents.push(
+            scrollable(buttons)
+                .height(Length::Fill)
+                .style(style::scroll),
+        );
+        if rows.len() > PAGE {
+            contents = contents.push(context_menu::separator()).push(pagination(
+                state.running_page,
+                rows.len().div_ceil(PAGE),
+                i18n,
+                Event::RunningPage,
+            ));
+        }
+    } else if state.error.is_none() {
+        let key = if state.running.is_none() && state.busy.is_some() {
+            Key::Loading
+        } else {
+            Key::DockerNoRunningContainers
+        };
+        contents = contents.push(
+            container(text(i18n.text(key)).size(13).style(theme::MUTED.text()))
+                .padding(GUTTER)
+                .center(Length::Fill),
+        );
+    }
+    contents.into()
+}
+
 fn properties<'a>(
     state: &'a State,
     item: &'a super::Item,
@@ -372,7 +431,29 @@ fn properties<'a>(
             .id("docker-back"),
         );
     }
-    header = header.push(caption(i18n.text(Key::DockerDetails)));
+    if state.kind == Kind::Images {
+        for (linked, key) in [(false, Key::DockerDetails), (true, Key::DockerContainers)] {
+            header = header.push(
+                button(text(i18n.text(key)).size(12))
+                    .on_press_maybe(
+                        (linked != state.show_running && (!linked || state.busy.is_none()))
+                            .then_some(Event::ShowRunning(linked)),
+                    )
+                    .padding([3, 5])
+                    .style(style::button(theme::action(linked == state.show_running))),
+            );
+        }
+        if state.show_running {
+            return section(
+                "docker-properties",
+                header.into(),
+                running_list(state, i18n),
+                Length::Fill,
+            );
+        }
+    } else {
+        header = header.push(caption(i18n.text(Key::DockerDetails)));
+    }
     let detail_key = match state.kind {
         Kind::Containers => Key::DockerImageLabel,
         Kind::Images => Key::DockerId,
@@ -391,16 +472,33 @@ fn properties<'a>(
         (status_key(state.kind), &item.status),
     ] {
         if !value.is_empty() {
+            let detail: Element<'a, Event> = if key == Key::DockerImageLabel {
+                container(
+                    button(
+                        text(value)
+                            .size(12)
+                            .style(theme::BLUE.text())
+                            .wrapping(text::Wrapping::WordOrGlyph),
+                    )
+                    .padding(0)
+                    .on_press_maybe(state.busy.is_none().then_some(Event::OpenImage))
+                    .style(style::button(theme::action(false))),
+                )
+                .id("docker-open-image")
+                .into()
+            } else {
+                text(value)
+                    .size(12)
+                    .wrapping(text::Wrapping::WordOrGlyph)
+                    .into()
+            };
             summary = summary.push(
                 row![
                     text(i18n.text(key))
                         .size(12)
                         .style(theme::MUTED.text())
                         .width(Length::FillPortion(1)),
-                    text(value)
-                        .size(12)
-                        .wrapping(text::Wrapping::WordOrGlyph)
-                        .width(Length::FillPortion(2)),
+                    container(detail).width(Length::FillPortion(2)),
                 ]
                 .spacing(GUTTER),
             );

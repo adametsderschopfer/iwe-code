@@ -244,6 +244,7 @@ message_keys! {
     DockerStatus => "docker-status",
     DockerSize => "docker-size",
     DockerScope => "docker-scope",
+    DockerNoRunningContainers => "docker-no-running-containers",
     DockerEmptyList => "docker-empty-list",
     DockerClose => "docker-close",
     DockerBuild => "docker-build",

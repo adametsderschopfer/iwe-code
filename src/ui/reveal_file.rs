@@ -1,6 +1,5 @@
-//! Reveal a rendered file row after the tree has expanded its ancestors.
+//! Scroll a rendered row into view after its list has updated.
 
-use crate::app::Message;
 use iced::{
     Rectangle, Task, Vector,
     advanced::widget::{
@@ -9,11 +8,23 @@ use iced::{
     },
 };
 
-pub(crate) fn row(path: &std::path::Path, depth: usize) -> Task<Message> {
+pub(crate) fn row<Message: Send + 'static>(path: &std::path::Path, depth: usize) -> Task<Message> {
+    in_list(
+        "project-files-browser".into(),
+        Id::from(format!("file-tree-{}", path.to_string_lossy())),
+        depth as f32 * super::theme::FILE_TREE_INDENT,
+    )
+}
+
+pub(crate) fn in_list<Message: Send + 'static>(
+    browser: Id,
+    target: Id,
+    indent: f32,
+) -> Task<Message> {
     widget::operate(Reveal {
-        browser: "project-files-browser".into(),
-        target: Id::from(format!("file-tree-{}", path.to_string_lossy())),
-        indent: depth as f32 * super::theme::FILE_TREE_INDENT,
+        browser,
+        target,
+        indent,
         viewport: None,
         row: None,
     })
@@ -27,7 +38,7 @@ struct Reveal {
     row: Option<Rectangle>,
 }
 
-impl Operation<Message> for Reveal {
+impl<Message: Send + 'static> Operation<Message> for Reveal {
     fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn Operation<Message>)) {
         operate(self);
     }
