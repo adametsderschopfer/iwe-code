@@ -105,7 +105,7 @@ pub(crate) struct State {
     query: String,
     page: usize,
     selected: Option<String>,
-    menu: Option<Point>,
+    menu: Option<(String, Point)>,
     draft: Option<Draft>,
     pending_form: Option<Draft>,
     started: Option<std::time::Instant>,
@@ -134,7 +134,10 @@ impl State {
         self.open && self.request == request && self.busy.is_none()
     }
     fn selected(&self) -> Option<&Item> {
-        let id = self.selected.as_deref()?;
+        self.find(self.selected.as_deref())
+    }
+    fn find(&self, id: Option<&str>) -> Option<&Item> {
+        let id = id?;
         self.items.iter().find(|item| item.id == id)
     }
     fn filter(&mut self) {
@@ -254,6 +257,7 @@ impl State {
                         if action.writes() {
                             return self.list(root);
                         }
+                        self.selected = form.and_then(|draft| draft.target);
                         self.detail = Some(output);
                         self.output_page = 0;
                     }
@@ -317,9 +321,7 @@ impl State {
                 return self.list(root);
             }
             Event::Menu(id, point) if self.items.iter().any(|item| item.id == id) => {
-                self.clear_selection();
-                self.selected = Some(id);
-                self.menu = Some(point);
+                self.menu = Some((id, point));
             }
             Event::BackToList => self.clear_selection(),
             Event::Select(id) if self.items.iter().any(|item| item.id == id) => {
@@ -327,8 +329,12 @@ impl State {
                 self.selected = Some(id);
             }
             Event::Act(action) => {
-                self.menu = None;
-                let available = self.selected().is_some_and(|item| {
+                let target = self
+                    .menu
+                    .take()
+                    .map(|(id, _)| id)
+                    .or_else(|| self.selected.clone());
+                let available = self.find(target.as_deref()).is_some_and(|item| {
                     Action::actions(self.kind, item, terminal).contains(&action)
                 });
                 if action != Action::AddContext
@@ -349,7 +355,7 @@ impl State {
                         String::new()
                     },
                     extra: String::new(),
-                    target: self.selected.clone(),
+                    target,
                     container: Default::default(),
                 });
                 if !action.confirm()
@@ -415,11 +421,12 @@ impl State {
             return Task::none();
         };
         let action = draft.action;
-        if draft.target != self.selected {
+        let target = self.find(draft.target.as_deref());
+        if draft.target.is_some() && target.is_none() {
             self.draft = None;
             return Task::none();
         }
-        let Some(args) = draft.arguments(self.kind, self.selected()) else {
+        let Some(args) = draft.arguments(self.kind, target) else {
             self.error = Some(Error::Invalid);
             return Task::none();
         };

@@ -560,23 +560,32 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
             style::surface(theme::dialog),
         );
     }
-    if let (Some(point), Some(item)) = (state.menu, state.selected()) {
+    if let Some((id, point)) = &state.menu
+        && let Some(item) = state.find(Some(id))
+    {
         let actions = Action::actions(state.kind, item, terminal);
         return context_menu::overlay_with(
             base,
-            point,
+            *point,
             move |available| {
                 let rows = iced::widget::Column::with_children(actions.iter().map(|action| {
-                    context_menu::row(context_menu::label(action.key(), i18n.text(action.key())))
-                        .style(style::button(context_menu::action_style(
-                            action.key(),
-                            false,
-                        )))
-                        .on_press(map(Event::Act(*action)))
-                        .into()
+                    let row = context_menu::row(context_menu::label(
+                        action.key(),
+                        i18n.text(action.key()),
+                    ))
+                    .style(style::button(context_menu::action_style(
+                        action.key(),
+                        false,
+                    )))
+                    .on_press(map(Event::Act(*action)));
+                    if *action == Action::Remove {
+                        container(row).id("docker-menu-remove").into()
+                    } else {
+                        row.into()
+                    }
                 }));
                 iced::widget::opaque(
-                    container(rows)
+                    container(scrollable(rows).height(Length::Shrink).style(style::scroll))
                         .padding(context_menu::SURFACE_PADDING)
                         .width((210. + context_menu::ICON_COLUMN_WIDTH).min(available))
                         .style(style::surface(theme::tooltip)),

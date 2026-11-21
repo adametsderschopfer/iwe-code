@@ -76,6 +76,12 @@ pub(crate) struct Item {
     pub(super) search: String,
 }
 
+impl Item {
+    pub(super) fn requires_force_removal(&self) -> bool {
+        matches!(self.state.as_str(), "running" | "restarting" | "paused")
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Action {
     Inspect,
@@ -133,11 +139,12 @@ impl Action {
                         actions.extend([Pause, Restart, Stop]);
                     }
                     "paused" => actions.push(Resume),
-                    "dead" => actions.push(Remove),
-                    "created" | "exited" => actions.extend([Start, Remove]),
+
+                    "created" | "exited" => actions.push(Start),
                     "restarting" => actions.push(Stop),
                     _ => {}
                 }
+                actions.push(Remove);
             }
             Kind::Compose => actions.extend([Logs, Start, Stop, Restart, Remove]),
             Kind::Images => actions.extend([Tag, Remove]),
@@ -235,6 +242,11 @@ pub(super) fn arguments(
                         verb
                     },
                 ]
+            } else if action == Action::Remove
+                && kind == Kind::Containers
+                && item.is_some_and(Item::requires_force_removal)
+            {
+                vec!["container", "rm", "--force", "--", id?]
             } else if action == Action::Remove || kind == Kind::Containers {
                 vec![kind.noun(), verb, "--", id?]
             } else {

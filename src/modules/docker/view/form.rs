@@ -53,6 +53,7 @@ pub(super) fn contents<'a, M: Clone + 'a>(
     height: f32,
 ) -> Element<'a, M> {
     let action = draft.action;
+    let target = state.find(draft.target.as_deref());
     let mut body = column![].spacing(GUTTER);
     let input = match action {
         Action::Create if state.kind == Kind::Containers => Some(Key::DockerImage),
@@ -83,7 +84,7 @@ pub(super) fn contents<'a, M: Clone + 'a>(
         .spacing(4);
         if action != state.kind.create()
             && action != Action::Build
-            && let Some(item) = state.selected()
+            && let Some(item) = target
         {
             context = context.push(
                 text(&item.name)
@@ -143,7 +144,17 @@ pub(super) fn contents<'a, M: Clone + 'a>(
         body = body.push(
             row![
                 sized_icon(Icon::Warning, theme::YELLOW, 16.),
-                text(i18n.text(Key::DockerConfirm)).size(13)
+                text(i18n.text(
+                    if action == Action::Remove
+                        && state.kind == Kind::Containers
+                        && target.is_some_and(super::super::Item::requires_force_removal)
+                    {
+                        Key::DockerConfirmStopRemove
+                    } else {
+                        Key::DockerConfirm
+                    }
+                ))
+                .size(13)
             ]
             .spacing(6)
             .align_y(Alignment::Center),
@@ -157,7 +168,7 @@ pub(super) fn contents<'a, M: Clone + 'a>(
         );
     }
     let ready = state.busy.is_none();
-    let valid = draft.arguments(state.kind, state.selected()).is_some();
+    let valid = draft.arguments(state.kind, target).is_some();
     column![
         text(i18n.text(action.key()))
             .font(theme::semibold())

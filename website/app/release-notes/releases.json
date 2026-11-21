@@ -2651,6 +2651,16 @@
           "es": "Docker avisa cuando el motor local se detiene y recupera la lista de recursos cuando vuelve a estar disponible."
         },
         "sources": ["src/modules/docker/adapter.rs"]
+      },
+      {
+        "id": "docker-menu-targets",
+        "category": "changed",
+        "text": {
+          "en": "Right-click Docker resources without opening properties. A confirmation allows removal of running containers.",
+          "ru": "Правый клик открывает меню ресурса без открытия свойств. Удаление работающего контейнера требует подтверждения.",
+          "es": "El clic derecho abre el menú del recurso sin abrir sus propiedades. Eliminar un contenedor en ejecución requiere confirmación."
+        },
+        "sources": ["src/modules/docker/model.rs"]
       }
     ]
   }

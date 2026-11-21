@@ -35,6 +35,7 @@ docker-endpoint = Dirección SSH (ssh://usuario@host)
 docker-shell = Programa de shell
 docker-container = Nombre o ID del contenedor
 docker-compose-file = Ruta del archivo Compose
+docker-confirm-stop-remove = Docker detendrá y eliminará este contenedor inmediatamente.
 docker-confirm = Confirma la operación sobre el recurso seleccionado.
 docker-build = Construir imagen
 docker-pause = Pausar

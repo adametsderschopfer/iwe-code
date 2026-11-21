@@ -35,6 +35,7 @@ docker-endpoint = Адрес SSH (ssh://user@host)
 docker-shell = Командная оболочка
 docker-container = Имя или ID контейнера
 docker-compose-file = Путь к файлу Compose
+docker-confirm-stop-remove = Docker немедленно остановит и удалит этот контейнер.
 docker-confirm = Подтвердите операцию с выбранным объектом.
 docker-build = Собрать образ
 docker-pause = Приостановить

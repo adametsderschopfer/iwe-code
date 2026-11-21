@@ -35,7 +35,7 @@ fn operations_validate_arguments_and_require_explicit_confirmation() {
         r#"{"ID":"abc","Names":"api","State":"running","Status":"Up"}"#,
     )
     .unwrap();
-    assert!(!Action::actions(Kind::Containers, &items[0], true).contains(&Action::Remove));
+    assert!(Action::actions(Kind::Containers, &items[0], true).contains(&Action::Remove));
     assert!(!Action::actions(Kind::Containers, &items[0], false).contains(&Action::Terminal));
     let mut state = State {
         items: Arc::new(items),
@@ -655,4 +655,59 @@ fn disconnected_inventory_retries_and_restores_resources_after_docker_starts() {
     );
     assert_eq!(state.connection_error, None);
     assert_eq!(state.filtered.len(), 1);
+}
+
+#[test]
+fn context_menu_keeps_properties_and_targets_the_clicked_container_for_removal() {
+    use crate::i18n::{I18n, Language};
+    let items = adapter::parse(Kind::Containers, "[{\"ID\":\"a\",\"Names\":\"first\",\"State\":\"exited\"},{\"ID\":\"b\",\"Names\":\"second\",\"State\":\"running\"}]").unwrap();
+    let mut state = State {
+        open: true,
+        items: Arc::new(items),
+        context: Some("local".into()),
+        ..Default::default()
+    };
+    let root = Path::new(".");
+    for original in [None, Some("a")] {
+        state.selected = original.map(String::from);
+        let _ = state.update(Event::Menu("b".into(), Point::new(30., 30.)), root, true);
+        assert_eq!(state.selected.as_deref(), original);
+        let i18n = I18n::new(Language::Russian);
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            (780., 460.),
+            overlay(&state, &i18n, true, panel(&state, &i18n, true), |e| e),
+        );
+        let label = ui
+            .find(iced::widget::Id::new("docker-menu-remove"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        ui.point_at(label.center());
+        let _ = ui.simulate(iced_test::simulator::click());
+        for e in ui.into_messages() {
+            let _ = state.update(e, root, true);
+        }
+        let draft = state.draft.as_ref().unwrap();
+        assert_eq!(draft.target.as_deref(), Some("b"));
+        assert_eq!(
+            draft
+                .arguments(state.kind, state.find(draft.target.as_deref()))
+                .unwrap(),
+            ["container", "rm", "--force", "--", "b"]
+        );
+        let _ = state.update(Event::Dismiss, root, true);
+        assert_eq!(state.selected.as_deref(), original);
+    }
+    assert_eq!(
+        model::arguments(
+            Kind::Containers,
+            Action::Remove,
+            state.find(Some("a")),
+            "",
+            ""
+        )
+        .unwrap(),
+        ["container", "rm", "--", "a"]
+    );
 }

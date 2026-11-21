@@ -298,6 +298,7 @@ message_keys! {
     DockerShell => "docker-shell",
     DockerContainer => "docker-container",
     DockerComposeFile => "docker-compose-file",
+    DockerConfirmStopRemove => "docker-confirm-stop-remove",
     DockerConfirm => "docker-confirm",
     Terminal => "terminal",
     TerminalStarting => "terminal-starting",
