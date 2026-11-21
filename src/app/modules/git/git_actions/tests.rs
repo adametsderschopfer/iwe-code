@@ -315,6 +315,8 @@ fn long_branch_and_folder_names_remain_on_one_line() {
                 .unwrap()
                 .visible_bounds()
                 .unwrap();
+            assert_eq!(toolbar.width, 42.);
+            assert_eq!((bounds.width, bounds.height), (36., 30.));
             assert!(bounds.x >= toolbar.x && bounds.x + bounds.width <= toolbar.x + toolbar.width);
             if let Some(previous) = previous {
                 assert_eq!(bounds.x, previous.x);

@@ -9,7 +9,7 @@ use crate::{
     ui::{
         context_menu, ellipsis,
         icons::{Icon, sized_icon},
-        modal, theme, tooltip,
+        modal, theme, tool_rail, tooltip,
     },
 };
 use iced::{
@@ -37,7 +37,7 @@ fn error_key(error: Error) -> Key {
 
 const GUTTER: f32 = 8.;
 const HEADER: f32 = 34.;
-const NAVIGATION_WIDTH: f32 = 42.;
+
 const COMPACT_WIDTH: f32 = 720.;
 
 fn caption<'a>(value: String) -> iced::widget::Text<'a> {
@@ -140,34 +140,23 @@ fn heading<'a>(state: &'a State, i18n: &I18n, width: f32) -> Element<'a, Event> 
 }
 
 fn navigation<'a>(state: &State, i18n: &I18n) -> Element<'a, Event> {
-    let mut links = column![].spacing(2).padding(3);
-    for kind in Kind::ALL {
-        let selected = kind == state.kind;
-        let symbol = sized_icon(
+    let mut links = column![];
+    for (kind, id) in Kind::ALL.into_iter().zip([
+        "docker-kind-containers",
+        "docker-kind-images",
+        "docker-kind-networks",
+        "docker-kind-volumes",
+        "docker-kind-compose",
+    ]) {
+        links = links.push(tool_rail::item(
+            id,
             glyph(kind),
-            if selected { theme::BLUE } else { theme::MUTED },
-            16.,
-        );
-        let link = button(container(symbol).center_x(Length::Fill))
-            .width(Length::Fill)
-            .padding([7, 0])
-            .on_press_maybe(state.busy.is_none().then_some(Event::Kind(kind)))
-            .style(style::button(theme::tree_item(selected)));
-        links = links.push(
-            tooltip::view(
-                link,
-                text(i18n.text(kind.key())).size(12),
-                tooltip::Position::Right,
-            )
-            .style(style::surface(theme::tooltip)),
-        );
+            i18n.text(kind.key()),
+            kind == state.kind,
+            state.busy.is_none().then_some(Event::Kind(kind)),
+        ));
     }
-    container(scrollable(links).height(Length::Fill).style(style::scroll))
-        .id("docker-navigation")
-        .width(NAVIGATION_WIDTH)
-        .height(Length::Fill)
-        .style(theme::surface)
-        .into()
+    tool_rail::view("docker-navigation", "docker-navigation-scroll", links)
 }
 
 fn status_key(kind: Kind) -> Key {
@@ -581,7 +570,7 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
                 .style(theme::separator)
         };
         let mut body = row![navigation(state, i18n), divider()].height(Length::Fill);
-        let available = (size.width - NAVIGATION_WIDTH - 1.).max(0.);
+        let available = (size.width - tool_rail::WIDTH - 1.).max(0.);
         let split = selected.is_some() && !compact;
         let limits = 188. ..=(available - 280.).max(188.);
         let ratio = if state.kind == Kind::Containers {

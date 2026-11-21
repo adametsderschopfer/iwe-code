@@ -12,7 +12,7 @@ use crate::{
     ui::{
         changed_tree, context_menu, ellipsis, file_icons, graph,
         icons::{Icon, icon},
-        theme,
+        theme, tool_rail,
     },
 };
 use iced::{
@@ -84,34 +84,20 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
     } else {
         space().width(Length::Fill).height(Length::Fill).into()
     };
-    let tools = container(
-        scrollable(
-            column![
-                container(icon_button(
-                    app.i18n,
-                    Icon::Refresh,
-                    Key::Refresh,
-                    Message::Refresh,
-                    false
-                ))
-                .id("git-refresh"),
-                branch_tools(app),
-            ]
-            .spacing(theme::FILE_PANEL_TOOL_INSET)
-            .width(theme::FILE_PANEL_TOOL_SIZE),
-        )
-        .id("git-toolbar-scroll")
-        .direction(scrollable::Direction::Vertical(
-            scrollable::Scrollbar::hidden(),
-        ))
-        .width(theme::FILE_PANEL_TOOL_SIZE)
-        .height(Length::Fill)
-        .style(theme::scroll),
-    )
-    .id("git-toolbar")
-    .padding(theme::FILE_PANEL_TOOL_INSET)
-    .height(Length::Fill)
-    .style(theme::sidebar);
+    let tools = tool_rail::view(
+        "git-toolbar",
+        "git-toolbar-scroll",
+        column![
+            tool_rail::item(
+                "git-refresh",
+                Icon::Refresh,
+                app.i18n.text(Key::Refresh),
+                false,
+                Some(Message::Refresh)
+            ),
+            branch_tools(app),
+        ],
+    );
     let separator = container(space())
         .width(1)
         .height(Length::Fill)
@@ -128,7 +114,7 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
 }
 
 fn header<'a>(app: View<'a>, width: f32) -> Element<'a, Message> {
-    let toolbar_width = theme::FILE_PANEL_TOOL_SIZE + 2. * theme::FILE_PANEL_TOOL_INSET + 1.;
+    let toolbar_width = tool_rail::WIDTH + 1.;
     let regions = app.state.git_panes.layout().pane_regions(
         theme::GIT_PANE_SPACING,
         theme::GIT_PANE_MIN_SIZE,
@@ -251,8 +237,7 @@ fn branch_tools<'a>(app: View<'a>) -> Element<'a, Message> {
             .find(|branch| branch.reference == key.reference)
             .map(|branch| (key, branch))
     });
-    let tool_size = theme::FILE_PANEL_TOOL_SIZE;
-    let mut tools = Column::new().spacing(theme::FILE_PANEL_TOOL_INSET);
+    let mut tools = Column::new().spacing(tool_rail::GAP);
     for (id, symbol, key, message) in [
         (
             "git-fetch",
@@ -283,23 +268,17 @@ fn branch_tools<'a>(app: View<'a>) -> Element<'a, Message> {
                 .map(|(key, _)| Message::Git(GitMessage::Choose(Action::Push, key.clone()))),
         ),
     ] {
-        tools = tools.push(tooltip::view(
-            container(
-                button(container(icon(symbol, theme::MUTED)).center(Length::Fill))
-                    .width(tool_size)
-                    .height(tool_size)
-                    .padding(0)
-                    .style(theme::action(false))
-                    .on_press_maybe(message.filter(|_| !app.state.git_actions.pending)),
-            )
-            .id(id),
-            text(app.i18n.text(key)).size(12),
-            tooltip::Position::Right,
+        tools = tools.push(tool_rail::item(
+            id,
+            symbol,
+            app.i18n.text(key),
+            false,
+            message.filter(|_| !app.state.git_actions.pending),
         ));
     }
     container(tools)
         .id("git-branch-tools")
-        .width(theme::FILE_PANEL_TOOL_SIZE)
+        .width(Length::Fill)
         .into()
 }
 

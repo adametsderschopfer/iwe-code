@@ -39,15 +39,16 @@ Changing the panel selection only changes the connection used by IWE. The panel 
 local Docker socket or named pipe stops accepting connections. It lists resources automatically when
 Docker becomes available again.
 
-Use the icons on the left to select a resource type. Clicking the active resource or tab preserves
-its current view. Hover over an icon to see its name. The adjacent list shows matching resources and
-their count. Select a row to open **Properties** with the available actions and command output. Thin
-dividers separate the sections. Each section scrolls independently. In a narrow panel, properties
-occupy the list area. In wider panels, drag the divider to resize the properties. Container
-properties initially use 30% of the space beside the navigation. Click the image name in container
-properties to reveal the exact image in the inventory. In image properties, open **Containers** to
-see running containers created from that image. Click a container in the tab to reveal it in the
-inventory. Use **Back to list** to return to the filtered results.
+Git and Docker share a 42-pixel toolbar with 16-pixel icons. Use the icons on the left to select a
+resource type. Clicking the active resource or tab preserves its current view. Hover over an icon to
+see its name. The adjacent list shows matching resources and their count. Select a row to open
+**Properties** with the available actions and command output. Thin dividers separate the sections.
+Each section scrolls independently. In a narrow panel, properties occupy the list area. In wider
+panels, drag the divider to resize the properties. Container properties initially use 30% of the
+space beside the navigation. Click the image name in container properties to reveal the exact image
+in the inventory. In image properties, open **Containers** to see running containers created from
+that image. Click a container in the tab to reveal it in the inventory. Use **Back to list** to
+return to the filtered results.
 
 | Section    | Operations                                                                                                 |
 | ---------- | ---------------------------------------------------------------------------------------------------------- |

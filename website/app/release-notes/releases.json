@@ -2711,6 +2711,16 @@
           "es": "Los menús de recursos de Docker se abren junto al puntero incluso después de desplazar la lista."
         },
         "sources": ["src/ui/context_menu/mod.rs"]
+      },
+      {
+        "id": "git-docker-toolbars",
+        "category": "changed",
+        "text": {
+          "en": "Git and Docker share the same toolbar width, icon sizes, and colors.",
+          "ru": "Панели инструментов Git и Docker используют одинаковую ширину, размеры иконок и цвета.",
+          "es": "Git y Docker comparten el ancho de la barra de herramientas, el tamaño de los iconos y los colores."
+        },
+        "sources": ["src/modules/git/view/mod.rs"]
       }
     ]
   }

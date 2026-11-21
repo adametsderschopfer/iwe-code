@@ -22,6 +22,7 @@ pub(crate) mod screens;
 pub(crate) mod shortcuts;
 pub(crate) mod tab_label;
 pub(crate) mod theme;
+pub(crate) mod tool_rail;
 pub(crate) mod tooltip;
 
 pub(crate) mod updates;
