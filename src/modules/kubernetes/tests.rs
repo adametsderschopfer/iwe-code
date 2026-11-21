@@ -27,8 +27,9 @@ fn selected_deployment_container_and_version_guard_the_patch() {
     };
     let _ = s.update(Event::Container("web".into()));
     let _ = s.update(Event::Begin(Operation::Image));
+    assert!(s.choose());
     let image = ImageRef::parse("registry.example/team/web:v2").unwrap();
-    let _ = s.update(Event::Input(image.to_string()));
+    let _ = s.update(Event::Picked(image.clone()));
     let _ = s.update(Event::Review);
     let d = s.draft.as_ref().unwrap();
     assert!(d.review);
@@ -39,6 +40,15 @@ fn selected_deployment_container_and_version_guard_the_patch() {
     assert_eq!(p[2]["value"], "web");
     assert_eq!(p[3]["value"], "web:v1");
     assert_eq!(p[4]["path"], "/spec/template/spec/containers/1/image");
+}
+#[test]
+fn runtime_image_uses_full_digest_and_falls_back_to_the_spec() {
+    let pin = format!("sha256:{}", "a".repeat(64));
+    let v = json!({"spec":{"containers":[{"name":"web","image":"acme/web:v1"},{"name":"side","image":"side:v2"}]},"status":{"containerStatuses":[{"name":"side","imageID":pin},{"name":"web","imageID":format!("docker-pullable://acme/web@{pin}")}]}});
+    let c = model::containers(Kind::Pod, &v);
+    assert_eq!(c[0].running.as_ref().unwrap().version, pin);
+    assert!(c[1].running.is_none());
+    assert_eq!(c[1].image, "side:v2");
 }
 #[test]
 fn switching_context_discards_old_rows_details_and_namespace_results() {
@@ -101,7 +111,7 @@ fn translated_cluster_controls_fit_and_emit_actions_without_docker() {
             let mut ui = iced_test::Simulator::with_size(
                 iced::Settings::default(),
                 (width, 440.),
-                panel(&state, &i, false),
+                panel(&state, &i, false, false),
             );
             ui.click("app").unwrap();
             assert!(
@@ -122,9 +132,10 @@ fn translated_cluster_controls_fit_and_emit_actions_without_docker() {
         let mut ui = iced_test::Simulator::with_size(
             iced::Settings::default(),
             (680., 450.),
-            panel(&state, &i, false),
+            panel(&state, &i, false, false),
         );
         assert!(ui.find(i.text(Key::KubeNewImage)).is_ok());
+        assert!(ui.find(i.text(Key::KubePick)).is_err());
     }
 }
 

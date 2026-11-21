@@ -433,8 +433,8 @@ positions. The module refreshes visible lists and rejects stale completions usin
 identifiers. The host opens a terminal tab for explicit Docker shell requests using separate
 executable arguments. See [Docker operations](modules.md#docker). The registry browser belongs to
 Docker and accesses registry endpoints independently of the daemon. Kubernetes owns kubeconfig
-selection, resource browsing, manifest previews, and streaming processes. The host attaches shell
-sessions to Terminal.
+selection, resource browsing, manifest previews, and streaming processes. The host routes image
+references between both modules and attaches shell sessions to Terminal.
 
 The local image reader decodes raster images and renders SVG files on bounded background workers.
 Tab identifiers and project generations protect image results. The host releases image handles when

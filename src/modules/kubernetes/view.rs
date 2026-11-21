@@ -1,5 +1,6 @@
 use super::{Event, Kind, Operation, State, Tab};
 use crate::{
+    domain::images::ImageRef,
     i18n::{I18n, Key},
     ui::icons::{Icon, sized_icon},
     ui::{
@@ -27,7 +28,12 @@ impl Operation {
         }
     }
 }
-pub(crate) fn panel<'a>(s: &'a State, i: &'a I18n, terminal: bool) -> Element<'a, Event> {
+pub(crate) fn panel<'a>(
+    s: &'a State,
+    i: &'a I18n,
+    docker: bool,
+    terminal: bool,
+) -> Element<'a, Event> {
     let contexts = s
         .contexts
         .iter()
@@ -151,6 +157,13 @@ pub(crate) fn panel<'a>(s: &'a State, i: &'a I18n, terminal: bool) -> Element<'a
                 form = form
                     .push(text(i.text(k)).size(12))
                     .push(field(i, k, &d.input, Event::Input))
+            }
+            if d.op == Operation::Image && docker && !d.review {
+                form = form.push(action(
+                    i,
+                    Key::KubePick,
+                    Some(Event::PickRegistry(ImageRef::parse(&d.input))),
+                ))
             }
             if d.op == Operation::Forward {
                 form = if d.review {
@@ -349,6 +362,16 @@ pub(crate) fn panel<'a>(s: &'a State, i: &'a I18n, terminal: bool) -> Element<'a
                 }
                 if let Some(c) = s.container() {
                     props = props.push(choice(i, Key::DockerImage, &c.image));
+                    if s.kind == Kind::Pod && docker {
+                        props = props.push(action(
+                            i,
+                            Key::KubeOpenImage,
+                            c.running
+                                .clone()
+                                .or_else(|| ImageRef::parse(&c.image))
+                                .map(Event::OpenRegistry),
+                        ))
+                    }
                 }
                 let mut actions = row![].spacing(4);
                 if s.kind == Kind::Deployment {

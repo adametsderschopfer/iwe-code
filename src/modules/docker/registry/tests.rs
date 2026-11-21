@@ -73,6 +73,20 @@ fn stale_registry_result_cannot_replace_the_new_selection() {
     assert!(s.page.names.is_empty());
     assert_eq!(s.selected, Some(second));
 }
+#[test]
+fn missing_registry_preserves_image_until_setup_completes() {
+    let image = ImageRef::parse("registry.example/team/api:v7").unwrap();
+    let mut state = State::default();
+    let mut profiles = vec![];
+    let root = Path::new(".");
+    let _ = state.update(Event::Find(image.clone()), &mut profiles, None, root);
+    assert!(matches!(state.form, Some(Form::Edit { .. })));
+    let _ = state.update(Event::Save, &mut profiles, None, root);
+    assert_eq!(profiles.len(), 1);
+    assert_eq!(state.repo, image.repository);
+    assert_eq!(state.version, image.version);
+}
+
 #[tokio::test]
 async fn bearer_exchange_accepts_both_token_fields_returned_by_docker_hub() {
     let server = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

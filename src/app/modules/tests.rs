@@ -746,3 +746,192 @@ fn git_processing_appears_only_in_the_shared_footer_even_with_hidden_panel() {
         assert!(ui.find(Id::new("git-activity")).is_err());
     }
 }
+
+#[test]
+fn cluster_and_registry_can_be_enabled_independently_and_share_only_the_image() {
+    use crate::domain::images::ImageRef;
+    let mut app = app();
+    let _ = app.update_module(Event::SetEnabled(ModuleId::Docker, false));
+    let _ = app.update_module(Event::Toggle(ModuleId::Kubernetes));
+    assert!(app.module_open(ModuleId::Kubernetes));
+    let image = ImageRef::parse("registry.example/team/web:v2").unwrap();
+    let _ = app.update_module(Event::Kubernetes(kubernetes::Event::OpenRegistry(
+        image.clone(),
+    )));
+    assert!(!app.module_open(ModuleId::Docker));
+    let _ = app.update_module(Event::SetEnabled(ModuleId::Docker, true));
+    let _ = app.update_module(Event::Kubernetes(kubernetes::Event::OpenRegistry(image)));
+    assert!(app.module_open(ModuleId::Docker));
+    assert!(app.modules.docker.registry_open);
+    let _ = app.update_module(Event::SetEnabled(ModuleId::Kubernetes, false));
+    assert!(app.module_open(ModuleId::Docker));
+    let _ = app.update_module(Event::Toggle(ModuleId::Kubernetes));
+    assert!(!app.module_open(ModuleId::Kubernetes));
+}
+
+/// Run only against a dedicated loopback registry and disposable cluster.
+/// The fixture supplies an existing Deployment named sample in iwe-acceptance.
+#[tokio::test]
+#[ignore = "requires a disposable registry, image and Kubernetes cluster"]
+async fn publish_choose_roll_out_and_reopen_the_runtime_manifest() {
+    use crate::{
+        domain::images::Registry,
+        modules::{docker::Event as D, kubernetes::Event as K},
+    };
+    use iced::futures::StreamExt;
+    use iced_test::runtime::{Action, task};
+    use registry::Event as R;
+    async fn send(app: &mut App, event: Event) -> Vec<Message> {
+        let mut queue = std::collections::VecDeque::from([app.update_module(event)]);
+        let mut replies = Vec::new();
+        while let Some(task) = queue.pop_front() {
+            if let Some(mut actions) = task::into_stream(task) {
+                while let Some(action) = actions.next().await {
+                    if let Action::Output(m) = action {
+                        replies.push(m.clone());
+                        queue.push_back(app.update(m));
+                    }
+                }
+            }
+        }
+        replies
+    }
+    fn click(app: &App, id: ModuleId, label: &'static str, by_id: bool) -> Event {
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            (1300., 850.),
+            crate::ui::modules::panel(app, id),
+        );
+        if by_id {
+            ui.click(iced::widget::Id::new(label)).unwrap();
+        } else {
+            ui.click(label.to_owned()).unwrap();
+        }
+        ui.into_messages()
+            .find_map(|m| match m {
+                Message::Module(e) => Some(e),
+                _ => None,
+            })
+            .expect("enabled action")
+    }
+    let endpoint = std::env::var("IWE_TEST_REGISTRY").unwrap();
+    let source = std::env::var("IWE_TEST_IMAGE").unwrap();
+    assert!(endpoint.starts_with("http://localhost:"));
+    assert!(source.starts_with("iwe-services-"));
+    let cfg = std::path::PathBuf::from(std::env::var_os("KUBECONFIG").unwrap());
+    assert_eq!(cfg.file_name().unwrap(), "test-kubeconfig");
+    assert!(cfg.is_absolute());
+    let context = std::env::var("DOCKER_CONTEXT").unwrap();
+    assert!(!context.is_empty());
+    let reg = Registry::new("Loopback", &endpoint, false).unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.save_blocked = true;
+    app.workspace
+        .create_space("Live".into(), vec![tmp.path().to_owned()]);
+    app.workspace.preferences.registries = vec![reg.clone()];
+    send(&mut app, Event::Toggle(ModuleId::Docker)).await;
+    send(&mut app, Event::Docker(D::Context(context))).await;
+    let e = click(&app, ModuleId::Docker, "docker-kind-images", true);
+    send(&mut app, e).await;
+    send(&mut app, Event::Docker(D::Select(source))).await;
+    let e = click(&app, ModuleId::Docker, "Publish", false);
+    send(&mut app, e).await;
+    for e in [
+        R::RepoInput("iwe/demo".into()),
+        R::VersionInput("candidate".into()),
+        R::Review,
+    ] {
+        send(&mut app, Event::Docker(D::Registry(e))).await;
+    }
+    let e = click(&app, ModuleId::Docker, "Publish", false);
+    let published = send(&mut app, e).await;
+    assert!(published.iter().any(|m| matches!(
+        m,
+        Message::Module(Event::Docker(D::Registry(R::Transferred(_, Ok(())))))
+    )));
+    assert!(published.iter().any(|m|matches!(m,Message::Module(Event::Docker(D::Registry(R::Listed(_,Ok(p))))) if p.names.iter().any(|n|n=="candidate"))));
+    send(&mut app, Event::Toggle(ModuleId::Kubernetes)).await;
+    let rows = send(
+        &mut app,
+        Event::Kubernetes(K::Namespace("iwe-acceptance".into())),
+    )
+    .await;
+    let resource = rows
+        .into_iter()
+        .find_map(|m| match m {
+            Message::Module(Event::Kubernetes(K::Listed(_, Ok(rows)))) => rows
+                .into_iter()
+                .find(|r| r.name == "sample" && r.ns == "iwe-acceptance"),
+            _ => None,
+        })
+        .unwrap();
+    send(&mut app, Event::Kubernetes(K::Select(resource))).await;
+    send(&mut app, Event::Kubernetes(K::Container("web".into()))).await;
+    let e = click(&app, ModuleId::Kubernetes, "Change image", false);
+    send(&mut app, e).await;
+    let e = click(
+        &app,
+        ModuleId::Kubernetes,
+        "Choose from Docker registry",
+        false,
+    );
+    send(&mut app, e).await;
+    assert!(app.modules.docker.registry.picking());
+    let results = send(
+        &mut app,
+        Event::Docker(D::Registry(R::Version("candidate".into()))),
+    )
+    .await;
+    let pin = results
+        .into_iter()
+        .find_map(|m| match m {
+            Message::Module(Event::Docker(D::Registry(R::Inspected(_, Ok(m))))) => Some(m.digest),
+            _ => None,
+        })
+        .unwrap();
+    let e = click(&app, ModuleId::Docker, "Use this digest", false);
+    send(&mut app, e).await;
+    assert!(app.module_open(ModuleId::Kubernetes));
+    let e = click(&app, ModuleId::Kubernetes, "Review", false);
+    send(&mut app, e).await;
+    let e = click(&app, ModuleId::Kubernetes, "Confirm", false);
+    let rollout = send(&mut app, e).await;
+    assert!(rollout.iter().any(|m|matches!(m,Message::Module(Event::Kubernetes(K::Status(_,Ok(s)))) if s.contains("successfully rolled out"))));
+    let e = click(&app, ModuleId::Kubernetes, "Related Pods", false);
+    let pods = send(&mut app, e).await;
+    let pods = pods
+        .into_iter()
+        .find_map(|m| match m {
+            Message::Module(Event::Kubernetes(K::Listed(_, Ok(rows)))) => Some(rows),
+            _ => None,
+        })
+        .unwrap();
+    let mut runtime = None;
+    for pod in pods.into_iter().filter(|p| p.status == "Running") {
+        let details = send(&mut app, Event::Kubernetes(K::Select(pod))).await;
+        let Some(container) = details.into_iter().find_map(|m| match m {
+            Message::Module(Event::Kubernetes(K::Details(_, Ok(d)))) => d
+                .containers
+                .iter()
+                .find(|c| c.name == "web" && c.image.ends_with(&pin))
+                .cloned(),
+            _ => None,
+        }) else {
+            continue;
+        };
+        runtime = Some(
+            container
+                .running
+                .or_else(|| crate::domain::images::ImageRef::parse(&container.image))
+                .unwrap(),
+        );
+        break;
+    }
+    let runtime = runtime.expect("updated running Pod");
+    let e = click(&app, ModuleId::Kubernetes, "Open image in registry", false);
+    assert!(matches!(&e,Event::Kubernetes(K::OpenRegistry(i)) if i==&runtime));
+    let opened = send(&mut app, e).await;
+    assert!(opened.iter().any(|m|matches!(m,Message::Module(Event::Docker(D::Registry(R::Inspected(_,Ok(m))))) if m.digest==runtime.version)));
+    println!("Published {pin}; reopened {}", runtime.version);
+}

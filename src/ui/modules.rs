@@ -28,6 +28,7 @@ pub(crate) fn panel(app: &App, id: ModuleId) -> Element<'_, Message> {
         ModuleId::Kubernetes => crate::modules::kubernetes::panel(
             &app.modules.kubernetes,
             &app.i18n,
+            app.module_enabled(ModuleId::Docker),
             app.module_enabled(ModuleId::Terminal),
         )
         .map(|e| Message::Module(Event::Kubernetes(e))),

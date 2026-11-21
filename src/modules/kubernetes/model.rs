@@ -174,21 +174,25 @@ pub fn controlled_by(v: &Value, uid: &str) -> bool {
 pub(crate) struct Container {
     pub name: String,
     pub image: String,
+    pub running: Option<ImageRef>,
     pub index: usize,
 }
 pub fn containers(kind: Kind, v: &Value) -> Vec<Container> {
     let groups = match kind {
-        Kind::Deployment => vec!["/spec/template/spec/containers"],
+        Kind::Deployment => vec![("/spec/template/spec/containers", "")],
         Kind::Pod => vec![
-            "/spec/containers",
-            "/spec/initContainers",
-            "/spec/ephemeralContainers",
+            ("/spec/containers", "/status/containerStatuses"),
+            ("/spec/initContainers", "/status/initContainerStatuses"),
+            (
+                "/spec/ephemeralContainers",
+                "/status/ephemeralContainerStatuses",
+            ),
         ],
         _ => vec![],
     };
     groups
         .into_iter()
-        .flat_map(|spec| {
+        .flat_map(|(spec, status)| {
             v.pointer(spec)
                 .and_then(Value::as_array)
                 .into_iter()
@@ -197,9 +201,20 @@ pub fn containers(kind: Kind, v: &Value) -> Vec<Container> {
                 .filter_map(move |(index, c)| {
                     let name = c["name"].as_str()?;
                     let image = c["image"].as_str()?;
+                    let running = v
+                        .pointer(status)
+                        .and_then(Value::as_array)
+                        .into_iter()
+                        .flatten()
+                        .find(|s| s["name"] == name)
+                        .and_then(|s| s["imageID"].as_str())
+                        .filter(|s| s.contains('@'))
+                        .and_then(ImageRef::parse)
+                        .filter(|r| crate::domain::images::digest(&r.version));
                     Some(Container {
                         name: name.into(),
                         image: image.into(),
+                        running,
                         index,
                     })
                 })

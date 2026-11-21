@@ -120,13 +120,13 @@ Browse workloads, Pods, Services, Ingresses, ConfigMaps, Secrets, and Nodes. Sel
 properties, events, and YAML. IWE masks Secret values in resource views and manifest comparisons.
 
 Use **Related Pods** on a Deployment to follow its ReplicaSet ownership. On a Pod, select the
-container before opening logs or a terminal. Pod and Service port forwarding binds to localhost.
-Stop each forward in the panel. Closing a terminal or log session ends its process. Switching
-context or disabling Kubernetes ends its sessions.
+container before opening logs, a terminal, or its registry image. Pod and Service port forwarding
+binds to localhost. Stop each forward in the panel. Closing a terminal or log session ends its
+process. Switching context or disabling Kubernetes ends its sessions.
 
 Review the target before scaling, restarting, or replacing a Deployment image. Enter an image
-address manually. Kubernetes uses the cluster's image pull credentials. Inspect Pod status and
-events if a rollout cannot pull its image.
+address manually or choose a tag or digest through Docker. Kubernetes uses the cluster's image pull
+credentials. Inspect Pod status and events if a rollout cannot pull its image.
 
 Use **Compare local YAML** for a server-side preview. Review each resource and confirm to apply the
 reviewed file contents. Multi-resource changes run in order. Review the file again after a partial

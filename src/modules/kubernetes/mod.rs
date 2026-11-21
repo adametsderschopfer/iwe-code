@@ -55,6 +55,9 @@ pub(crate) enum Event {
     Review,
     Confirm,
     Cancel,
+    PickRegistry(Option<ImageRef>),
+    OpenRegistry(ImageRef),
+    Picked(ImageRef),
     Manifest,
     ManifestFile(u64, Option<PathBuf>),
     Planned(u64, Result<Arc<manifest::Plan>, Key>),
@@ -104,6 +107,7 @@ pub(crate) struct State {
     plan: Option<Arc<manifest::Plan>>,
     sessions: BTreeMap<u64, Session>,
     sequence: u64,
+    picking: bool,
 }
 impl State {
     pub fn reset(&mut self) {
@@ -117,6 +121,23 @@ impl State {
     pub fn scope_id(&self) -> u64 {
         self.scope
     }
+    pub fn picking(&self) -> bool {
+        self.picking
+            && self
+                .draft
+                .as_ref()
+                .is_some_and(|d| d.op == Operation::Image)
+    }
+    pub fn finish_pick(&mut self) {
+        self.picking = false
+    }
+    pub fn choose(&mut self) -> bool {
+        self.picking = self
+            .draft
+            .as_ref()
+            .is_some_and(|d| d.op == Operation::Image && !d.review);
+        self.picking
+    }
     fn begin(&mut self) -> u64 {
         self.epoch += 1;
         self.busy = true;
@@ -129,6 +150,7 @@ impl State {
         self.selected = None;
         self.draft = None;
         self.plan = None;
+        self.picking = false;
         self.container.clear();
         self.tab = Tab::Properties
     }
@@ -522,6 +544,11 @@ impl State {
             Event::Cancel => {
                 self.draft = None;
                 self.plan = None;
+                self.picking = false
+            }
+            Event::Picked(i) if self.picking() => {
+                self.picking = false;
+                return self.update(Event::Input(i.to_string()));
             }
             Event::Manifest if !self.target.context.is_empty() => {
                 let id = self.epoch;

@@ -37,7 +37,13 @@ pub(crate) enum Event {
     Review,
     Confirm,
     Copy(ImageRef),
+    Choose(bool),
+    Chosen(ImageRef),
     Cancel,
+    Return,
+    Find(ImageRef),
+    Pick(Option<ImageRef>),
+    Tags(u64, Result<Page, Error>),
     Listed(u64, Result<Page, Error>),
     Inspected(u64, Result<Manifest, Error>),
     Checked(u64, Result<(), Error>),
@@ -46,6 +52,7 @@ pub(crate) enum Event {
 #[derive(Debug, Clone)]
 enum Mode {
     Browse,
+    Pick,
     Publish(Item),
 }
 #[derive(Clone)]
@@ -178,6 +185,38 @@ impl State {
         self.clear_page();
         self.list()
     }
+    fn find(&mut self, image: ImageRef, profiles: &[Registry]) -> Task<Event> {
+        if let Some(reg) = profiles.iter().find(|r| r.host() == image.host) {
+            self.selected = Some(reg.clone());
+            self.form = None;
+            self.clear_page();
+            self.repo = image.repository.clone();
+            self.input = image.repository;
+            let repo = self.repo.clone();
+            let registry = reg.clone();
+            let inspect = self.inspect(image.version);
+            let id = self.revision;
+            return Task::batch([
+                inspect,
+                Task::perform(
+                    async move { api::list(&registry, Some(&repo), None).await },
+                    move |r| Event::Tags(id, r),
+                ),
+            ]);
+        }
+        self.revision += 1;
+        self.busy = false;
+        self.pending = Some(image.clone());
+        self.selected = None;
+        self.form = Some(Form::Edit {
+            existing: None,
+            name: image.host.clone(),
+            endpoint: format!("https://{}", image.host),
+            issuer: String::new(),
+            login: false,
+        });
+        Task::none()
+    }
     fn image(&self, pin: bool) -> Option<ImageRef> {
         let m = self.manifest.as_ref()?;
         self.selected
@@ -191,6 +230,12 @@ impl State {
         {
             self.reset();
         }
+    }
+    pub fn picking(&self) -> bool {
+        matches!(self.mode, Mode::Pick)
+    }
+    pub fn finish_pick(&mut self) {
+        self.mode = Mode::Browse
     }
     pub fn update(
         &mut self,
@@ -214,6 +259,20 @@ impl State {
                     return self.select(r);
                 }
                 self.reset();
+            }
+            Event::Find(image) => {
+                self.mode = Mode::Browse;
+                return self.find(image, profiles);
+            }
+            Event::Pick(image) => {
+                self.mode = Mode::Pick;
+                self.form = None;
+                if let Some(image) = image {
+                    return self.find(image, profiles);
+                }
+                if let Some(reg) = profiles.first() {
+                    return self.select(reg.clone());
+                }
             }
             Event::Select(reg) if profiles.contains(&reg) => {
                 self.pending = None;
@@ -297,6 +356,9 @@ impl State {
                         profiles.push(reg.clone())
                     }
                     self.form = None;
+                    if let Some(image) = self.pending.take().filter(|r| r.host == reg.host()) {
+                        return self.find(image, profiles);
+                    }
                     return self.select(reg);
                 }
             }
@@ -355,6 +417,7 @@ impl State {
                 return self.inspect(self.version.clone());
             }
             Event::Refresh => return self.list(),
+            Event::Tags(id, Ok(p)) if id == self.revision => self.page = p,
             Event::Listed(id, r) if id == self.revision => {
                 self.busy = false;
                 match r {
@@ -491,12 +554,20 @@ impl State {
                     }
                 }
             }
+            Event::Choose(pin) if self.picking() => {
+                if let Some(i) = self.image(pin) {
+                    return Task::done(Event::Chosen(i));
+                }
+            }
             Event::Copy(image) => return iced::clipboard::write(image.to_string()),
             Event::Cancel => {
                 if self.form.take().is_some() {
                     self.pending = None;
                     self.notice = None
                 } else {
+                    if self.picking() {
+                        return Task::done(Event::Return);
+                    }
                     self.mode = Mode::Browse;
                     return self.list();
                 }

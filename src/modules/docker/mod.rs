@@ -166,6 +166,9 @@ impl State {
     pub(crate) fn accepts_shell(&self, request: u64) -> bool {
         self.open && self.request == request && self.busy.is_none()
     }
+    pub(crate) fn needs_connection(&self) -> bool {
+        self.context.is_none() && self.busy.is_none()
+    }
     fn selected(&self) -> Option<&Item> {
         self.find(self.selected.as_deref())
     }
@@ -283,7 +286,13 @@ impl State {
 
     pub(crate) fn update(&mut self, event: Event, root: &Path, terminal: bool) -> Task<Event> {
         if let Event::Registry(e) = event {
-            if matches!(e, registry::Event::Open | registry::Event::Publish(_)) {
+            if matches!(
+                e,
+                registry::Event::Open
+                    | registry::Event::Find(_)
+                    | registry::Event::Pick(_)
+                    | registry::Event::Publish(_)
+            ) {
                 self.registry_open = true;
                 self.menu = None;
             }

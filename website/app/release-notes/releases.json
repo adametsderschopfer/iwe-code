@@ -2771,6 +2771,16 @@
           "es": "Explora recursos del clúster, eventos y registros. Abre terminales, reenvía puertos, revisa manifiestos y gestiona despliegues de Kubernetes."
         },
         "sources": ["src/modules/kubernetes/mod.rs"]
+      },
+      {
+        "id": "kubernetes-registry-images",
+        "category": "added",
+        "text": {
+          "en": "Choose a registry tag or digest for a Deployment, or open a running container’s image in its registry.",
+          "ru": "Выбирайте тег или дайджест из реестра для Deployment. Открывайте образ работающего контейнера в реестре.",
+          "es": "Elige una etiqueta o un digest del registro para un Deployment, o abre la imagen de un contenedor en su registro."
+        },
+        "sources": ["src/app/modules/mod.rs"]
       }
     ]
   }

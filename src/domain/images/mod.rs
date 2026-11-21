@@ -1,4 +1,4 @@
-//! Image references and Docker registry profiles.
+//! Image references are the only data exchanged between the two service browsers.
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{fmt, sync::LazyLock};

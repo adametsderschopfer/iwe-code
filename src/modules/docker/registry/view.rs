@@ -10,7 +10,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{checkbox, column, container, pick_list, row, scrollable, text},
+    widget::{checkbox, column, container, pick_list, row, scrollable, space, text},
 };
 
 pub(crate) fn panel<'a>(
@@ -143,6 +143,16 @@ pub(crate) fn panel<'a>(
         .spacing(6);
         return body.push(scrollable(form)).into();
     }
+    if s.picking() {
+        body = body.push(
+            row![
+                heading(i.text(Key::RegistryPick)),
+                space().width(Length::Fill),
+                action(i, Key::Cancel, Some(Event::Return))
+            ]
+            .padding(5),
+        )
+    }
     if let Some(image) = &s.published {
         body = body.push(
             row![
@@ -227,7 +237,16 @@ pub(crate) fn panel<'a>(
         ]
         .padding(8)
         .spacing(6);
-        if engine.is_some() {
+        if s.picking() {
+            if tag(&s.version) {
+                details = details.push(action(
+                    i,
+                    Key::RegistryChooseTag,
+                    Some(Event::Choose(false)),
+                ))
+            }
+            details = details.push(action(i, Key::RegistryChoose, Some(Event::Choose(true))))
+        } else if engine.is_some() {
             if tag(&s.version) {
                 details = details.push(action(
                     i,

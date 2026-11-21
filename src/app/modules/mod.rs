@@ -1,6 +1,6 @@
 //! Compose enabled module runtimes and route their typed events.
 
-use crate::modules::{kubernetes, terminal};
+use crate::modules::{docker::registry, kubernetes, terminal};
 
 use super::{App, Message};
 use crate::modules::ModuleId;
@@ -106,6 +106,15 @@ impl App {
                         self.sync_panels();
                         Task::none()
                     }
+                    K::OpenRegistry(image) if self.module_enabled(ModuleId::Docker) => {
+                        self.open_registry(registry::Event::Find(image))
+                    }
+                    K::PickRegistry(image)
+                        if self.module_enabled(ModuleId::Docker)
+                            && self.modules.kubernetes.choose() =>
+                    {
+                        self.open_registry(registry::Event::Pick(image))
+                    }
                     K::Shell if self.module_enabled(ModuleId::Terminal) => {
                         if let Some(args) = self.modules.kubernetes.shell() {
                             let task = self.update_terminal(terminal::Event::StartProgram(
@@ -138,6 +147,23 @@ impl App {
                 use crate::modules::docker::Event as Docker;
                 let terminal = self.module_enabled(ModuleId::Terminal);
                 match event {
+                    Docker::Registry(registry::Event::Return | registry::Event::Chosen(_))
+                        if self.modules.docker.registry.picking()
+                            && self.modules.kubernetes.picking()
+                            && self.module_enabled(ModuleId::Kubernetes) =>
+                    {
+                        self.modules.docker.registry.finish_pick();
+                        self.hide_other_bottom_panels(ModuleId::Kubernetes);
+                        self.modules.kubernetes.open = true;
+                        self.sync_panels();
+                        if let Docker::Registry(registry::Event::Chosen(image)) = event {
+                            return self.update_module(Event::Kubernetes(
+                                kubernetes::Event::Picked(image),
+                            ));
+                        }
+                        self.modules.kubernetes.finish_pick();
+                        Task::none()
+                    }
                     Docker::Hide => {
                         self.modules.docker.open = false;
                         self.sync_panels();
@@ -190,6 +216,21 @@ impl App {
                 terminal::Event::Close(id),
                 self.workspace.directory().map(std::path::PathBuf::as_path),
             );
+        }
+    }
+    fn open_registry(&mut self, event: registry::Event) -> Task<Message> {
+        self.hide_other_bottom_panels(ModuleId::Docker);
+        self.modules.docker.open = true;
+        self.sync_panels();
+        let browse = self.update_module(Event::Docker(crate::modules::docker::Event::Registry(
+            event,
+        )));
+        if self.modules.docker.needs_connection() {
+            let connect =
+                self.update_module(Event::Docker(crate::modules::docker::Event::Connections));
+            Task::batch([browse, connect])
+        } else {
+            browse
         }
     }
     pub(super) fn module_subscription(&self) -> Subscription<Message> {
@@ -380,8 +421,12 @@ impl App {
                 ModuleId::Kubernetes => {
                     self.close_cluster_terminals();
                     self.modules.kubernetes.reset();
+                    self.modules.docker.registry.finish_pick();
                 }
-                ModuleId::Docker => self.modules.docker.reset(),
+                ModuleId::Docker => {
+                    self.modules.docker.reset();
+                    self.modules.kubernetes.finish_pick()
+                }
                 ModuleId::Terminal => self.modules.terminal.reset(),
                 ModuleId::Deployment => {
                     self.modules.deployment.suspend();
