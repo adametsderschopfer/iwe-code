@@ -2751,6 +2751,16 @@
           "es": "Abre los registros y los resultados de inspección en diálogos independientes. Actualiza o recorre las páginas sin perder la selección."
         },
         "sources": ["src/modules/docker/output.rs"]
+      },
+      {
+        "id": "docker-image-registries",
+        "category": "added",
+        "text": {
+          "en": "Browse repositories and tags on Docker Hub and private registries. Inspect digests and platforms, pull images, or publish a local image.",
+          "ru": "Просматривайте репозитории и теги в Docker Hub и частных реестрах. Проверяйте дайджесты и платформы, скачивайте и публикуйте образы.",
+          "es": "Explora repositorios y etiquetas en Docker Hub y registros privados. Consulta digests y plataformas, descarga imágenes o publica una imagen local."
+        },
+        "sources": ["src/modules/docker/registry/mod.rs"]
       }
     ]
   }

@@ -7,6 +7,7 @@ pub(crate) mod deployment;
 pub(crate) mod explain;
 pub(crate) mod external;
 pub(crate) mod git;
+pub(crate) mod images;
 pub(crate) mod jobs;
 pub(crate) mod language;
 pub(crate) mod modules;

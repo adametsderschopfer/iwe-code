@@ -95,6 +95,20 @@ Compose plugin. Existing contexts support the connection methods configured in D
 TLS. IWE never changes Docker's active context. A remote build sends its build context to the
 selected daemon. The module uses the selected Dockerfile's directory as its build context.
 
+### Registries
+
+Open **Registries** on the Docker rail. Docker Hub lists official repositories. Enter the exact
+repository name to browse other publishers or registries that restrict catalog access. Use the page
+controls to browse repositories and tags. Select a version to inspect its digest and platforms.
+
+Add a registry URL and test the connection. Private connections can use Docker's configured
+credential helper. Specify the trusted token issuer when your registry uses a separate login
+service. Anonymous local registries can use HTTP on loopback. Browsing works with Docker Engine
+stopped. Pull requires an active Docker connection.
+
+Select a local image and choose **Publish**. Review the connection and full destination before
+confirming. The registry browser refreshes the tags and offers the published address for copying.
+
 ## External modules
 
 External modules add capabilities without recompiling the application. A module is a separate

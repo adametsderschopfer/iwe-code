@@ -158,10 +158,17 @@ fn navigation<'a>(state: &State, i18n: &I18n) -> Element<'a, Event> {
             id,
             glyph(kind),
             i18n.text(kind.key()),
-            kind == state.kind,
+            !state.registry_open && kind == state.kind,
             state.busy.is_none().then_some(Event::Kind(kind)),
         ));
     }
+    links = links.push(tool_rail::item(
+        "docker-registries",
+        Icon::Server,
+        i18n.text(Key::Registries),
+        state.registry_open,
+        Some(Event::Registry(super::registry::Event::Open)),
+    ));
     tool_rail::view("docker-navigation", "docker-navigation-scroll", links)
 }
 
@@ -505,6 +512,13 @@ fn properties<'a>(
         }
     }
     let mut buttons = row![].spacing(4);
+    if state.kind == Kind::Images {
+        buttons = buttons.push(crate::ui::service_controls::action(
+            i18n,
+            Key::RegistryPublish,
+            state.busy.is_none().then_some(Event::PublishImage),
+        ));
+    }
     if state.kind == Kind::Compose {
         buttons = buttons.push(
             button(text(i18n.text(Key::DockerGraph)).size(12))
@@ -561,43 +575,59 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
                 .style(theme::separator)
         };
         let mut body = row![navigation(state, i18n), divider()].height(Length::Fill);
-        let available = (size.width - tool_rail::WIDTH - 1.).max(0.);
-        let split = selected.is_some() && !compact;
-        let limits = 188. ..=(available - 280.).max(188.);
-        let ratio = if state.kind == Kind::Containers {
-            0.30
+        let body = if state.registry_open {
+            body.push(
+                super::registry::panel(
+                    &state.registry,
+                    &state.profiles,
+                    state
+                        .context
+                        .as_deref()
+                        .filter(|_| state.connection_error.is_none()),
+                    i18n,
+                )
+                .map(Event::Registry),
+            )
+            .into()
         } else {
-            0.50
-        };
-        let properties_width = state
-            .properties_width
-            .unwrap_or((available - 1.) * ratio)
-            .clamp(*limits.start(), *limits.end());
-        if selected.is_none() || !compact {
-            let width = if split {
-                available - properties_width - 1.
+            let available = (size.width - tool_rail::WIDTH - 1.).max(0.);
+            let split = selected.is_some() && !compact;
+            let limits = 188. ..=(available - 280.).max(188.);
+            let ratio = if state.kind == Kind::Containers {
+                0.30
             } else {
-                available
+                0.50
             };
-            body = body.push(inventory(state, i18n, width));
-        }
-        if let Some(item) = selected {
-            let properties = properties(state, item, i18n, terminal, compact);
-            if split {
-                body = body
-                    .push(divider())
-                    .push(container(properties).width(properties_width));
-            } else {
-                body = body.push(properties);
+            let properties_width = state
+                .properties_width
+                .unwrap_or((available - 1.) * ratio)
+                .clamp(*limits.start(), *limits.end());
+            if selected.is_none() || !compact {
+                let width = if split {
+                    available - properties_width - 1.
+                } else {
+                    available
+                };
+                body = body.push(inventory(state, i18n, width));
             }
-        }
-        let body = crate::ui::resize::right(
-            body.into(),
-            split.then_some(properties_width),
-            size.width - properties_width - 1.,
-            limits,
-            |width, _| Event::ResizeProperties(width),
-        );
+            if let Some(item) = selected {
+                let properties = properties(state, item, i18n, terminal, compact);
+                if split {
+                    body = body
+                        .push(divider())
+                        .push(container(properties).width(properties_width));
+                } else {
+                    body = body.push(properties);
+                }
+            }
+            crate::ui::resize::right(
+                body.into(),
+                split.then_some(properties_width),
+                size.width - properties_width - 1.,
+                limits,
+                |width, _| Event::ResizeProperties(width),
+            )
+        };
         let mut panel = column![
             container(heading(state, i18n, size.width))
                 .width(Length::Fill)

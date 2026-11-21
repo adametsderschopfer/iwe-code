@@ -108,8 +108,21 @@ impl App {
                         };
                         self.modules
                             .docker
+                            .profiles
+                            .clone_from(&self.workspace.preferences.registries);
+                        let task = self
+                            .modules
+                            .docker
                             .update(event, root, terminal)
-                            .map(docker_message)
+                            .map(docker_message);
+                        if self.workspace.preferences.registries != self.modules.docker.profiles {
+                            self.workspace
+                                .preferences
+                                .registries
+                                .clone_from(&self.modules.docker.profiles);
+                            return Task::batch([task, self.save()]);
+                        }
+                        task
                     }
                 }
             }

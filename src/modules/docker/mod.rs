@@ -5,6 +5,7 @@ mod container;
 mod graph;
 mod model;
 mod output;
+pub(crate) mod registry;
 mod relations;
 mod view;
 use crate::i18n::Key;
@@ -51,6 +52,8 @@ impl Output {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
+    Registry(registry::Event),
+    PublishImage,
     Refresh,
     Tick,
     Connections,
@@ -111,6 +114,9 @@ impl Draft {
 #[derive(Default)]
 pub(crate) struct State {
     pub open: bool,
+    pub registry_open: bool,
+    pub registry: registry::State,
+    pub profiles: Vec<crate::domain::images::Registry>,
     request: u64,
     contexts: Vec<String>,
     context: Option<String>,
@@ -150,7 +156,9 @@ impl State {
         self.open && (self.draft.is_some() || self.project_graph.is_some() || self.output.is_some())
     }
     pub(crate) fn reset(&mut self) {
+        self.registry.reset();
         *self = Self {
+            registry: std::mem::take(&mut self.registry),
             request: self.request + 1,
             ..Default::default()
         };
@@ -256,6 +264,7 @@ impl State {
         crate::ui::reveal_file::in_list("docker-rows".into(), "docker-selected-row".into(), 0.)
     }
     fn change_connection(&mut self, name: String) {
+        self.registry.engine_changed();
         self.project_graph = None;
         self.context = Some(name);
         self.connection_error = None;
@@ -273,6 +282,23 @@ impl State {
     }
 
     pub(crate) fn update(&mut self, event: Event, root: &Path, terminal: bool) -> Task<Event> {
+        if let Event::Registry(e) = event {
+            if matches!(e, registry::Event::Open | registry::Event::Publish(_)) {
+                self.registry_open = true;
+                self.menu = None;
+            }
+            let engine = self
+                .context
+                .as_deref()
+                .filter(|_| self.connection_error.is_none());
+            return self
+                .registry
+                .update(e, &mut self.profiles, engine, root)
+                .map(Event::Registry);
+        }
+        if self.registry_open && matches!(event, Event::Tick) {
+            return Task::none();
+        }
         if self.output.is_some() {
             return self.update_output(event, root);
         }
@@ -529,7 +555,21 @@ impl State {
                 self.change_connection(name);
                 return self.list(root);
             }
-            Event::Kind(kind) if kind != self.kind => {
+            Event::PublishImage if self.kind == Kind::Images => {
+                if let Some(item) = self.selected().cloned() {
+                    return self.update(
+                        Event::Registry(registry::Event::Publish(item)),
+                        root,
+                        terminal,
+                    );
+                }
+            }
+            Event::Kind(kind) if self.registry_open || kind != self.kind => {
+                self.registry_open = false;
+                if self.kind == kind {
+                    return self.list(root);
+                }
+
                 self.kind = kind;
                 self.items = Arc::default();
                 self.query.clear();

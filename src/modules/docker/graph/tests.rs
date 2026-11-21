@@ -306,6 +306,7 @@ fn docker_navigation_contains_only_resource_sections() {
             "docker-kind-networks",
             "docker-kind-volumes",
             "docker-kind-compose",
+            "docker-registries",
         ] {
             assert!(ui.find(Id::new(id)).is_ok());
         }

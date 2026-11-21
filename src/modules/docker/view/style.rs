@@ -5,9 +5,7 @@ use iced::{
     Theme,
     widget::{
         button::{Status as ButtonStatus, Style as ButtonStyle},
-        container,
-        overlay::menu,
-        pick_list, scrollable, text_input,
+        container, scrollable, text_input,
     },
 };
 
@@ -37,17 +35,7 @@ pub(super) fn input(theme: &Theme, status: text_input::Status) -> text_input::St
     style
 }
 
-pub(super) fn select(theme: &Theme, status: pick_list::Status) -> pick_list::Style {
-    let mut style = theme::select(theme, status);
-    style.border.radius = Default::default();
-    style
-}
-
-pub(super) fn menu(theme: &Theme) -> menu::Style {
-    let mut style = theme::select_menu(theme);
-    style.border.radius = Default::default();
-    style
-}
+pub(super) use crate::ui::service_controls::{menu, select};
 
 pub(super) fn scroll(theme: &Theme, status: scrollable::Status) -> scrollable::Style {
     let mut style = theme::scroll(theme, status);

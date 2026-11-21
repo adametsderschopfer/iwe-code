@@ -431,7 +431,8 @@ their exact project label before inspection. The dialog keeps its own selection 
 layout preserves existing node slots across refreshes. The canvas tracks pan, zoom, and manual node
 positions. The module refreshes visible lists and rejects stale completions using request
 identifiers. The host opens a terminal tab for explicit Docker shell requests using separate
-executable arguments. See [Docker operations](modules.md#docker).
+executable arguments. See [Docker operations](modules.md#docker). The registry browser belongs to
+Docker and accesses registry endpoints independently of the daemon.
 
 The local image reader decodes raster images and renders SVG files on bounded background workers.
 Tab identifiers and project generations protect image results. The host releases image handles when
