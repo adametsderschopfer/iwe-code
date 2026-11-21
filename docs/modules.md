@@ -35,7 +35,9 @@ The application has no module store. Users install external modules from local p
 Open **Docker** on the vertical toolbar. Choose a connection above the resource list. IWE reads
 existing Docker CLI contexts. The initial selection follows the current Docker context. Choose **Add
 SSH connection** to save another named context. Docker uses your existing SSH configuration.
-Changing the panel selection only changes the connection used by IWE.
+Changing the panel selection only changes the connection used by IWE. The panel reports when the
+local Docker socket or named pipe stops accepting connections. It lists resources automatically when
+Docker becomes available again.
 
 Use the icons on the left to select a resource type. Hover over an icon to see its name. The
 adjacent list shows matching resources and their count. Select a row to open **Properties** with the

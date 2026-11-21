@@ -111,6 +111,7 @@ pub(crate) struct State {
     started: Option<std::time::Instant>,
     busy: Option<Key>,
     error: Option<Error>,
+    connection_error: Option<Error>,
     detail: Option<Arc<Output>>,
     output_page: usize,
     completed: Option<Action>,
@@ -154,6 +155,17 @@ impl State {
         self.menu = None;
         self.draft = None;
         self.completed = None;
+    }
+    fn list_failed(&mut self, error: Error) {
+        if matches!(error, Error::Stopped | Error::Unavailable | Error::Missing) {
+            self.connection_error = Some(error);
+            self.items = Arc::default();
+            self.clear_selection();
+            self.filter();
+        } else {
+            self.connection_error = None;
+            self.error = Some(error);
+        }
     }
     fn begin(&mut self, key: Key) -> u64 {
         self.request += 1;
@@ -205,13 +217,14 @@ impl State {
                         self.contexts = names;
                         return self.list(root);
                     }
-                    Err(error) => self.error = Some(error),
+                    Err(error) => self.list_failed(error),
                 }
             }
             Event::Listed(id, result) if id == self.request => {
                 self.busy = None;
                 match result {
                     Ok(items) => {
+                        self.connection_error = None;
                         self.items = items;
                         self.filter();
                         if self.selected().is_none() {
@@ -219,13 +232,14 @@ impl State {
                             self.menu = None;
                         }
                     }
-                    Err(error) => self.error = Some(error),
+                    Err(error) => self.list_failed(error),
                 }
             }
             Event::Finished(id, action, result) if id == self.request => {
                 let form = self.pending_form.take();
                 self.busy = None;
                 match result {
+                    Err(error @ (Error::Stopped | Error::Missing)) => self.list_failed(error),
                     Err(error) => {
                         self.error = Some(error);
                         self.draft = form
@@ -282,13 +296,13 @@ impl State {
             Event::Tick
                 if !self.open
                     || self.error.is_some()
-                    || self.detail.is_some()
                     || self.menu.is_some()
                     || self.draft.is_some() => {}
             Event::Connections => return self.connections(root),
             Event::Tick | Event::Refresh => return self.list(root),
             Event::Context(name) if self.contexts.contains(&name) => {
                 self.context = Some(name);
+                self.connection_error = None;
                 self.items = Arc::default();
                 self.clear_selection();
                 self.filter();
@@ -318,7 +332,8 @@ impl State {
                     Action::actions(self.kind, item, terminal).contains(&action)
                 });
                 if action != Action::AddContext
-                    && (self.context.is_none()
+                    && (self.connection_error.is_some()
+                        || self.context.is_none()
                         || action != self.kind.create()
                             && !(self.kind == Kind::Images && action == Action::Build)
                             && !available)

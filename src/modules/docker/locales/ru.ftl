@@ -21,6 +21,7 @@ docker-connection = Подключение
 docker-refresh = Обновить
 docker-filter = Поиск по имени, состоянию или ID
 docker-empty = Нет результатов
+docker-stopped = Docker не запущен. Запустите Docker, чтобы увидеть ресурсы.
 docker-offline = Нет связи с Docker. Проверьте подключение и повторите попытку.
 docker-missing = Для работы с панелью установите Docker CLI.
 docker-timeout = Время ожидания истекло. Обновите список, чтобы проверить результат.

@@ -2641,6 +2641,16 @@
           "es": "Líneas finas separan la navegación, los recursos y las propiedades a lo largo del panel Docker."
         },
         "sources": ["src/modules/docker/view.rs"]
+      },
+      {
+        "id": "docker-engine-availability",
+        "category": "added",
+        "text": {
+          "en": "Docker reports when the local engine stops and restores the resource list when the engine becomes available.",
+          "ru": "Панель сообщает об остановке локального Docker и восстанавливает список ресурсов после запуска.",
+          "es": "Docker avisa cuando el motor local se detiene y recupera la lista de recursos cuando vuelve a estar disponible."
+        },
+        "sources": ["src/modules/docker/adapter.rs"]
       }
     ]
   }

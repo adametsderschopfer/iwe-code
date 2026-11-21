@@ -568,3 +568,91 @@ fn section_dividers_meet_the_header_and_filter_corners_stay_square_in_both_theme
         }
     }
 }
+
+#[test]
+fn daemon_errors_distinguish_local_sockets_remote_connections_and_permissions() {
+    for (message, expected) in [
+        (
+            "cannot connect to the docker daemon at unix:///var/run/docker.sock. is the docker daemon running?",
+            Error::Stopped,
+        ),
+        (
+            "failed to connect to the docker api at unix:///run/docker.sock: dial unix /run/docker.sock: no such file or directory",
+            Error::Stopped,
+        ),
+        (
+            "dial unix /home/user/.colima/default/docker.sock: connect: connection refused",
+            Error::Stopped,
+        ),
+        (
+            "error during connect: open //./pipe/dockerdesktoplinuxengine: the system cannot find the file specified",
+            Error::Stopped,
+        ),
+        (
+            "failed to connect to the docker api at ssh://server: dial unix /run/docker.sock: no such file or directory",
+            Error::Unavailable,
+        ),
+        (
+            "error during connect: tcp 10.0.0.1:2376: connection refused",
+            Error::Unavailable,
+        ),
+        (
+            "dial unix /run/docker.sock: permission denied",
+            Error::Denied,
+        ),
+        ("no such container: api", Error::NotFound),
+    ] {
+        assert_eq!(
+            adapter::command_error(message, false),
+            expected,
+            "{message}"
+        );
+    }
+}
+
+#[test]
+fn disconnected_inventory_retries_and_restores_resources_after_docker_starts() {
+    use crate::i18n::{I18n, Language};
+    let item = adapter::parse(Kind::Volumes, r#"{"Name":"saved","Driver":"local"}"#).unwrap();
+    let mut state = State {
+        open: true,
+        kind: Kind::Volumes,
+        context: Some("desktop".into()),
+        items: Arc::new(item.clone()),
+        selected: Some("saved".into()),
+        ..Default::default()
+    };
+    state.filter();
+    let root = Path::new(".");
+    let _ = state.update(Event::Listed(0, Err(Error::Stopped)), root, false);
+    assert!(state.filtered.is_empty() && state.selected.is_none());
+    for lang in [Language::English, Language::Russian, Language::Spanish] {
+        let i18n = I18n::new(lang);
+        let mut panel = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            (440., 260.),
+            panel(&state, &i18n, false),
+        );
+        assert!(
+            panel
+                .find(i18n.text(Key::DockerStopped))
+                .unwrap()
+                .visible_bounds()
+                .is_some()
+        );
+    }
+    let _ = state.update(Event::Act(Action::Create), root, false);
+    assert!(state.draft.is_none());
+    let _ = state.update(Event::Tick, root, false);
+    assert_eq!(state.busy, Some(Key::Loading));
+    assert_eq!(state.connection_error, Some(Error::Stopped));
+    let _ = state.update(Event::Listed(0, Ok(Arc::default())), root, false);
+    assert_eq!(state.connection_error, Some(Error::Stopped));
+    let _ = state.update(
+        Event::Listed(state.request, Ok(Arc::new(item))),
+        root,
+        false,
+    );
+    assert_eq!(state.connection_error, None);
+    assert_eq!(state.filtered.len(), 1);
+}

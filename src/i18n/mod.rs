@@ -284,6 +284,7 @@ message_keys! {
     DockerRefresh => "docker-refresh",
     DockerFilter => "docker-filter",
     DockerEmpty => "docker-empty",
+    DockerStopped => "docker-stopped",
     DockerOffline => "docker-offline",
     DockerMissing => "docker-missing",
     DockerTimeout => "docker-timeout",

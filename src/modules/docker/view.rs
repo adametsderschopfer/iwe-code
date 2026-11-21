@@ -21,6 +21,7 @@ use iced::{
 
 fn error_key(error: Error) -> Key {
     match error {
+        Error::Stopped => Key::DockerStopped,
         Error::Unavailable => Key::DockerOffline,
         Error::Missing => Key::DockerMissing,
         Error::Timeout => Key::DockerTimeout,
@@ -192,7 +193,7 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
     .align_y(Alignment::Center)
     .spacing(5);
     let command = |action: Action, symbol| -> Element<'a, Event> {
-        let available = ready && state.context.is_some();
+        let available = ready && state.context.is_some() && state.connection_error.is_none();
         let event = available.then_some(Event::Act(action));
         if width < 440. {
             tool(i18n, symbol, action.key(), event)
@@ -226,6 +227,21 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
         Key::DockerRefresh,
         ready.then_some(Event::Refresh),
     ));
+    if let Some(error) = state.connection_error {
+        return section(
+            "docker-inventory",
+            header.into(),
+            container(
+                text(i18n.text(error_key(error)))
+                    .size(13)
+                    .style(theme::MUTED.text()),
+            )
+            .padding(GUTTER)
+            .center(Length::Fill)
+            .into(),
+            Length::Fill,
+        );
+    }
     let search = text_input(&i18n.text(Key::DockerFilter), &state.query)
         .id("docker-filter")
         .on_input(Event::Search)

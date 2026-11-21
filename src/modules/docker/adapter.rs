@@ -12,6 +12,7 @@ use tokio::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Error {
     Missing,
+    Stopped,
     Unavailable,
     Timeout,
     Large,
@@ -94,34 +95,10 @@ pub(super) async fn run(
         let (err, err_truncated) = err?;
         if !status.map_err(|_| Error::Unavailable)?.success() {
             let summary = String::from_utf8_lossy(&err).to_lowercase();
-            return Err(
-                if summary.contains("unknown command")
-                    && args.first().is_some_and(|arg| arg == "compose")
-                {
-                    Error::ComposeMissing
-                } else if summary.contains("permission denied")
-                    || summary.contains("unauthorized")
-                    || summary.contains("access denied")
-                {
-                    Error::Denied
-                } else if summary.contains("in use")
-                    || summary.contains("active endpoints")
-                    || summary.contains("conflict")
-                    || summary.contains("already exists")
-                {
-                    Error::InUse
-                } else if summary.contains("no such") || summary.contains("not found") {
-                    if summary.contains("docker.sock") {
-                        Error::Unavailable
-                    } else {
-                        Error::NotFound
-                    }
-                } else if summary.contains("connect") || summary.contains("daemon is running") {
-                    Error::Unavailable
-                } else {
-                    Error::Refused
-                },
-            );
+            return Err(command_error(
+                &summary,
+                args.first().is_some_and(|arg| arg == "compose"),
+            ));
         }
         if truncated || logs && err_truncated {
             return Err(Error::Large);
@@ -136,6 +113,50 @@ pub(super) async fn run(
     })
     .await
     .map_err(|_| Error::Timeout)?
+}
+
+pub(super) fn command_error(summary: &str, compose: bool) -> Error {
+    if summary.contains("unknown command") && compose {
+        Error::ComposeMissing
+    } else if summary.contains("permission denied")
+        || summary.contains("unauthorized")
+        || summary.contains("access denied")
+    {
+        Error::Denied
+    } else if (summary.contains("unix://")
+        || summary.contains("dial unix")
+        || summary.contains("//./pipe/")
+        || summary.contains(r"\\.\pipe\"))
+        && !summary.contains("ssh")
+        && (summary.contains("no such file")
+            || summary.contains("connection refused")
+            || summary.contains("cannot find the file")
+            || summary.contains("is the docker daemon running"))
+    {
+        Error::Stopped
+    } else if summary.contains("failed to connect to the docker")
+        || summary.contains("cannot connect to the docker daemon")
+        || summary.contains("error during connect")
+        || summary.contains("failed to dial")
+    {
+        Error::Unavailable
+    } else if summary.contains("in use")
+        || summary.contains("active endpoints")
+        || summary.contains("conflict")
+        || summary.contains("already exists")
+    {
+        Error::InUse
+    } else if summary.contains("no such") || summary.contains("not found") {
+        if summary.contains("docker.sock") {
+            Error::Unavailable
+        } else {
+            Error::NotFound
+        }
+    } else if summary.contains("connect") || summary.contains("daemon is running") {
+        Error::Unavailable
+    } else {
+        Error::Refused
+    }
 }
 
 pub(super) async fn contexts(root: &Path) -> Result<(Vec<String>, String), Error> {

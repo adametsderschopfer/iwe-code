@@ -21,6 +21,7 @@ docker-connection = Connection
 docker-refresh = Refresh
 docker-filter = Filter by name, status or ID
 docker-empty = No results
+docker-stopped = Docker is not running. Start Docker to see your resources.
 docker-offline = Cannot reach Docker. Check the connection and try again.
 docker-missing = Install Docker CLI to use this panel.
 docker-timeout = The operation timed out. Refresh the list to check its result.
