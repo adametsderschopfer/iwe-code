@@ -442,7 +442,7 @@ fn panel_buttons(app: &App) -> Element<'_, Message> {
         ),
     ]
     .into_iter()
-    .filter(|(id, ..)| app.panel_available(*id))
+    .filter(|(id, ..)| id.listed() && app.panel_available(*id))
     .map(move |(id, symbol, label, widget_id)| {
         let active = app.module_open(id);
         tooltip::view(

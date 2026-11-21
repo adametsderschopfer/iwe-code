@@ -898,6 +898,96 @@ fn daemon_errors_distinguish_local_sockets_remote_connections_and_permissions() 
 }
 
 #[test]
+fn switching_resource_lists_restores_cached_rows_and_ignores_an_obsolete_refresh() {
+    let root = Path::new(".");
+    let containers = Arc::new(
+        adapter::parse(
+            Kind::Containers,
+            r#"{"ID":"api","Names":"api","State":"running"}"#,
+        )
+        .unwrap(),
+    );
+    let mut state = State {
+        open: true,
+        context: Some("local".into()),
+        ..State::default()
+    };
+    let _ = state.update(Event::Listed(0, Ok(containers.clone())), root, false);
+    let _ = state.update(Event::Kind(Kind::Images), root, false);
+    let obsolete = state.request;
+    assert!(state.items.is_empty());
+    assert!(state.loading_inventory());
+
+    let i18n = crate::i18n::I18n::new(crate::i18n::Language::English);
+    let mut ui = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        (900., 420.),
+        panel(&state, &i18n, false),
+    );
+    let list = ui
+        .find(iced::widget::Id::new("docker-inventory"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    let label = ui
+        .find(i18n.text(Key::Loading))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    assert!((label.center_x() - list.center_x()).abs() <= 1.);
+    assert!((label.center_y() - list.center_y()).abs() < 22.);
+    drop(ui);
+
+    let _ = state.update(Event::Kind(Kind::Containers), root, false);
+    let _ = state.update(Event::Listed(obsolete, Ok(Arc::default())), root, false);
+    assert!(Arc::ptr_eq(&state.items, &containers));
+    assert_eq!(state.filtered, [0]);
+    assert!(state.busy.is_none());
+    let current = state.request;
+    let _ = state.update(Event::Tick, root, false);
+    assert_eq!(state.request, current);
+    let _ = state.update(Event::Listed(current, Ok(Arc::default())), root, false);
+    assert!(state.items.is_empty());
+    state.change_connection("other".into());
+    assert!(state.inventories.is_empty());
+}
+
+#[test]
+fn registry_dialog_keeps_the_list_and_discards_unsaved_edits_on_cancel() {
+    use crate::i18n::{I18n, Language};
+    let root = Path::new(".");
+    let reg = crate::domain::images::Registry::default();
+    let mut state = State {
+        open: true,
+        profiles: vec![reg.clone()],
+        ..State::default()
+    };
+    let _ = state.update(Event::Registry(registry::Event::Open), root, false);
+    let i18n = I18n::new(Language::English);
+    for edit in [false, true] {
+        let _ = state.update(Event::Registry(registry::Event::Edit(edit)), root, false);
+        assert!(state.has_dialog());
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            (900., 560.),
+            overlay(&state, &i18n, false, panel(&state, &i18n, false), |e| e),
+        );
+        assert!(ui.find(i18n.text(Key::RegistryCatalog)).is_ok());
+        assert!(ui.find(i18n.text(Key::RegistrySave)).is_ok());
+        drop(ui);
+        let _ = state.update(
+            Event::Registry(registry::Event::Name("temporary".into())),
+            root,
+            false,
+        );
+        let _ = state.update(Event::Registry(registry::Event::Cancel), root, false);
+        assert!(!state.has_dialog());
+        assert_eq!(state.registry.selected.as_ref(), Some(&reg));
+        assert_eq!(state.profiles, [reg.clone()]);
+    }
+}
+
+#[test]
 fn disconnected_inventory_retries_and_restores_resources_after_docker_starts() {
     use crate::i18n::{I18n, Language};
     let item = adapter::parse(Kind::Volumes, r#"{"Name":"saved","Driver":"local"}"#).unwrap();

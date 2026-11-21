@@ -1,11 +1,11 @@
 # Modules
 
-IWE Code provides Git, Pipelines, Terminal, Docker, Kubernetes, and Deployment under **Settings →
-Modules**. Each module is enabled by default. Each row provides an activation switch and a
-**System** badge. Changes apply immediately and persist across restarts. Modules remain installed
-when disabled. Saved connections, profiles, credentials, shortcuts, and panel preferences remain
-unchanged. Unknown module identifiers survive settings updates. Older settings without activation
-preferences enable every module.
+IWE Code provides Git, Pipelines, Terminal, Docker, and Deployment under **Settings → Modules**.
+Each module is enabled by default. Each row provides an activation switch and a **System** badge.
+Changes apply immediately and persist across restarts. Modules remain installed when disabled. Saved
+connections, profiles, credentials, shortcuts, and panel preferences remain unchanged. Unknown
+module identifiers survive settings updates. Older settings without activation preferences enable
+every module.
 
 Disabling hides module controls and panels. It also stops subscriptions and rejects new module
 actions. Terminal sessions end. Deployment transfers receive cancellation, and queued transfers are
@@ -14,9 +14,9 @@ cannot replace current module state. Re-enabling never repeats a write operation
 Existing source and comparison tabs remain available.
 
 Module panels start collapsed when no visibility preference exists. Use the bottom toolbar to toggle
-Terminal, Docker, Kubernetes, Git, or Pipelines. Only one bottom panel can open at a time.
-Deployment uses the right server icon. The minus button in each panel header collapses that panel.
-Terminal and Deployment start collapsed after each application restart.
+Terminal, Docker, Git, or Pipelines. Only one bottom panel can open at a time. Deployment uses the
+right server icon. The minus button in each panel header collapses that panel. Terminal and
+Deployment start collapsed after each application restart.
 
 ## Git and Pipelines
 
@@ -41,13 +41,15 @@ Docker becomes available again.
 
 Git and Docker share a 42-pixel toolbar with 16-pixel icons. Use the icons on the left to select a
 resource type. Clicking the active resource or tab preserves its current view. Hover over an icon to
-see its name. The adjacent list shows matching resources and their count. Select a row to open
-**Properties** with the available actions. Thin dividers separate the sections. Each section scrolls
-independently. In a narrow panel, properties occupy the list area. In wider panels, drag the divider
-to resize the properties. Container properties initially use 30% of the space beside the navigation.
-Click the image name in container properties to reveal the exact image in the inventory. In image
-properties, open **Containers** to see running containers created from that image. Click a container
-in the tab to reveal it in the inventory. Use **Back to list** to return to the filtered results.
+see its name. The first load shows a message in the center of the list. Revisiting a section
+displays its last results while Docker refreshes them. Changing connections clears these results.
+The adjacent list shows matching resources and their count. Select a row to open **Properties** with
+the available actions. Thin dividers separate the sections. Each section scrolls independently. In a
+narrow panel, properties occupy the list area. In wider panels, drag the divider to resize the
+properties. Container properties initially use 30% of the space beside the navigation. Click the
+image name in container properties to reveal the exact image in the inventory. In image properties,
+open **Containers** to see running containers created from that image. Click a container in the tab
+to reveal it in the inventory. Use **Back to list** to return to the filtered results.
 
 In **Compose**, right-click a project and choose **Relationships**, or open **Relationships** from
 its **Properties**. The diagram shows the project's containers and their images, networks, and
@@ -101,7 +103,8 @@ Open **Registries** on the Docker rail. Docker Hub lists official repositories. 
 repository name to browse other publishers or registries that restrict catalog access. Use the page
 controls to browse repositories and tags. Select a version to inspect its digest and platforms.
 
-Add a registry URL and test the connection. Private connections can use Docker's configured
+Use **Add registry** or **Edit** to open a dialog. Save the connection or press **Escape** to
+cancel. Test the connection from the registry panel. Private connections can use Docker's configured
 credential helper. Specify the trusted token issuer when your registry uses a separate login
 service. Anonymous local registries can use HTTP on loopback. Browsing works with Docker Engine
 stopped. Pull requires an active Docker connection.
@@ -111,10 +114,13 @@ confirming. The registry browser refreshes the tags and offers the published add
 
 ## Kubernetes
 
-Enable **Kubernetes** in **Settings → Modules** and open its toolbar button. Install kubectl on the
-application's command path. Choose a context from the default kubeconfig or select a file. The
-default uses KUBECONFIG when set. IWE passes the context to each command. Select a namespace, enter
-its exact name, or choose **All namespaces**. Node resources belong to the cluster.
+The Kubernetes module is temporarily hidden from the workspace and settings. Saved module
+preferences are retained.
+
+The module requires kubectl on the application's command path. Choose a context from the default
+kubeconfig or select a file. The default uses KUBECONFIG when set. IWE passes the context to each
+command. Select a namespace, enter its exact name, or choose **All namespaces**. Node resources
+belong to the cluster.
 
 Browse workloads, Pods, Services, Ingresses, ConfigMaps, Secrets, and Nodes. Select a row to see
 properties, events, and YAML. IWE masks Secret values in resource views and manifest comparisons.

@@ -10,7 +10,7 @@ use crate::{
 use api::{Error, Manifest, Page};
 use iced::Task;
 use std::path::Path;
-pub(crate) use view::panel;
+pub(super) use view::{edit_overlay, panel};
 
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
@@ -57,18 +57,18 @@ enum Mode {
 }
 #[derive(Clone)]
 enum Form {
-    Edit {
-        existing: Option<String>,
-        name: String,
-        endpoint: String,
-        issuer: String,
-        login: bool,
-    },
+    Edit(Editor),
     Remove,
-    Transfer {
-        context: String,
-        target: ImageRef,
-    },
+    Transfer { context: String, target: ImageRef },
+}
+#[derive(Clone)]
+pub(super) struct Editor {
+    existing: Option<String>,
+    name: String,
+    endpoint: String,
+    issuer: String,
+    login: bool,
+    error: Option<Key>,
 }
 pub(crate) struct State {
     revision: u64,
@@ -208,14 +208,21 @@ impl State {
         self.busy = false;
         self.pending = Some(image.clone());
         self.selected = None;
-        self.form = Some(Form::Edit {
+        self.form = Some(Form::Edit(Editor {
+            error: None,
             existing: None,
             name: image.host.clone(),
             endpoint: format!("https://{}", image.host),
             issuer: String::new(),
             login: false,
-        });
+        }));
         Task::none()
+    }
+    pub(super) fn editor(&self) -> Option<&Editor> {
+        match &self.form {
+            Some(Form::Edit(editor)) => Some(editor),
+            _ => None,
+        }
     }
     fn image(&self, pin: bool) -> Option<ImageRef> {
         let m = self.manifest.as_ref()?;
@@ -288,7 +295,8 @@ impl State {
             }
             Event::Edit(edit) => {
                 let old = edit.then(|| self.selected.clone()).flatten();
-                self.form = Some(Form::Edit {
+                self.form = Some(Form::Edit(Editor {
+                    error: None,
                     existing: old.as_ref().map(|r| r.endpoint.clone()),
                     name: old.as_ref().map_or_else(String::new, |r| r.name.clone()),
                     endpoint: old
@@ -298,44 +306,45 @@ impl State {
                         .as_ref()
                         .map_or_else(String::new, |r| r.auth_origin.clone()),
                     login: old.is_some_and(|r| r.credentials),
-                });
+                }));
             }
             Event::Name(v) => {
-                if let Some(Form::Edit { name, .. }) = &mut self.form {
-                    *name = v
+                if let Some(Form::Edit(editor)) = &mut self.form {
+                    editor.name = v
                 }
             }
             Event::Endpoint(v) => {
-                if let Some(Form::Edit { endpoint, .. }) = &mut self.form {
-                    *endpoint = v
+                if let Some(Form::Edit(editor)) = &mut self.form {
+                    editor.endpoint = v
                 }
             }
             Event::Issuer(v) => {
-                if let Some(Form::Edit { issuer, .. }) = &mut self.form {
-                    *issuer = v
+                if let Some(Form::Edit(editor)) = &mut self.form {
+                    editor.issuer = v
                 }
             }
             Event::Login(v) => {
-                if let Some(Form::Edit { login, .. }) = &mut self.form {
-                    *login = v
+                if let Some(Form::Edit(editor)) = &mut self.form {
+                    editor.login = v
                 }
             }
             Event::Save => {
-                if let Some(Form::Edit {
+                if let Some(Form::Edit(Editor {
+                    error,
                     existing,
                     name,
                     endpoint,
                     issuer,
                     login,
-                }) = &self.form
+                })) = &mut self.form
                 {
                     let Some(mut reg) = Registry::new(name, endpoint, *login) else {
-                        self.notice = Some(Key::DockerInvalid);
+                        *error = Some(Key::DockerInvalid);
                         return Task::none();
                     };
                     if !issuer.trim().is_empty() {
                         let Some(origin) = Registry::new("issuer", issuer, true) else {
-                            self.notice = Some(Key::DockerInvalid);
+                            *error = Some(Key::DockerInvalid);
                             return Task::none();
                         };
                         reg.auth_origin = origin.endpoint;
@@ -344,7 +353,7 @@ impl State {
                         .iter()
                         .any(|r| r.host() == reg.host() && Some(&r.endpoint) != existing.as_ref())
                     {
-                        self.notice = Some(Key::RegistryDuplicate);
+                        *error = Some(Key::RegistryDuplicate);
                         return Task::none();
                     }
                     if let Some(pos) = profiles

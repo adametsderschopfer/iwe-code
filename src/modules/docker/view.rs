@@ -134,7 +134,7 @@ fn navigation<'a>(state: &State, i18n: &I18n) -> Element<'a, Event> {
             glyph(kind),
             i18n.text(kind.key()),
             !state.registry_open && kind == state.kind,
-            state.busy.is_none().then_some(Event::Kind(kind)),
+            (state.busy.is_none() || state.loading_inventory()).then_some(Event::Kind(kind)),
         ));
     }
     links = links.push(tool_rail::item(
@@ -271,8 +271,12 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
         }
         rows = rows.push(resource);
     }
-    if state.filtered.is_empty() && ready && state.error.is_none() {
-        let message = if state.query.trim().is_empty() {
+    let initial_load =
+        state.busy == Some(Key::Loading) && (state.loading_inventory() || state.context.is_none());
+    if state.filtered.is_empty() && (ready || initial_load) && state.error.is_none() {
+        let message = if initial_load {
+            Key::Loading
+        } else if state.query.trim().is_empty() {
             Key::DockerEmptyList
         } else {
             Key::DockerEmpty
@@ -596,7 +600,9 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
         ];
         let status = if let Some(error) = state.error {
             Some((Icon::Warning, theme::RED, i18n.text(error_key(error))))
-        } else if let Some(key) = state.busy {
+        } else if let Some(key) = state.busy.filter(|&key| {
+            key != Key::Loading || (!state.loading_inventory() && state.context.is_some())
+        }) {
             let mut args = crate::i18n::FluentArgs::new();
             args.set("operation", i18n.text(key));
             args.set(
@@ -639,6 +645,13 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
 ) -> Element<'a, M> {
     if !state.open {
         return base;
+    }
+    if state.registry_open
+        && let Some(editor) = state.registry.editor()
+    {
+        return super::registry::edit_overlay(editor, i18n, base, move |event| {
+            map(Event::Registry(event))
+        });
     }
     if let Some(dialog) = &state.output {
         return modal::bounded_overlay(

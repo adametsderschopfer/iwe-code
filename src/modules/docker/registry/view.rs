@@ -1,9 +1,9 @@
-use super::{Event, Form, Mode, State};
+use super::{Editor, Event, Form, Mode, State};
 use crate::{
     domain::images::{Registry, repository, tag},
     i18n::{I18n, Key},
     ui::{
-        context_menu,
+        context_menu, modal,
         presentation::vertical_divider,
         service_controls::{action, choice, entry, field, heading},
         theme,
@@ -13,6 +13,65 @@ use iced::{
     Alignment, Element, Length,
     widget::{column, container, row, scrollable, space, text},
 };
+
+pub(in crate::modules::docker) fn edit_overlay<'a, M: Clone + 'a>(
+    editor: &'a Editor,
+    i: &'a I18n,
+    base: Element<'a, M>,
+    map: impl Fn(Event) -> M + Copy + 'a,
+) -> Element<'a, M> {
+    modal::bounded_overlay(
+        base,
+        move |height| {
+            let input = |key, value: &str, change: fn(String) -> Event| {
+                theme::labeled_field(
+                    i.text(key),
+                    theme::text_field("", value).on_input(move |v| map(change(v))),
+                )
+            };
+            let mut fields = column![
+                input(Key::DockerName, &editor.name, Event::Name),
+                input(Key::RegistryEndpoint, &editor.endpoint, Event::Endpoint),
+                theme::checkbox(editor.login)
+                    .label(i.text(Key::RegistryCredentials))
+                    .on_toggle(move |v| map(Event::Login(v))),
+            ]
+            .spacing(8);
+            if editor.login {
+                fields = fields.push(input(Key::RegistryIssuer, &editor.issuer, Event::Issuer));
+            }
+            if let Some(key) = editor.error {
+                fields = fields.push(text(i.text(key)).size(13).style(theme::RED.text()));
+            }
+            modal::content(i.text(if editor.existing.is_some() {
+                Key::RegistryConnection
+            } else {
+                Key::RegistryAdd
+            }))
+            .push(
+                container(
+                    scrollable(fields)
+                        .height(Length::Shrink)
+                        .style(theme::scroll),
+                )
+                .width(Length::Fill)
+                .max_height((height - 102.).max(1.)),
+            )
+            .push(
+                modal::actions()
+                    .push(theme::text_button(i.text(Key::Cancel)).on_press(map(Event::Cancel)))
+                    .push(
+                        theme::text_button(i.text(Key::RegistrySave))
+                            .style(theme::primary)
+                            .on_press(map(Event::Save)),
+                    ),
+            )
+            .into()
+        },
+        516.,
+        map(Event::Cancel),
+    )
+}
 
 pub(crate) fn panel<'a>(
     s: &'a State,
@@ -47,53 +106,31 @@ pub(crate) fn panel<'a>(
     if let Some(key) = s.notice {
         body = body.push(text(i.text(key)).size(12))
     }
-    if s.busy {
+    if s.busy
+        && (!s.page.names.is_empty()
+            || matches!(s.mode, Mode::Publish(_))
+            || matches!(s.form, Some(Form::Transfer { .. })))
+    {
         body = body.push(
             text(i.text(Key::Loading))
                 .size(12)
                 .style(theme::MUTED.text()),
-        )
+        );
     }
-    if let Some(form) = &s.form {
-        let mut form_view = column![].spacing(7).padding(8);
-        match form {
-            Form::Edit {
-                name,
-                endpoint,
-                issuer,
-                login,
-                ..
-            } => {
-                form_view = form_view
-                    .push(heading(i.text(Key::RegistryConnection)))
-                    .push(field(i, Key::DockerName, name, Event::Name))
-                    .push(field(i, Key::RegistryEndpoint, endpoint, Event::Endpoint))
-                    .push(
-                        theme::checkbox(*login)
-                            .label(i.text(Key::RegistryCredentials))
-                            .on_toggle(Event::Login),
-                    );
-                if *login {
-                    form_view = form_view.push(field(i, Key::RegistryIssuer, issuer, Event::Issuer))
-                }
-                form_view = form_view
-                    .push(action(i, Key::RegistrySave, Some(Event::Save)).style(theme::primary));
+    let form_view = match &s.form {
+        Some(Form::Remove) => s.selected.as_ref().map(|reg| {
+            column![
+                choice(i, Key::RegistryRemove, &reg.endpoint),
+                action(i, Key::DockerRemove, Some(Event::Confirm)).style(theme::danger),
+            ]
+        }),
+        Some(Form::Transfer { context, target }) => {
+            let mut form = column![];
+            if let Mode::Publish(image) = &s.mode {
+                form = form.push(choice(i, Key::RegistrySource, &image.id));
             }
-            Form::Remove => {
-                if let Some(reg) = &s.selected {
-                    form_view = form_view
-                        .push(choice(i, Key::RegistryRemove, &reg.endpoint))
-                        .push(
-                            action(i, Key::DockerRemove, Some(Event::Confirm)).style(theme::danger),
-                        )
-                }
-            }
-            Form::Transfer { context, target } => {
-                if let Mode::Publish(image) = &s.mode {
-                    form_view = form_view.push(choice(i, Key::RegistrySource, &image.id))
-                }
-                form_view = form_view
-                    .push(choice(i, Key::DockerConnection, context))
+            Some(
+                form.push(choice(i, Key::DockerConnection, context))
                     .push(choice(i, Key::RegistryTarget, &target.to_string()))
                     .push(
                         action(
@@ -106,9 +143,13 @@ pub(crate) fn panel<'a>(
                             ready.then_some(Event::Confirm),
                         )
                         .style(theme::primary),
-                    );
-            }
+                    ),
+            )
         }
+        _ => None,
+    };
+    if let Some(form_view) = form_view {
+        let form_view = form_view.spacing(7).padding(8);
         return body
             .push(
                 scrollable(form_view.push(action(i, Key::Cancel, Some(Event::Cancel))))
@@ -211,25 +252,37 @@ pub(crate) fn panel<'a>(
             },
         )
     }));
-    listing = listing
-        .push(scrollable(rows).style(theme::scroll).height(Length::Fill))
-        .push(
-            row![
-                action(
-                    i,
-                    Key::PreviousFilePart,
-                    (s.history.len() > 1 && ready).then_some(Event::Previous)
-                ),
-                action(
-                    i,
-                    Key::NextFilePart,
-                    (s.page.next.is_some() && ready).then_some(Event::Next)
-                ),
-                action(i, Key::DockerRefresh, ready.then_some(Event::Refresh))
-            ]
-            .spacing(5)
-            .padding(4),
-        );
+    let results: Element<'_, Event> = if s.busy && s.page.names.is_empty() {
+        container(
+            text(i.text(Key::Loading))
+                .size(13)
+                .style(theme::MUTED.text()),
+        )
+        .center(Length::Fill)
+        .into()
+    } else {
+        scrollable(rows)
+            .style(theme::scroll)
+            .height(Length::Fill)
+            .into()
+    };
+    listing = listing.push(results).push(
+        row![
+            action(
+                i,
+                Key::PreviousFilePart,
+                (s.history.len() > 1 && ready).then_some(Event::Previous)
+            ),
+            action(
+                i,
+                Key::NextFilePart,
+                (s.page.next.is_some() && ready).then_some(Event::Next)
+            ),
+            action(i, Key::DockerRefresh, ready.then_some(Event::Refresh))
+        ]
+        .spacing(5)
+        .padding(4),
+    );
     let mut panes = row![listing].height(Length::Fill);
     if let Some(m) = &s.manifest
         && let Some(img) = s.image(false)

@@ -23,10 +23,6 @@ pub(crate) struct Module {
 
 pub(crate) const MODULES: &[Module] = &[
     Module {
-        id: ModuleId::Kubernetes,
-        origin: Origin::System,
-    },
-    Module {
         id: ModuleId::Git,
         origin: Origin::System,
     },
@@ -49,6 +45,10 @@ pub(crate) const MODULES: &[Module] = &[
 ];
 
 impl ModuleId {
+    pub(crate) fn listed(self) -> bool {
+        MODULES.iter().any(|module| module.id == self)
+    }
+
     pub(crate) const fn key(self) -> &'static str {
         match self {
             Self::Kubernetes => "kubernetes",

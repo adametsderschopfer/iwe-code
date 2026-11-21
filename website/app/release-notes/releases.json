@@ -2921,6 +2921,31 @@
           "es": "Coloca el puntero sobre Añadir proyecto para elegir una carpeta o clonar un repositorio. Haz clic para abrir el diálogo. Al mover un proyecto, los espacios aparecen junto al menú."
         },
         "sources": ["src/ui/screens/workspace.rs"]
+      },
+      {
+        "id": "docker-inventory-refresh-and-registry-dialog",
+        "category": "changed",
+        "text": {
+          "en": "Docker keeps previously loaded lists visible during refresh. Initial loading appears in the center. Add or edit a registry in a dialog.",
+          "ru": "Docker показывает предыдущий список во время обновления. При первой загрузке сообщение появляется в центре. Добавление и изменение реестра открываются в диалоге.",
+          "es": "Docker conserva las listas visibles al actualizarlas. La carga inicial se indica en el centro. Puedes añadir o editar un registro en un diálogo."
+        },
+        "sources": [
+          "src/modules/docker/view.rs",
+          "src/modules/docker/registry/view.rs"
+        ]
+      },
+      {
+        "id": "temporarily-hide-kubernetes-module",
+        "category": "changed",
+        "text": {
+          "en": "Kubernetes is temporarily hidden from navigation and module settings.",
+          "ru": "Модуль Kubernetes временно скрыт в навигации и настройках модулей.",
+          "es": "El módulo Kubernetes se oculta temporalmente en la navegación y los ajustes de módulos."
+        },
+        "sources": [
+          "src/modules/catalog/mod.rs"
+        ]
       }
     ]
   }

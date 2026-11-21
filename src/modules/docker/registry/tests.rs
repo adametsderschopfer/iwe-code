@@ -80,7 +80,7 @@ fn missing_registry_preserves_image_until_setup_completes() {
     let mut profiles = vec![];
     let root = Path::new(".");
     let _ = state.update(Event::Find(image.clone()), &mut profiles, None, root);
-    assert!(matches!(state.form, Some(Form::Edit { .. })));
+    assert!(state.editor().is_some());
     let _ = state.update(Event::Save, &mut profiles, None, root);
     assert_eq!(profiles.len(), 1);
     assert_eq!(state.repo, image.repository);

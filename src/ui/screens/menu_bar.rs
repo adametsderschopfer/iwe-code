@@ -113,7 +113,7 @@ fn view_items(app: &App) -> Element<'_, Message> {
         (ModuleId::Git, Key::Git, "menu-item-git"),
         (ModuleId::Pipelines, Key::Pipelines, "menu-item-pipelines"),
     ] {
-        if !app.panel_available(id) {
+        if !id.listed() || !app.panel_available(id) {
             continue;
         }
         available += 1;

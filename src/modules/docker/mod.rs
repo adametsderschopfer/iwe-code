@@ -12,7 +12,7 @@ use crate::i18n::Key;
 use adapter::Error;
 use iced::{Point, Task};
 use model::{Action, Item, Kind};
-use std::{path::Path, sync::Arc};
+use std::{collections::BTreeMap, path::Path, sync::Arc};
 pub(crate) use view::{overlay, panel};
 
 const PAGE: usize = 40;
@@ -122,6 +122,8 @@ pub(crate) struct State {
     context: Option<String>,
     kind: Kind,
     items: Arc<Vec<Item>>,
+    inventories: BTreeMap<Kind, Arc<Vec<Item>>>,
+    inventory_request: Option<u64>,
     filtered: Vec<usize>,
     query: String,
     page: usize,
@@ -153,7 +155,11 @@ impl State {
         })
     }
     pub(crate) fn has_dialog(&self) -> bool {
-        self.open && (self.draft.is_some() || self.project_graph.is_some() || self.output.is_some())
+        self.open
+            && (self.draft.is_some()
+                || self.project_graph.is_some()
+                || self.output.is_some()
+                || (self.registry_open && self.registry.editor().is_some()))
     }
     pub(crate) fn reset(&mut self) {
         self.registry.reset();
@@ -214,6 +220,7 @@ impl State {
             return;
         }
         if matches!(error, Error::Stopped | Error::Unavailable | Error::Missing) {
+            self.inventories.clear();
             self.connection_error = Some(error);
             self.items = Arc::default();
             self.clear_selection();
@@ -230,6 +237,15 @@ impl State {
         self.error = None;
         self.request
     }
+    fn loading_inventory(&self) -> bool {
+        self.inventory_request == Some(self.request)
+    }
+
+    fn set_inventory(&mut self, items: Arc<Vec<Item>>) {
+        self.inventories.insert(self.kind, Arc::clone(&items));
+        self.items = items;
+    }
+
     fn list(&mut self, root: &Path) -> Task<Event> {
         let Some(context) = self.context.clone() else {
             return self.connections(root);
@@ -245,6 +261,10 @@ impl State {
                 async move { graph::load(&context, &root, &name, previous).await },
                 move |r| Event::GraphLoaded(id, r),
             );
+        }
+        self.inventory_request = Some(id);
+        if self.inventories.contains_key(&kind) {
+            self.busy = None;
         }
         Task::perform(
             async move { relations::inventory(&context, &root, kind).await },
@@ -271,7 +291,7 @@ impl State {
         self.clear_selection();
         self.project_graph = None;
         self.kind = kind;
-        self.items = items;
+        self.set_inventory(items);
         self.query.clear();
         self.filter();
         self.page = index / PAGE;
@@ -281,6 +301,7 @@ impl State {
     fn change_connection(&mut self, name: String) {
         self.registry.engine_changed();
         self.project_graph = None;
+        self.inventories.clear();
         self.context = Some(name);
         self.connection_error = None;
         self.items = Arc::default();
@@ -356,11 +377,12 @@ impl State {
                 }
             }
             Event::Listed(id, result) if id == self.request => {
+                self.inventory_request = None;
                 self.busy = None;
                 match result {
                     Ok(items) => {
                         self.connection_error = None;
-                        self.items = items;
+                        self.set_inventory(items);
                         self.filter();
                         if self.selected.is_some() && self.selected().is_none() {
                             self.clear_selection();
@@ -476,6 +498,23 @@ impl State {
                 self.show_running = false;
                 self.error = None;
             }
+            Event::Kind(kind)
+                if (self.registry_open || kind != self.kind)
+                    && (self.busy.is_none() || self.loading_inventory()) =>
+            {
+                self.registry_open = false;
+                if self.kind == kind {
+                    return self.list(root);
+                }
+
+                self.kind = kind;
+                self.items = self.inventories.get(&kind).cloned().unwrap_or_default();
+                self.page = 0;
+                self.query.clear();
+                self.clear_selection();
+                self.filter();
+                return self.list(root);
+            }
             _ if self.busy.is_some() => {}
             Event::ShowRunning(true)
                 if !self.show_running && self.kind == Kind::Images && self.selected().is_some() =>
@@ -561,6 +600,7 @@ impl State {
             }
             Event::Tick
                 if !self.open
+                    || self.loading_inventory()
                     || self.error.is_some()
                     || self
                         .project_graph
@@ -584,19 +624,6 @@ impl State {
                         terminal,
                     );
                 }
-            }
-            Event::Kind(kind) if self.registry_open || kind != self.kind => {
-                self.registry_open = false;
-                if self.kind == kind {
-                    return self.list(root);
-                }
-
-                self.kind = kind;
-                self.items = Arc::default();
-                self.query.clear();
-                self.clear_selection();
-                self.filter();
-                return self.list(root);
             }
             Event::Menu(id, point) if self.items.iter().any(|item| item.id == id) => {
                 self.menu = Some((id, point));

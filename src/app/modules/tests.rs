@@ -131,18 +131,11 @@ fn bottom_toolbar_buttons_stay_in_place_when_opening_switching_and_closing_panel
         }
         .into(),
     );
-    let buttons = [
-        "nav-terminal",
-        "nav-kubernetes",
-        "nav-docker",
-        "nav-git",
-        "nav-pipelines",
-    ];
+    let buttons = ["nav-terminal", "nav-docker", "nav-git", "nav-pipelines"];
     let mut closed_bounds = None;
     for (button, module, opened) in [
         ("nav-terminal", ModuleId::Terminal, true),
         ("nav-terminal", ModuleId::Terminal, false),
-        ("nav-kubernetes", ModuleId::Kubernetes, true),
         ("nav-docker", ModuleId::Docker, true),
         ("nav-git", ModuleId::Git, true),
         ("nav-pipelines", ModuleId::Pipelines, true),
@@ -156,6 +149,7 @@ fn bottom_toolbar_buttons_stay_in_place_when_opening_switching_and_closing_panel
             (1080., 820.),
             app.view(),
         );
+        assert!(ui.find(iced::widget::Id::new("nav-kubernetes")).is_err());
         let bounds = buttons.map(|id| {
             ui.find(iced::widget::Id::new(id))
                 .unwrap()
@@ -488,6 +482,7 @@ fn module_settings_offer_activation_controls_in_all_languages_and_themes() {
                 (780., 610.),
                 crate::ui::screens::settings::view(&app),
             );
+            assert!(ui.find(iced::widget::Id::new("module-kubernetes")).is_err());
             for key in [Key::ModulesDescription, Key::SystemModule, Key::Terminal] {
                 assert!(
                     ui.find(app.i18n.text(key))
