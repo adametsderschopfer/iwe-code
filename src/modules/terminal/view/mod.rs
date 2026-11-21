@@ -5,10 +5,7 @@ mod input;
 use super::{Event, State as TerminalState, Status, style};
 use crate::{
     i18n::{FluentArgs, I18n, Key},
-    ui::{
-        icons::{Icon, sized_icon},
-        theme, tooltip,
-    },
+    ui::{icons::Icon, theme},
 };
 use iced::{
     Alignment, Element, Font, Length, Point, Rectangle, Renderer, Size, Theme, font, keyboard,
@@ -69,15 +66,8 @@ pub(crate) fn view<'a>(
                         .height(style::TAB_BAR_HEIGHT - 2.)
                         .style(theme::action(false))
                         .on_press(Event::Select(request)),
-                        container(space().height(2).width(Length::Fill)).style(
-                            move |theme: &Theme| {
-                                container::Style {
-                                    background: (terminal.active == Some(request))
-                                        .then(|| theme.palette().primary.into()),
-                                    ..Default::default()
-                                }
-                            }
-                        ),
+                        container(space().height(2).width(Length::Fill))
+                            .style(theme::tab_indicator(terminal.active == Some(request))),
                     ]
                     .width(Length::Shrink),
                 )
@@ -118,7 +108,7 @@ pub(crate) fn view<'a>(
         .padding([0, 10])
         .height(style::TAB_BAR_HEIGHT)
         .width(Length::Fill),
-        container(space().height(1)).style(theme::separator),
+        crate::ui::presentation::divider(),
     ]
     .height(Length::Fill);
     let Some(tab) = terminal.active_tab() else {
@@ -165,16 +155,9 @@ fn icon_control<'a>(
     id: String,
     event: Event,
 ) -> Element<'a, Event> {
-    container(tooltip::view(
-        button(sized_icon(glyph, theme::MUTED, 14.))
-            .padding(4)
-            .style(theme::action(false))
-            .on_press(event),
-        text(i18n.text(hint)).size(12),
-        tooltip::Position::Bottom,
-    ))
-    .id(id)
-    .into()
+    container(crate::ui::presentation::IconButton::Small.view(i18n, glyph, hint, Some(event)))
+        .id(id)
+        .into()
 }
 
 struct Screen<'a> {

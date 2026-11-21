@@ -35,23 +35,19 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
             ))
             .size(11)
             .style(theme::MUTED.text()),
-            button(
-                text(app.i18n.text(if app.account_username.is_some() {
-                    Key::Disconnect
-                } else {
-                    Key::SignIn
-                }))
-                .size(12)
-            )
+            theme::compact_button(app.i18n.text(if app.account_username.is_some() {
+                Key::Disconnect
+            } else {
+                Key::SignIn
+            }))
             .style(theme::action(false))
-            .padding([6, 10])
-            .on_press_maybe((!app.disconnecting).then_some(
-                if app.account_username.is_some() {
+            .on_press_maybe(
+                (!app.disconnecting).then_some(if app.account_username.is_some() {
                     Message::Disconnect
                 } else {
                     Message::SignIn
-                }
-            )),
+                })
+            ),
         ]
         .spacing(6)
         .align_y(Alignment::Center)
@@ -95,14 +91,10 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
             column![
                 text(app.i18n.text(Key::ChooseProvider)).size(14),
                 row![
-                    button(text("GitHub").size(13))
-                        .on_press(Message::ChooseProvider(Provider::GitHub))
-                        .padding([8, 16])
-                        .style(theme::secondary),
-                    button(text("GitLab").size(13))
+                    theme::text_button("GitHub")
+                        .on_press(Message::ChooseProvider(Provider::GitHub)),
+                    theme::text_button("GitLab")
                         .on_press(Message::ChooseProvider(Provider::GitLab))
-                        .padding([8, 16])
-                        .style(theme::secondary)
                 ]
                 .spacing(8)
             ]
@@ -142,12 +134,12 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
                         ]
                         .spacing(6)
                         .width(Length::Fill),
-                        button(
-                            text(app.i18n.text(if access { Key::SignIn } else { Key::Retry }))
-                                .size(13)
-                        )
+                        theme::text_button(app.i18n.text(if access {
+                            Key::SignIn
+                        } else {
+                            Key::Retry
+                        }))
                         .on_press(action)
-                        .padding([10, 18])
                         .style(theme::primary)
                     ]
                     .spacing(20)

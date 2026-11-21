@@ -1,7 +1,5 @@
-use super::{
-    modal,
-    workspace::{short, short_path},
-};
+use super::{modal, workspace::short_path};
+use crate::ui::presentation::{IconButton, short};
 use crate::ui::tooltip;
 use crate::{
     app::{App, Message, spaces},
@@ -13,26 +11,20 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{Column, button, column, container, row, scrollable, space, text, text_input},
+    widget::{Column, button, column, container, row, scrollable, text},
 };
 
 pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
     let Some(draft) = &app.space_draft else {
         return base;
     };
-    let name = column![
-        text(app.i18n.text(Key::SpaceName))
-            .size(13)
-            .style(theme::MUTED.text()),
-        text_input(&app.i18n.text(Key::SpaceNamePlaceholder), &draft.name)
+    let name = theme::labeled_field(
+        app.i18n.text(Key::SpaceName),
+        theme::text_field(&app.i18n.text(Key::SpaceNamePlaceholder), &draft.name)
             .id("space-name")
-            .size(14)
-            .padding([10, 14])
-            .style(theme::input)
             .on_input(|value| Message::Space(spaces::Message::NameChanged(value)))
             .on_submit(Message::Space(spaces::Message::Create)),
-    ]
-    .spacing(8);
+    );
     let mut projects = column![
         row![
             text(app.i18n.text(Key::Projects))
@@ -62,15 +54,11 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 .unwrap_or(directory.as_os_str())
                 .to_string_lossy();
             let remove = tooltip::view(
-                container(
-                    button(icon(Icon::Close, theme::MUTED))
-                        .padding(8)
-                        .style(theme::icon_action(false))
-                        .on_press_maybe(
-                            (!app.picking)
-                                .then_some(Message::Space(spaces::Message::RemoveProject(index))),
-                        ),
-                )
+                container(IconButton::Inline(36.).button(
+                    Icon::Close,
+                    (!app.picking).then_some(Message::Space(spaces::Message::RemoveProject(index))),
+                    false,
+                ))
                 .id(format!("space-remove-project-{index}")),
                 text(app.i18n.text(Key::RemoveProject)).size(12),
                 tooltip::Position::Bottom,
@@ -143,47 +131,33 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         )
         .id("space-add-project"),
     );
-    let mut actions = iced::widget::Row::new()
-        .spacing(8)
-        .align_y(Alignment::Center);
+    let mut actions = modal::actions();
     if let Some(index) = draft.editing {
         actions = actions.push(
             container(
-                button(
-                    text(app.i18n.text(Key::DeleteSpace))
-                        .size(14)
-                        .style(theme::GIT_REMOVED.text()),
-                )
-                .padding([10, 18])
-                .style(theme::secondary)
-                .on_press_maybe(
-                    (!app.picking && !app.modules.git.git_actions.pending)
-                        .then_some(Message::Space(spaces::Message::Delete(index))),
-                ),
+                theme::text_button(app.i18n.text(Key::DeleteSpace))
+                    .style(theme::danger)
+                    .on_press_maybe(
+                        (!app.picking && !app.modules.git.git_actions.pending)
+                            .then_some(Message::Space(spaces::Message::Delete(index))),
+                    ),
             )
             .id("space-delete"),
         );
     }
     let actions = actions.extend([
-        space().width(Length::Fill).into(),
         container(
-            button(text(app.i18n.text(Key::Cancel)).size(14))
-                .padding([10, 18])
-                .style(theme::secondary)
+            theme::text_button(app.i18n.text(Key::Cancel))
                 .on_press(Message::Space(spaces::Message::Cancel)),
         )
         .id("space-cancel")
         .into(),
         container(
-            button(
-                text(app.i18n.text(if draft.editing.is_some() {
-                    Key::SaveChanges
-                } else {
-                    Key::CreateSpace
-                }))
-                .size(14),
-            )
-            .padding([10, 18])
+            theme::text_button(app.i18n.text(if draft.editing.is_some() {
+                Key::SaveChanges
+            } else {
+                Key::CreateSpace
+            }))
             .style(theme::primary)
             .on_press_maybe(
                 (!app.picking && !draft.name.trim().is_empty())
@@ -193,22 +167,19 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         .id("space-create")
         .into(),
     ]);
-    let content = column![
-        text(app.i18n.text(if draft.editing.is_some() {
-            Key::EditSpace
-        } else {
-            Key::NewSpace
-        }))
-        .size(24)
-        .font(theme::semibold()),
+    let content = modal::content(app.i18n.text(if draft.editing.is_some() {
+        Key::EditSpace
+    } else {
+        Key::NewSpace
+    }))
+    .push(
         text(app.i18n.text(Key::SpaceDescription))
             .size(14)
             .style(theme::MUTED.text()),
-        name,
-        projects,
-        actions,
-    ]
-    .spacing(14);
+    )
+    .push(name)
+    .push(projects)
+    .push(actions);
     modal::overlay(
         base,
         content.into(),

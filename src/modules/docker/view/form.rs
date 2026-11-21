@@ -1,6 +1,7 @@
 //! Keep Docker operation fields together and their submit controls within reach.
 
-use super::{GUTTER, caption, error_key, style};
+use super::{GUTTER, caption, error_key};
+use crate::ui::modal;
 use crate::{
     i18n::{I18n, Key},
     modules::docker::{Action, Draft, Event, Kind, State, container::Field},
@@ -11,7 +12,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{Column, button, column, container, row, scrollable, space, text, text_input},
+    widget::{Column, column, container, row, scrollable, text},
 };
 
 fn field<'a, M: Clone + 'a>(
@@ -20,15 +21,10 @@ fn field<'a, M: Clone + 'a>(
     value: &str,
     change: impl Fn(String) -> M + 'a,
 ) -> Element<'a, M> {
-    column![
-        text(i18n.text(key)).size(12).style(theme::MUTED.text()),
-        text_input("", value)
-            .on_input(change)
-            .padding([6, 8])
-            .size(13)
-            .style(style::input)
-    ]
-    .spacing(3)
+    theme::labeled_field(
+        i18n.text(key),
+        theme::text_field("", value).on_input(change),
+    )
     .into()
 }
 
@@ -88,9 +84,8 @@ pub(super) fn contents<'a, M: Clone + 'a>(
         )))];
         if matches!(action, Action::Up | Action::Build) {
             fields = fields.push(
-                button(text(i18n.text(Key::DeploymentChooseFile)).size(12))
-                    .on_press(map(Event::Browse))
-                    .style(style::button(theme::secondary)),
+                theme::compact_button(i18n.text(Key::DeploymentChooseFile))
+                    .on_press(map(Event::Browse)),
             );
         }
         let extra = match (action, state.kind) {
@@ -146,32 +141,34 @@ pub(super) fn contents<'a, M: Clone + 'a>(
     }
     let ready = state.busy.is_none();
     let valid = draft.arguments(state.kind, target).is_some();
-    column![
-        text(i18n.text(action.key()))
-            .font(theme::semibold())
-            .size(19),
-        container(
-            scrollable(body.padding(iced::Padding::default().right(7)))
-                .height(Length::Shrink)
-                .style(style::scroll)
-        )
-        .max_height((height - 102.).max(1.))
-        .width(Length::Fill),
-        row![
-            button(text(i18n.text(Key::Cancel)).size(13))
-                .on_press_maybe(ready.then(|| map(Event::Dismiss)))
-                .style(style::button(theme::action(false))),
-            space().width(Length::Fill),
+    modal::content(i18n.text(action.key()))
+        .push(
             container(
-                button(text(i18n.text(state.busy.unwrap_or(action.key()))).size(13))
-                    .on_press_maybe((valid && ready).then(|| map(Event::Submit)))
-                    .style(style::button(theme::primary))
+                scrollable(body.padding(iced::Padding::default().right(7)))
+                    .height(Length::Shrink)
+                    .style(theme::scroll),
             )
-            .id("docker-submit")
-        ]
-        .spacing(GUTTER)
-        .align_y(Alignment::Center)
-    ]
-    .spacing(GUTTER)
-    .into()
+            .max_height((height - 102.).max(1.))
+            .width(Length::Fill),
+        )
+        .push(
+            modal::actions()
+                .push(
+                    theme::text_button(i18n.text(Key::Cancel))
+                        .on_press_maybe(ready.then(|| map(Event::Dismiss))),
+                )
+                .push(
+                    container(
+                        theme::text_button(i18n.text(state.busy.unwrap_or(action.key())))
+                            .on_press_maybe((valid && ready).then(|| map(Event::Submit)))
+                            .style(if action == Action::Remove {
+                                theme::danger
+                            } else {
+                                theme::primary
+                            }),
+                    )
+                    .id("docker-submit"),
+                ),
+        )
+        .into()
 }

@@ -1,5 +1,6 @@
 //! Show local file commands and their confirmation dialogs.
 
+use crate::ui::modal;
 use crate::{
     app::{
         App, Message,
@@ -17,10 +18,7 @@ use crate::{
 };
 use iced::{
     Element, Length, Point,
-    widget::{
-        button, column, container, mouse_area, opaque, responsive, row, scrollable, stack, text,
-        text_input,
-    },
+    widget::{column, container, mouse_area, opaque, responsive, scrollable, stack, text},
 };
 
 pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
@@ -113,8 +111,8 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 .push(deployment_action(Key::DeploymentUpload, false));
         }
         let max_height = (available.height - 16.).max(0.);
-        let menu_content =
-            container(scrollable(main).height(Length::Shrink)).max_height(max_height);
+        let menu_content = container(scrollable(main).style(theme::scroll).height(Length::Shrink))
+            .max_height(max_height);
         let mut layers = vec![panel(menu_content.into(), origin, width)];
         if menu.copy_open || menu.create_open {
             let x = if origin.x + width + child_width <= available.width {
@@ -134,15 +132,8 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 (origin.y + offset).min((available.height - 104.).max(0.)),
             );
             let option = |key, format| {
-                button(
-                    text(app.i18n.text(key))
-                        .size(context_menu::TEXT_SIZE)
-                        .wrapping(text::Wrapping::None),
-                )
-                .on_press(Message::Files(Event::CopyPath(format)))
-                .padding(context_menu::ROW_PADDING)
-                .width(Length::Fill)
-                .style(theme::action(false))
+                context_menu::text_row(app.i18n.text(key))
+                    .on_press(Message::Files(Event::CopyPath(format)))
             };
             let children = if menu.create_open {
                 column![
@@ -192,7 +183,7 @@ pub(super) fn dialog<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a
     };
     let msg = operations::message;
     let busy = app.files.operations.busy || app.editor.pending.is_some();
-    let mut content = column![text(app.i18n.text(draft.title)).size(21)].spacing(12);
+    let mut content = modal::content(app.i18n.text(draft.title));
     if let Some(parent) = &draft.parent {
         let root = app.workspace.directory().map(|root| root.as_path());
         let folder = root
@@ -202,13 +193,16 @@ pub(super) fn dialog<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a
             content = content.push(text(folder.to_string_lossy()).size(13));
         }
         content = content.push(
-            text_input(&app.i18n.text(Key::FileName), &draft.name)
+            theme::text_field(&app.i18n.text(Key::FileName), &draft.name)
                 .id(operations::NAME_INPUT)
+                .style(theme::validated_input(matches!(
+                    draft.error,
+                    Some(Key::FileInvalidName | Key::FileNameConflict)
+                )))
                 .on_input_maybe(
                     (!busy).then_some(|name| operations::message(operations::Event::Name(name))),
                 )
-                .on_submit_maybe((!busy).then(|| msg(operations::Event::Confirm)))
-                .padding(9),
+                .on_submit_maybe((!busy).then(|| msg(operations::Event::Confirm))),
         );
     } else {
         let mut args = fluent_bundle::FluentArgs::new();
@@ -222,15 +216,20 @@ pub(super) fn dialog<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a
         content = content.push(text(app.i18n.text(Key::FileBusy)).size(13));
     }
     content = content.push(
-        row![
-            button(text(app.i18n.text(Key::Cancel)))
-                .style(theme::secondary)
-                .on_press_maybe((!busy).then(|| msg(operations::Event::Cancel))),
-            button(text(app.i18n.text(draft.title)))
-                .style(theme::primary)
-                .on_press_maybe((!busy).then(|| msg(operations::Event::Confirm))),
-        ]
-        .spacing(8),
+        modal::actions()
+            .push(
+                theme::text_button(app.i18n.text(Key::Cancel))
+                    .on_press_maybe((!busy).then(|| msg(operations::Event::Cancel))),
+            )
+            .push(
+                theme::text_button(app.i18n.text(draft.title))
+                    .style(if draft.title == Key::FileTrash {
+                        theme::danger
+                    } else {
+                        theme::primary
+                    })
+                    .on_press_maybe((!busy).then(|| msg(operations::Event::Confirm))),
+            ),
     );
     crate::ui::modal::overlay(base, content.into(), 480., Message::DismissDialog)
 }

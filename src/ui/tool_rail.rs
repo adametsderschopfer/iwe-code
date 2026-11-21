@@ -25,21 +25,12 @@ pub(crate) fn item<'a, M: Clone + 'a>(
                 .width(Length::Fill)
                 .padding([7, 0])
                 .on_press_maybe(message)
-                .style(move |t, s| {
-                    let mut style = theme::tree_item(active)(t, s);
-                    style.border.radius = Default::default();
-                    style
-                }),
+                .style(theme::tree_item(active)),
         )
         .id(id),
         text(label).size(12),
         tooltip::Position::Right,
     )
-    .style(|t| {
-        let mut style = theme::tooltip(t);
-        style.border.radius = Default::default();
-        style
-    })
     .into()
 }
 

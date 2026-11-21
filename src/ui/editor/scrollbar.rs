@@ -122,7 +122,7 @@ impl canvas::Program<Message> for Scrollbar<'_> {
             &canvas::Path::rounded_rectangle(
                 Point::new(thumb.x, thumb.y),
                 thumb.size(),
-                5.0.into(),
+                theme::CONTROL_RADIUS.into(),
             ),
             theme::scrollbar_thumb(
                 theme,

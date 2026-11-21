@@ -1,10 +1,7 @@
-//! Reuse application colors with compact deployment control borders.
+//! Use the warning tone for deployment notices.
 
 use crate::ui::theme;
-use iced::{
-    Border, Theme,
-    widget::{button, container},
-};
+use iced::{Border, Theme, widget::container};
 
 pub(super) fn warning(theme: &Theme) -> container::Style {
     let color = theme::YELLOW.resolve(theme);
@@ -14,37 +11,8 @@ pub(super) fn warning(theme: &Theme) -> container::Style {
         border: Border {
             color: iced::Color { a: 0.35, ..color },
             width: 1.,
-            radius: 6.into(),
+            radius: theme::CONTROL_RADIUS.into(),
         },
         ..Default::default()
-    }
-}
-
-pub(super) fn secondary(theme: &Theme, status: button::Status) -> button::Style {
-    let disabled = status == button::Status::Disabled;
-    button::Style {
-        background: Some(theme::select(theme, iced::widget::pick_list::Status::Active).background),
-        text_color: if disabled {
-            theme::FAINT.resolve(theme)
-        } else {
-            theme::TEXT.resolve(theme)
-        },
-        border: Border {
-            color: theme::LINE.resolve(theme),
-            width: 1.,
-            radius: 4.into(),
-        },
-        ..Default::default()
-    }
-}
-
-pub(super) fn primary(theme: &Theme, status: button::Status) -> button::Style {
-    if status == button::Status::Disabled {
-        return secondary(theme, status);
-    }
-    button::Style {
-        background: Some(theme::BLUE.resolve(theme).into()),
-        text_color: theme::code_background(theme),
-        ..secondary(theme, status)
     }
 }

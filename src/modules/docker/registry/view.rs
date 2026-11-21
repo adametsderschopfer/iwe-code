@@ -4,13 +4,14 @@ use crate::{
     i18n::{I18n, Key},
     ui::{
         context_menu,
-        service_controls::{action, choice, divider, entry, field, heading, menu, select},
+        presentation::vertical_divider,
+        service_controls::{action, choice, entry, field, heading},
         theme,
     },
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{checkbox, column, container, pick_list, row, scrollable, space, text},
+    widget::{column, container, row, scrollable, space, text},
 };
 
 pub(crate) fn panel<'a>(
@@ -22,11 +23,9 @@ pub(crate) fn panel<'a>(
     let ready = !s.busy;
     let mut top = row![
         heading(i.text(Key::Registries)),
-        pick_list(profiles, s.selected.as_ref(), Event::Select)
-            .placeholder(i.text(Key::DockerConnection))
-            .text_size(12)
-            .style(select)
-            .menu_style(menu),
+        theme::Select::Compact
+            .view(profiles, s.selected.as_ref(), Event::Select)
+            .placeholder(i.text(Key::DockerConnection)),
         action(i, Key::RegistryAdd, Some(Event::Edit(false)))
     ]
     .spacing(6)
@@ -70,20 +69,23 @@ pub(crate) fn panel<'a>(
                     .push(field(i, Key::DockerName, name, Event::Name))
                     .push(field(i, Key::RegistryEndpoint, endpoint, Event::Endpoint))
                     .push(
-                        checkbox(*login)
+                        theme::checkbox(*login)
                             .label(i.text(Key::RegistryCredentials))
                             .on_toggle(Event::Login),
                     );
                 if *login {
                     form_view = form_view.push(field(i, Key::RegistryIssuer, issuer, Event::Issuer))
                 }
-                form_view = form_view.push(action(i, Key::RegistrySave, Some(Event::Save)));
+                form_view = form_view
+                    .push(action(i, Key::RegistrySave, Some(Event::Save)).style(theme::primary));
             }
             Form::Remove => {
                 if let Some(reg) = &s.selected {
                     form_view = form_view
                         .push(choice(i, Key::RegistryRemove, &reg.endpoint))
-                        .push(action(i, Key::DockerRemove, Some(Event::Confirm)))
+                        .push(
+                            action(i, Key::DockerRemove, Some(Event::Confirm)).style(theme::danger),
+                        )
                 }
             }
             Form::Transfer { context, target } => {
@@ -93,23 +95,25 @@ pub(crate) fn panel<'a>(
                 form_view = form_view
                     .push(choice(i, Key::DockerConnection, context))
                     .push(choice(i, Key::RegistryTarget, &target.to_string()))
-                    .push(action(
-                        i,
-                        if matches!(s.mode, Mode::Publish(_)) {
-                            Key::RegistryPublish
-                        } else {
-                            Key::DockerPull
-                        },
-                        ready.then_some(Event::Confirm),
-                    ));
+                    .push(
+                        action(
+                            i,
+                            if matches!(s.mode, Mode::Publish(_)) {
+                                Key::RegistryPublish
+                            } else {
+                                Key::DockerPull
+                            },
+                            ready.then_some(Event::Confirm),
+                        )
+                        .style(theme::primary),
+                    );
             }
         }
         return body
-            .push(scrollable(form_view.push(action(
-                i,
-                Key::Cancel,
-                Some(Event::Cancel),
-            ))))
+            .push(
+                scrollable(form_view.push(action(i, Key::Cancel, Some(Event::Cancel))))
+                    .style(theme::scroll),
+            )
             .into();
     }
     if let Mode::Publish(image) = &s.mode {
@@ -141,7 +145,7 @@ pub(crate) fn panel<'a>(
         ]
         .padding(8)
         .spacing(6);
-        return body.push(scrollable(form)).into();
+        return body.push(scrollable(form).style(theme::scroll)).into();
     }
     if s.picking() {
         body = body.push(
@@ -207,23 +211,25 @@ pub(crate) fn panel<'a>(
             },
         )
     }));
-    listing = listing.push(scrollable(rows).height(Length::Fill)).push(
-        row![
-            action(
-                i,
-                Key::PreviousFilePart,
-                (s.history.len() > 1 && ready).then_some(Event::Previous)
-            ),
-            action(
-                i,
-                Key::NextFilePart,
-                (s.page.next.is_some() && ready).then_some(Event::Next)
-            ),
-            action(i, Key::DockerRefresh, ready.then_some(Event::Refresh))
-        ]
-        .spacing(5)
-        .padding(4),
-    );
+    listing = listing
+        .push(scrollable(rows).style(theme::scroll).height(Length::Fill))
+        .push(
+            row![
+                action(
+                    i,
+                    Key::PreviousFilePart,
+                    (s.history.len() > 1 && ready).then_some(Event::Previous)
+                ),
+                action(
+                    i,
+                    Key::NextFilePart,
+                    (s.page.next.is_some() && ready).then_some(Event::Next)
+                ),
+                action(i, Key::DockerRefresh, ready.then_some(Event::Refresh))
+            ]
+            .spacing(5)
+            .padding(4),
+        );
     let mut panes = row![listing].height(Length::Fill);
     if let Some(m) = &s.manifest
         && let Some(img) = s.image(false)
@@ -263,8 +269,8 @@ pub(crate) fn panel<'a>(
             details = details.push(text(i.text(Key::RegistryEngine)).size(12))
         }
         panes = panes
-            .push(divider())
-            .push(container(scrollable(details)).width(Length::FillPortion(1)))
+            .push(vertical_divider())
+            .push(container(scrollable(details).style(theme::scroll)).width(Length::FillPortion(1)))
     }
     body.push(panes).into()
 }

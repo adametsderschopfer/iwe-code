@@ -4,6 +4,7 @@ use crate::modules::git::actions::{
     self as git_actions, Message as GitMessage,
     bulk::{Action, Event},
 };
+use crate::ui::modal;
 
 use crate::{
     domain::repository::ReferenceKind,
@@ -12,7 +13,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length, Size,
-    widget::{Column, button, column, container, pick_list, row, scrollable, space, text},
+    widget::{Column, column, container, row, scrollable, text},
 };
 use std::collections::BTreeSet;
 
@@ -54,13 +55,8 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
     let Some(dialog) = &app.state.git_actions.bulk.dialog else {
         return base;
     };
-    let mut content = column![
-        text(app.i18n.text(dialog.action.label()))
-            .size(22)
-            .font(theme::semibold()),
-        text(count(app, dialog.targets.len())).size(14),
-    ]
-    .spacing(16);
+    let mut content = modal::content(app.i18n.text(dialog.action.label()))
+        .push(text(count(app, dialog.targets.len())).size(14));
     let description = match dialog.action {
         Action::Delete
             if dialog
@@ -138,13 +134,9 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
                     ]
                     .width(Length::Fill)
                     .spacing(4),
-                    pick_list(remotes, selected, move |remote| Message::Git(
+                    theme::Select::Standard.view(remotes, selected, move |remote| Message::Git(
                         GitMessage::Bulk(Event::Remote(root.clone(), remote))
-                    ))
-                    .padding(10)
-                    .text_size(13)
-                    .style(theme::select)
-                    .menu_style(theme::select_menu),
+                    )),
                 ]
                 .spacing(12)
                 .align_y(Alignment::Center),
@@ -171,26 +163,26 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
                 .iter()
                 .all(|target| !target.remote.is_empty()));
     content = content.push(
-        row![
-            space().width(Length::Fill),
-            button(text(app.i18n.text(Key::Cancel)).size(14))
-                .padding([10, 16])
-                .style(theme::secondary)
-                .on_press_maybe(
-                    (!app.state.git_actions.pending).then_some(Message::Git(GitMessage::Close))
+        modal::actions()
+            .push(
+                theme::text_button(app.i18n.text(Key::Cancel)).on_press_maybe(
+                    (!app.state.git_actions.pending).then_some(Message::Git(GitMessage::Close)),
                 ),
-            container(
-                button(text(app.i18n.text(dialog.action.label())).size(14))
-                    .padding([10, 16])
-                    .style(theme::primary)
-                    .on_press_maybe(
-                        can_submit.then_some(Message::Git(GitMessage::Bulk(Event::Submit)))
-                    )
             )
-            .id("git-bulk-confirm"),
-        ]
-        .spacing(8)
-        .align_y(Alignment::Center),
+            .push(
+                container(
+                    theme::text_button(app.i18n.text(dialog.action.label()))
+                        .style(if dialog.action == Action::Delete {
+                            theme::danger
+                        } else {
+                            theme::primary
+                        })
+                        .on_press_maybe(
+                            can_submit.then_some(Message::Git(GitMessage::Bulk(Event::Submit))),
+                        ),
+                )
+                .id("git-bulk-confirm"),
+            ),
     );
     crate::ui::modal::overlay(base, content.into(), 620., Message::Git(GitMessage::Close))
 }

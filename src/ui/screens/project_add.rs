@@ -1,6 +1,9 @@
 use super::modal;
 use crate::{
-    app::{App, Message, project_add::Message as Event},
+    app::{
+        App, Message,
+        project_add::{Error, Message as Event},
+    },
     i18n::Key,
     ui::{
         icons::{Icon, icon},
@@ -9,7 +12,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{button, column, container, row, space, text, text_input},
+    widget::{button, column, container, row, text},
 };
 
 pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
@@ -17,62 +20,50 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         return base;
     };
     let available = !draft.pending && !draft.picking;
-    let mut content = column![
-        text(app.i18n.text(if draft.cloning {
-            Key::CloneRepository
-        } else {
-            Key::AddProject
-        }))
-        .size(24)
-        .font(theme::semibold()),
-    ]
-    .spacing(16);
+    let mut content = modal::content(app.i18n.text(if draft.cloning {
+        Key::CloneRepository
+    } else {
+        Key::AddProject
+    }));
     if draft.cloning {
-        let input = text_input(&app.i18n.text(Key::RepositoryUrlPlaceholder), &draft.remote)
+        let input = theme::text_field(&app.i18n.text(Key::RepositoryUrlPlaceholder), &draft.remote)
             .id("clone-url")
-            .padding([10, 14])
-            .size(14)
-            .style(theme::input);
-        let destination = text_input(&app.i18n.text(Key::CloneDestination), &draft.destination)
-            .id("clone-destination")
-            .padding([10, 14])
-            .size(14)
-            .style(theme::input);
+            .style(theme::validated_input(
+                draft.error == Some(Error::InvalidRemote),
+            ));
+        let destination =
+            theme::text_field(&app.i18n.text(Key::CloneDestination), &draft.destination)
+                .id("clone-destination")
+                .style(theme::validated_input(matches!(
+                    draft.error,
+                    Some(Error::Destination | Error::Exists)
+                )));
         content = content
+            .push(theme::labeled_field(
+                app.i18n.text(Key::RepositoryUrl),
+                if available {
+                    input.on_input(|value| Message::ProjectAdd(Event::Url(value)))
+                } else {
+                    input
+                },
+            ))
             .push(
-                column![
-                    text(app.i18n.text(Key::RepositoryUrl))
-                        .size(13)
-                        .style(theme::MUTED.text()),
-                    if available {
-                        input.on_input(|value| Message::ProjectAdd(Event::Url(value)))
-                    } else {
-                        input
-                    },
-                ]
-                .spacing(8),
-            )
-            .push(
-                column![
-                    text(app.i18n.text(Key::CloneDestination))
-                        .size(13)
-                        .style(theme::MUTED.text()),
+                theme::labeled_field(
+                    app.i18n.text(Key::CloneDestination),
                     if available {
                         destination.on_input(|value| Message::ProjectAdd(Event::Destination(value)))
                     } else {
                         destination
                     },
+                )
+                .push(
                     container(
-                        button(text(app.i18n.text(Key::ChooseCloneParent)).size(14))
-                            .padding([10, 14])
-                            .style(theme::secondary)
-                            .on_press_maybe(
-                                available.then_some(Message::ProjectAdd(Event::PickParent))
-                            )
+                        theme::text_button(app.i18n.text(Key::ChooseCloneParent)).on_press_maybe(
+                            available.then_some(Message::ProjectAdd(Event::PickParent)),
+                        ),
                     )
                     .id("clone-pick-parent"),
-                ]
-                .spacing(8),
+                ),
             );
         if let Some(error) = draft.error {
             content = content.push(
@@ -125,39 +116,30 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 .padding(12)
                 .width(Length::Fill)
                 .height(80)
-                .style(|theme, status| {
-                    let mut style = theme::secondary(theme, status);
-                    style.border.radius = 12.0.into();
-                    style
-                }),
+                .style(theme::secondary),
             )
             .id(id)
             .into()
         });
         content = content.push(row(choices).spacing(12));
     }
-    let mut actions = row![
-        space().width(Length::Fill),
+    let mut actions = modal::actions().push(
         container(
-            button(text(app.i18n.text(Key::Cancel)).size(14))
-                .on_press_maybe((!draft.pending).then_some(Message::ProjectAdd(Event::Cancel)))
-                .padding([10, 18])
-                .style(theme::secondary)
+            theme::text_button(app.i18n.text(Key::Cancel))
+                .on_press_maybe((!draft.pending).then_some(Message::ProjectAdd(Event::Cancel))),
         )
         .id("add-project-cancel"),
-    ]
-    .spacing(8);
+    );
     if draft.cloning {
         actions = actions.push(
             container(
-                button(text(app.i18n.text(Key::CloneRepository)).size(14))
+                theme::text_button(app.i18n.text(Key::CloneRepository))
                     .on_press_maybe(
                         (available
                             && !draft.remote.trim().is_empty()
                             && !draft.destination.trim().is_empty())
                         .then_some(Message::ProjectAdd(Event::Clone)),
                     )
-                    .padding([10, 18])
                     .style(theme::primary),
             )
             .id("clone-submit"),
@@ -171,8 +153,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
     )
 }
 
-fn error_key(error: crate::app::project_add::Error) -> Key {
-    use crate::app::project_add::Error;
+fn error_key(error: Error) -> Key {
     match error {
         Error::InvalidRemote => Key::CloneInvalidRemote,
         Error::Destination => Key::CloneInvalidDestination,

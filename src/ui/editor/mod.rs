@@ -11,6 +11,7 @@ mod syntax;
 
 const TEXT_PADDING: f32 = 12.;
 
+use crate::ui::modal;
 use crate::{
     app::{
         App, Message,
@@ -22,7 +23,7 @@ use crate::{
 };
 use iced::{
     Element, Length,
-    widget::{button, column, container, row, space, text, text_editor},
+    widget::{column, container, row, space, text, text_editor},
 };
 
 pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message> {
@@ -218,15 +219,7 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
             }
             Binding::from_key_press(key)
         })
-        .style(|style_theme, _| text_editor::Style {
-            background: theme::code_surface(style_theme)
-                .background
-                .unwrap_or(iced::Color::TRANSPARENT.into()),
-            border: iced::Border::default(),
-            placeholder: theme::MUTED.resolve(style_theme),
-            value: theme::syntax::TEXT.resolve(style_theme),
-            selection: theme::CODE_SELECTION.resolve(style_theme),
-        });
+        .style(theme::code_editor);
     let editor: Element<'_, Message> = if let Some(search) = app.file_search() {
         iced::widget::stack![
             editor,
@@ -380,6 +373,7 @@ pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                     }
                 }
                 let lines = iced::widget::scrollable(lines)
+                    .style(theme::scroll)
                     .direction(iced::widget::scrollable::Direction::Both {
                         vertical: Default::default(),
                         horizontal: Default::default(),
@@ -393,13 +387,13 @@ pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                         Message::Editor(Event::Marks(crate::app::editor::marks::Event::Page(next)))
                     };
                     popup = popup.push(row![
-                        button(text(app.i18n.text(Key::PreviousFilePart)).size(12))
+                        theme::compact_button(app.i18n.text(Key::PreviousFilePart))
                             .on_press_maybe((page > 0).then(|| message(false)))
                             .style(theme::action(false)),
                         space().width(Length::Fill),
                         text(format!("{} / {pages}", page + 1)).size(12),
                         space().width(Length::Fill),
-                        button(text(app.i18n.text(Key::NextFilePart)).size(12))
+                        theme::compact_button(app.i18n.text(Key::NextFilePart))
                             .on_press_maybe((page + 1 < pages).then(|| message(true)))
                             .style(theme::action(false))
                     ]);
@@ -427,7 +421,7 @@ pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         .files
         .iter()
         .any(|tab| tab.editor.as_ref().is_some_and(|buffer| buffer.saving));
-    let mut files = column![text(app.i18n.text(Key::EditorUnsavedTitle)).size(20)].spacing(12);
+    let mut files = modal::content(app.i18n.text(Key::EditorUnsavedTitle));
     for tab in app.tabs.files.iter().filter(|tab| {
         app.editor_pending_tab(tab.id) && tab.editor.as_ref().is_some_and(Buffer::protected)
     }) {
@@ -440,18 +434,19 @@ pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         files = files.push(text(app.i18n.text(Key::EditorSaving)).size(12));
     }
     let action = |key, event, enabled: bool| {
-        button(text(app.i18n.text(key)).size(13))
+        theme::text_button(app.i18n.text(key))
             .on_press_maybe(enabled.then_some(Message::Editor(event)))
-            .style(theme::action(false))
+            .style(match key {
+                Key::EditorDiscard => theme::danger,
+                Key::EditorSaveAll => theme::primary,
+                _ => theme::secondary,
+            })
     };
     files = files.push(
-        row![
-            action(Key::Cancel, Event::Cancel, true),
-            space().width(Length::Fill),
-            action(Key::EditorDiscard, Event::Discard, !busy),
-            action(Key::EditorSaveAll, Event::SaveAll, !busy)
-        ]
-        .spacing(8),
+        modal::actions()
+            .push(action(Key::Cancel, Event::Cancel, true))
+            .push(action(Key::EditorDiscard, Event::Discard, !busy))
+            .push(action(Key::EditorSaveAll, Event::SaveAll, !busy)),
     );
     crate::ui::modal::overlay(base, files.into(), 560., Message::Editor(Event::Cancel))
 }

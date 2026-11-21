@@ -8,7 +8,7 @@ use crate::{
 };
 use iced::{
     Element, Size,
-    widget::{button, column, image, row, text},
+    widget::{column, image, row, text},
 };
 
 pub(crate) fn submenu<'a, M: Clone + 'a>(
@@ -51,9 +51,7 @@ pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         return base;
     };
     let action = |key, event| {
-        button(text(app.i18n.text(key)).size(14))
-            .padding([8, 12])
-            .style(theme::secondary)
+        theme::text_button(app.i18n.text(key))
             .on_press_maybe((!request.busy).then_some(Message::Explain(event)))
     };
     let body = if request.busy {
@@ -73,16 +71,15 @@ pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
     };
     modal::overlay(
         base,
-        column![
-            text("Codex").font(theme::semibold()).size(22),
-            body,
-            button(text(app.i18n.text(Key::Cancel)).size(14))
-                .padding([8, 12])
-                .style(theme::secondary)
-                .on_press(Message::Explain(Event::Cancel)),
-        ]
-        .spacing(16)
-        .into(),
+        modal::content("Codex")
+            .push(body)
+            .push(
+                modal::actions().push(
+                    theme::text_button(app.i18n.text(Key::Cancel))
+                        .on_press(Message::Explain(Event::Cancel)),
+                ),
+            )
+            .into(),
         480.,
         Message::Explain(Event::Cancel),
     )

@@ -81,8 +81,7 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
     {
         heading = heading.push(
             container(
-                button(text(app.i18n.text(Key::CancelPipeline)).size(12))
-                    .padding([6, 10])
+                theme::compact_button(app.i18n.text(Key::CancelPipeline))
                     .style(theme::action(false))
                     .on_press_maybe((!busy).then_some(Message::Jobs(Event::Control(
                         run.id,
@@ -121,15 +120,11 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
                     .size(12)
                     .style(theme::RED.text())
                     .width(Length::Fill),
-                button(
-                    text(
-                        app.i18n
-                            .text(if access { Key::SignIn } else { Key::Refresh })
-                    )
-                    .size(12)
-                )
-                .padding([6, 10])
-                .style(theme::secondary)
+                theme::compact_button(app.i18n.text(if access {
+                    Key::SignIn
+                } else {
+                    Key::Refresh
+                }))
                 .on_press(if access {
                     Message::SignIn
                 } else {
@@ -198,8 +193,7 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
                     let label = action_label(provider, *action);
                     item = item.push(
                         container(
-                            button(text(app.i18n.text(label)).size(12))
-                                .padding([6, 10])
+                            theme::compact_button(app.i18n.text(label))
                                 .style(theme::action(false))
                                 .on_press_maybe((!busy).then_some(Message::Jobs(Event::Control(
                                     run.id,

@@ -1,4 +1,5 @@
-use super::workspace::divider;
+use crate::ui::modal;
+use crate::ui::presentation::{divider, vertical_divider};
 use crate::{
     app::{App, Message, SettingsTab},
     domain::{shortcuts::Command, workspace::Appearance},
@@ -7,7 +8,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{button, column, container, pick_list, row, scrollable, slider, text, toggler},
+    widget::{column, container, row, scrollable, slider, text},
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -87,8 +88,7 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
         }
         tabs = tabs.push(
             container(
-                button(text(t(key)).size(13))
-                    .padding([8, 12])
+                theme::text_button(t(key))
                     .width(Length::Fill)
                     .on_press(Message::SelectSettingsTab(tab))
                     .style(theme::action(selected == tab)),
@@ -117,14 +117,11 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
                     t(Key::Language),
                     t(Key::LanguageDescription),
                     container(
-                        pick_list(languages, selected, |option| Message::SetLanguage(
-                            option.value
-                        ))
-                        .text_size(13)
-                        .padding([8, 12])
-                        .width(180)
-                        .style(theme::select)
-                        .menu_style(theme::select_menu)
+                        theme::Select::Standard
+                            .view(languages, selected, |option| Message::SetLanguage(
+                                option.value
+                            ))
+                            .width(180)
                     )
                     .id("settings-language-select")
                     .into()
@@ -158,14 +155,10 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
                     t(Key::Appearance),
                     t(Key::AppearanceDescription),
                     row([Appearance::Dark, Appearance::Light].map(|appearance| {
-                        button(
-                            text(t(match appearance {
-                                Appearance::Dark => Key::Dark,
-                                Appearance::Light => Key::Light,
-                            }))
-                            .size(13),
-                        )
-                        .padding([8, 14])
+                        theme::text_button(t(match appearance {
+                            Appearance::Dark => Key::Dark,
+                            Appearance::Light => Key::Light,
+                        }))
                         .on_press(Message::SetAppearance(appearance))
                         .style(theme::action(preferences.appearance == appearance))
                         .into()
@@ -199,16 +192,14 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
             setting(
                 t(Key::LineNumbers),
                 t(Key::LineNumbersDescription),
-                toggler(preferences.line_numbers)
-                    .style(theme::toggle)
+                theme::switch(preferences.line_numbers)
                     .on_toggle(Message::SetLineNumbers)
                     .into()
             ),
             setting(
                 t(Key::RestoreProjectTabs),
                 t(Key::RestoreProjectTabsDescription),
-                toggler(preferences.restore_project_tabs)
-                    .style(theme::toggle)
+                theme::switch(preferences.restore_project_tabs)
                     .on_toggle(Message::SetRestoreProjectTabs)
                     .into()
             ),
@@ -415,7 +406,7 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
         Some(true) => (content.into(), app.windows.connections),
         Some(false) => (content.into(), app.windows.deployment),
         None => (
-            row![navigation, super::workspace::vertical_divider(), content]
+            row![navigation, vertical_divider(), content]
                 .height(Length::Fill)
                 .width(Length::Fill)
                 .into(),
@@ -517,9 +508,8 @@ fn language_servers(app: &App) -> Element<'_, Message> {
         let detail = configured.map_or(program, String::as_str);
         let action = |key, message, name| {
             container(
-                button(text(t(key)).size(12))
+                theme::compact_button(t(key))
                     .on_press(message)
-                    .padding([6, 9])
                     .style(theme::action(false)),
             )
             .id(format!("language-server-{name}-{id}"))
@@ -612,15 +602,12 @@ fn typography(app: &App, terminal: bool) -> Element<'_, Message> {
             app.i18n.text(Key::FontFamily),
             app.i18n.text(Key::FontFamilyDescription),
             container(
-                pick_list(choices, selected, move |option| Message::SetFont(
-                    terminal,
-                    option.value
-                ))
-                .text_size(13)
-                .padding([8, 12])
-                .width(180)
-                .style(theme::select)
-                .menu_style(theme::select_menu)
+                theme::Select::Standard
+                    .view(choices, selected, move |option| Message::SetFont(
+                        terminal,
+                        option.value
+                    ))
+                    .width(180)
             )
             .id("settings-font-family-select")
             .into()
@@ -668,8 +655,7 @@ fn shortcut_control(app: &App, command: Command) -> Element<'_, Message> {
     use crate::app::shortcuts::Event;
     let label = app.workspace.preferences.shortcuts.binding(command).label();
     let mut content = column![
-        button(text(label).size(13))
-            .padding([8, 14])
+        theme::text_button(label)
             .on_press(Message::Shortcut(Event::Record(command)))
             .style(theme::action(false)),
     ]
@@ -690,28 +676,20 @@ pub(crate) fn shortcut_recording_overlay<'a>(
         return base;
     }
     let cancel = Message::Shortcut(crate::app::shortcuts::Event::Cancel);
-    let mut content = column![
-        text(app.i18n.text(Key::ShortcutRecording))
-            .size(20)
-            .font(theme::semibold()),
+    let mut content = modal::content(app.i18n.text(Key::ShortcutRecording)).push(
         text(app.i18n.text(Key::ShortcutInstructions))
             .size(13)
             .style(theme::MUTED.text()),
-    ]
-    .spacing(14);
+    );
     if let Some(error) = app.shortcuts.error {
         content = content.push(text(app.i18n.text(error)).size(13).style(theme::RED.text()));
     }
-    content = content.push(row![
-        iced::widget::space().width(Length::Fill),
-        container(
-            button(text(app.i18n.text(Key::Cancel)).size(13))
-                .on_press(cancel.clone())
-                .padding([8, 14])
-                .style(theme::action(false))
-        )
-        .id("shortcut-recording-cancel"),
-    ]);
+    content = content.push(
+        modal::actions().push(
+            container(theme::text_button(app.i18n.text(Key::Cancel)).on_press(cancel.clone()))
+                .id("shortcut-recording-cancel"),
+        ),
+    );
     super::modal::overlay(
         base,
         container(content).id("shortcut-recording-dialog").into(),

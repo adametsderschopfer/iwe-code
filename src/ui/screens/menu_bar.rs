@@ -7,8 +7,8 @@ use crate::{
     ui::{context_menu, theme},
 };
 use iced::{
-    Element, Length, Size,
-    widget::{Column, Row, button, column, container, text},
+    Element, Size,
+    widget::{Column, Row, column, container, text},
 };
 
 pub(super) fn header_prefix(app: &App) -> Element<'_, Message> {
@@ -82,13 +82,13 @@ fn file_items(app: &App) -> Element<'_, Message> {
             app.i18n.text(Key::AddProject),
             enabled.then(|| Message::ProjectAdd(crate::app::project_add::Message::Open(None))),
         ),
-        separator(),
+        context_menu::separator(),
         item(
             "menu-item-settings",
             app.i18n.text(Key::Settings),
             enabled.then(|| Message::Navigate(Navigation::Settings)),
         ),
-        separator(),
+        context_menu::separator(),
         item(
             "menu-item-exit",
             app.i18n.text(Key::MenuExit),
@@ -164,21 +164,7 @@ fn item<'a>(
     label: String,
     message: Option<Message>,
 ) -> Element<'a, Message> {
-    container(
-        button(
-            text(label)
-                .size(context_menu::TEXT_SIZE)
-                .wrapping(text::Wrapping::None),
-        )
-        .on_press_maybe(message)
-        .padding(context_menu::ROW_PADDING)
-        .width(Length::Fill)
-        .style(theme::action(false)),
-    )
-    .id(widget_id)
-    .into()
-}
-
-fn separator() -> Element<'static, Message> {
-    context_menu::separator()
+    container(context_menu::text_row(label).on_press_maybe(message))
+        .id(widget_id)
+        .into()
 }

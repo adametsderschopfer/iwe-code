@@ -9,6 +9,7 @@ use crate::modules::pipelines::{
 };
 
 use super::{divider, icon_button, jobs, status};
+use crate::ui::presentation::IconButton;
 use crate::ui::tooltip;
 use crate::{
     domain::{
@@ -17,11 +18,7 @@ use crate::{
         repository::{Pipeline, Provider},
     },
     i18n::{FluentArgs, Key},
-    ui::{
-        context_menu, ellipsis,
-        icons::{Icon, icon},
-        theme,
-    },
+    ui::{context_menu, ellipsis, icons::Icon, theme},
 };
 use iced::{
     Alignment, Element, Length, Size,
@@ -224,13 +221,12 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
                     tooltip::Position::Top
                 ),
                 tooltip::view(
-                    button(icon(Icon::Refresh, theme::MUTED))
-                        .padding(5)
-                        .style(theme::icon_action(false))
-                        .on_press_maybe(
-                            (!entry.is_loading() && app.state.jobs.pending.is_none())
-                                .then_some(message(Event::Refresh(popup.pipeline)))
-                        ),
+                    IconButton::Tool.button(
+                        Icon::Refresh,
+                        (!entry.is_loading() && app.state.jobs.pending.is_none())
+                            .then_some(message(Event::Refresh(popup.pipeline))),
+                        false
+                    ),
                     text(app.i18n.text(Key::Refresh)).size(12),
                     tooltip::Position::Top
                 ),
@@ -289,10 +285,8 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
             }
             body = body.push(divider()).push(
                 container(
-                    button(text(app.i18n.text(Key::ViewPipelineJobs)).size(12))
-                        .on_press(Message::Jobs(JobsEvent::Select(popup.pipeline)))
-                        .padding(context_menu::ROW_PADDING)
-                        .style(theme::action(false)),
+                    context_menu::text_row(app.i18n.text(Key::ViewPipelineJobs))
+                        .on_press(Message::Jobs(JobsEvent::Select(popup.pipeline))),
                 )
                 .id("pipeline-popup-details"),
             );
@@ -331,12 +325,15 @@ fn job_row<'a>(app: View<'a>, pipeline: u64, job: &'a Job) -> Element<'a, Messag
         };
         item = item.push(tooltip::view(
             container(
-                button(icon(glyph, theme::MUTED))
-                    .padding(5)
-                    .style(theme::secondary)
-                    .on_press_maybe((!app.job_controls_blocked(pipeline)).then_some(
-                        Message::Jobs(JobsEvent::Control(pipeline, Action::Job(job.id, *action))),
-                    )),
+                IconButton::Tool
+                    .button(
+                        glyph,
+                        (!app.job_controls_blocked(pipeline)).then_some(Message::Jobs(
+                            JobsEvent::Control(pipeline, Action::Job(job.id, *action)),
+                        )),
+                        false,
+                    )
+                    .style(theme::secondary),
             )
             .id(format!("pipeline-popup-action-{}-{action:?}", job.id)),
             text(app.i18n.text(jobs::action_label(provider, *action))).size(12),

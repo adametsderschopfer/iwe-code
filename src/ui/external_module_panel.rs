@@ -7,10 +7,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{
-        Checkbox, button, column, container, progress_bar, row, scrollable, space, text,
-        text_input, toggler,
-    },
+    widget::{column, container, progress_bar, row, scrollable, space, text},
 };
 
 fn message(module: &str, widget: &str, action: WidgetAction) -> crate::app::Message {
@@ -72,18 +69,14 @@ pub(crate) fn render<'a>(
         } => {
             let widget = id.clone();
             let module_id = module.to_owned();
-            button(text(label).size(13))
+            theme::text_button(label)
                 .on_press_maybe(
                     (!disabled).then(|| message(&module_id, &widget, WidgetAction::Click)),
                 )
-                .padding([8, 14])
                 .style(match style {
-                    ButtonStyle::Primary => {
-                        theme::primary as fn(&iced::Theme, button::Status) -> button::Style
-                    }
-                    ButtonStyle::Secondary | ButtonStyle::Danger => {
-                        theme::secondary as fn(&iced::Theme, button::Status) -> button::Style
-                    }
+                    ButtonStyle::Primary => theme::primary,
+                    ButtonStyle::Secondary => theme::secondary,
+                    ButtonStyle::Danger => theme::danger,
                 })
                 .into()
         }
@@ -95,18 +88,16 @@ pub(crate) fn render<'a>(
         } => {
             let widget = id.clone();
             let module_id = module.to_owned();
-            text_input(placeholder, value)
+            theme::text_field(placeholder, value)
                 .on_input_maybe((!disabled).then_some(move |input: String| {
                     message(&module_id, &widget, WidgetAction::Change { value: input })
                 }))
-                .size(13)
-                .style(theme::input)
                 .into()
         }
         WidgetNode::Checkbox { id, label, checked } => {
             let widget = id.clone();
             let module_id = module.to_owned();
-            Checkbox::new(*checked)
+            theme::checkbox(*checked)
                 .label(label.clone())
                 .on_toggle(move |value: bool| {
                     message(&module_id, &widget, WidgetAction::Toggle { value })
@@ -122,22 +113,20 @@ pub(crate) fn render<'a>(
             let widget = id.clone();
             let module_id = module.to_owned();
             container(
-                toggler(*checked)
-                    .on_toggle_maybe((!disabled).then_some(move |value: bool| {
-                        message(&module_id, &widget, WidgetAction::Toggle { value })
-                    }))
-                    .style(theme::toggle),
+                theme::switch(*checked).on_toggle_maybe((!disabled).then_some(
+                    move |value: bool| message(&module_id, &widget, WidgetAction::Toggle { value }),
+                )),
             )
             .into()
         }
-        WidgetNode::Progress { value } => container(progress_bar(0.0..=1.0, *value).girth(6))
-            .width(Length::Fill)
-            .into(),
-        WidgetNode::Separator => container(space())
-            .height(1)
-            .width(Length::Fill)
-            .style(theme::separator)
-            .into(),
+        WidgetNode::Progress { value } => container(
+            progress_bar(0.0..=1.0, *value)
+                .girth(6)
+                .style(theme::source_progress),
+        )
+        .width(Length::Fill)
+        .into(),
+        WidgetNode::Separator => crate::ui::presentation::divider(),
         WidgetNode::Scroll { child } => scrollable(render(module, child))
             .style(theme::scroll)
             .height(Length::Fill)
@@ -167,14 +156,9 @@ pub(crate) fn zone_panel<'a>(
             external::Event::SelectZone(zone, module.manifest.id.clone()),
         ));
         tabs = tabs.push(
-            button(text(name).size(12).style(if selected {
-                theme::TEXT.text()
-            } else {
-                theme::MUTED.text()
-            }))
-            .on_press(select)
-            .padding([4, 10])
-            .style(theme::action(selected)),
+            theme::compact_button(name)
+                .on_press(select)
+                .style(theme::action(selected)),
         );
         let panel = app
             .modules
@@ -187,15 +171,12 @@ pub(crate) fn zone_panel<'a>(
         }
     }
     let body = match active_panel {
-        Some((id, Some(panel))) => render(id, panel),
+        Some((id, Some(panel))) => super::focus::form(render(id, panel)),
         _ => container(space()).into(),
     };
     column![
         container(tabs).padding([6, 12]).width(Length::Fill),
-        container(space())
-            .height(1)
-            .width(Length::Fill)
-            .style(theme::separator),
+        crate::ui::presentation::divider(),
         container(body).padding(12).width(Length::Fill),
     ]
     .width(Length::Fill)
@@ -210,7 +191,7 @@ pub(crate) fn header_panel<'a>(app: &'a crate::app::App) -> Element<'a, crate::a
         if let Some(state) = app.modules.external.sessions.get(&module.manifest.id)
             && let Some(panel) = &state.panel
         {
-            strip = strip.push(render(&module.manifest.id, panel));
+            strip = strip.push(super::focus::form(render(&module.manifest.id, panel)));
         }
     }
     container(strip).into()

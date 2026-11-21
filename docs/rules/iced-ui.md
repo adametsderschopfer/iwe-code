@@ -77,6 +77,9 @@ Avoid hardcoded styling values scattered across features.
 
 Prefer reusable, composable UI components.
 
+Use the [shared Iced components](../architecture.md#shared-iced-components) in workspace and module
+views. Apply the theme's field constructors, button roles, and dialog components directly.
+
 Keep graph style presets in `ui/theme` when presets exist. Pass the selected style from workspace
 state to the renderer. Add future presets through the same typed boundary. Keep style parameters
 separate from stored relationships and coordinates.

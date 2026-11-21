@@ -2,7 +2,6 @@
 
 mod form;
 mod output;
-pub(super) mod style;
 
 use super::{Action, Error, Event, Kind, PAGE, State};
 use crate::{
@@ -10,14 +9,14 @@ use crate::{
     ui::{
         context_menu, ellipsis,
         icons::{Icon, sized_icon},
-        modal, theme, tool_rail, tooltip,
+        modal,
+        presentation::{IconButton, vertical_divider},
+        theme, tool_rail,
     },
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{
-        button, column, container, pick_list, responsive, row, scrollable, space, text, text_input,
-    },
+    widget::{button, column, container, responsive, row, scrollable, space, text},
 };
 
 pub(super) fn error_key(error: Error) -> Key {
@@ -58,24 +57,6 @@ fn glyph(kind: Kind) -> Icon {
     }
 }
 
-pub(super) fn tool<'a>(
-    i18n: &I18n,
-    symbol: Icon,
-    label: Key,
-    message: Option<Event>,
-) -> Element<'a, Event> {
-    tooltip::view(
-        button(sized_icon(symbol, theme::MUTED, 16.))
-            .on_press_maybe(message)
-            .padding(4)
-            .style(style::button(theme::icon_action(false))),
-        text(i18n.text(label)).size(12),
-        tooltip::Position::Bottom,
-    )
-    .style(style::surface(theme::tooltip))
-    .into()
-}
-
 fn section<'a>(
     id: &'static str,
     header: Element<'a, Event>,
@@ -104,10 +85,7 @@ fn heading<'a>(state: &'a State, i18n: &I18n, width: f32) -> Element<'a, Event> 
         text(i18n.text(Key::Docker))
             .font(theme::semibold())
             .size(15),
-        container(space())
-            .width(1)
-            .height(18)
-            .style(theme::separator),
+        vertical_divider().height(18),
     ]
     .spacing(GUTTER)
     .align_y(Alignment::Center);
@@ -116,32 +94,29 @@ fn heading<'a>(state: &'a State, i18n: &I18n, width: f32) -> Element<'a, Event> 
     }
     heading
         .push(
-            pick_list(
-                state.contexts.as_slice(),
-                state.context.as_ref(),
-                Event::Context,
-            )
-            .placeholder(i18n.text(Key::DockerConnection))
-            .width((width - 185.).clamp(55., 188.))
-            .text_size(12)
-            .padding([3, 8])
-            .style(style::select)
-            .menu_style(style::menu),
+            theme::Select::Compact
+                .view(
+                    state.contexts.as_slice(),
+                    state.context.as_ref(),
+                    Event::Context,
+                )
+                .placeholder(i18n.text(Key::DockerConnection))
+                .width((width - 185.).clamp(55., 188.)),
         )
-        .push(tool(
+        .push(IconButton::Compact.view(
             i18n,
             Icon::Plus,
             Key::DockerAddContext,
             ready.then_some(Event::Act(Action::AddContext)),
         ))
-        .push(tool(
+        .push(IconButton::Compact.view(
             i18n,
             Icon::Refresh,
             Key::DockerRefresh,
             ready.then_some(Event::Connections),
         ))
         .push(space().width(Length::Fill))
-        .push(tool(i18n, Icon::Close, Key::DockerClose, Some(Event::Hide)))
+        .push(IconButton::Compact.view(i18n, Icon::Close, Key::DockerClose, Some(Event::Hide)))
         .into()
 }
 
@@ -164,7 +139,7 @@ fn navigation<'a>(state: &State, i18n: &I18n) -> Element<'a, Event> {
     }
     links = links.push(tool_rail::item(
         "docker-registries",
-        Icon::Server,
+        Icon::Tag,
         i18n.text(Key::Registries),
         state.registry_open,
         Some(Event::Registry(super::registry::Event::Open)),
@@ -183,19 +158,16 @@ fn status_key(kind: Kind) -> Key {
 fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Event> {
     let ready = state.busy.is_none();
     let create = state.kind.create();
-    let search = text_input(&i18n.text(Key::DockerFilter), &state.query)
+    let search = theme::compact_field(&i18n.text(Key::DockerFilter), &state.query)
         .id("docker-filter")
-        .on_input(Event::Search)
-        .size(12)
-        .padding([5, 8])
-        .style(style::input);
+        .on_input(Event::Search);
     let mut header = row![
         text(i18n.text(state.kind.key()))
             .font(theme::semibold())
             .size(14),
         container(text(state.filtered.len().to_string()).size(11))
             .padding([1, 6])
-            .style(style::surface(theme::badge)),
+            .style(theme::badge),
         search.width(Length::Fill),
     ]
     .align_y(Alignment::Center)
@@ -204,7 +176,7 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
         let available = ready && state.context.is_some() && state.connection_error.is_none();
         let event = available.then_some(Event::Act(action));
         if width < 440. {
-            tool(i18n, symbol, action.key(), event)
+            IconButton::Compact.view(i18n, symbol, action.key(), event)
         } else {
             button(
                 row![
@@ -216,7 +188,7 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
             )
             .on_press_maybe(event)
             .padding([3, 6])
-            .style(style::button(theme::secondary))
+            .style(theme::secondary)
             .into()
         }
     };
@@ -229,7 +201,7 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
     if state.kind == Kind::Images {
         header = header.push(command(Action::Build, Icon::Cube));
     }
-    header = header.push(tool(
+    header = header.push(IconButton::Compact.view(
         i18n,
         Icon::Refresh,
         Key::DockerRefresh,
@@ -291,9 +263,7 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
             .width(Length::Fill)
             .padding([4, 8])
             .on_press_maybe(ready.then(|| Event::Select(id.clone())))
-            .style(style::button(theme::tree_item(
-                state.selected.as_ref() == Some(id),
-            )));
+            .style(theme::tree_item(state.selected.as_ref() == Some(id)));
         let resource = context_menu::trigger(row, move |point| Event::Menu(id.clone(), point));
         let mut resource = container(resource).width(Length::Fill);
         if state.selected.as_ref() == Some(id) {
@@ -316,7 +286,7 @@ fn inventory<'a>(state: &'a State, i18n: &'a I18n, width: f32) -> Element<'a, Ev
             scrollable(rows)
                 .id("docker-rows")
                 .height(Length::Fill)
-                .style(style::scroll)
+                .style(theme::scroll)
                 .into(),
             |event, point| match event {
                 Event::Menu(id, _) => Event::Menu(id, point),
@@ -348,14 +318,14 @@ fn pagination<'a>(
 ) -> Element<'a, Event> {
     row![
         space().width(Length::Fill),
-        tool(
+        IconButton::Compact.view(
             i18n,
             Icon::Back,
             Key::PreviousFilePart,
             (page > 0).then(|| event(false))
         ),
         text(format!("{} / {}", page + 1, pages)).size(12),
-        tool(
+        IconButton::Compact.view(
             i18n,
             Icon::Right,
             Key::NextFilePart,
@@ -387,14 +357,14 @@ fn running_list<'a>(state: &'a State, i18n: &I18n) -> Element<'a, Event> {
                                 .is_none()
                                 .then(|| Event::OpenContainer(item.id.clone())),
                         )
-                        .style(style::button(theme::tree_item(false)))
+                        .style(theme::tree_item(false))
                         .into()
                 }),
         );
         contents = contents.push(
             scrollable(buttons)
                 .height(Length::Fill)
-                .style(style::scroll),
+                .style(theme::scroll),
         );
         if rows.len() > PAGE {
             contents = contents.push(context_menu::separator()).push(pagination(
@@ -429,7 +399,7 @@ fn properties<'a>(
     let mut header = row![].spacing(6).align_y(Alignment::Center);
     if compact {
         header = header.push(
-            container(tool(
+            container(IconButton::Compact.view(
                 i18n,
                 Icon::Back,
                 Key::DockerBack,
@@ -441,13 +411,12 @@ fn properties<'a>(
     if state.kind == Kind::Images {
         for (linked, key) in [(false, Key::DockerDetails), (true, Key::DockerContainers)] {
             header = header.push(
-                button(text(i18n.text(key)).size(12))
+                theme::compact_button(i18n.text(key))
                     .on_press_maybe(
                         (linked != state.show_running && (!linked || state.busy.is_none()))
                             .then_some(Event::ShowRunning(linked)),
                     )
-                    .padding([3, 5])
-                    .style(style::button(theme::action(linked == state.show_running))),
+                    .style(theme::action(linked == state.show_running)),
             );
         }
         if state.show_running {
@@ -489,7 +458,7 @@ fn properties<'a>(
                     )
                     .padding(0)
                     .on_press_maybe(state.busy.is_none().then_some(Event::OpenImage))
-                    .style(style::button(theme::action(false))),
+                    .style(theme::action(false)),
                 )
                 .id("docker-open-image")
                 .into()
@@ -521,29 +490,23 @@ fn properties<'a>(
     }
     if state.kind == Kind::Compose {
         buttons = buttons.push(
-            button(text(i18n.text(Key::DockerGraph)).size(12))
-                .on_press_maybe(
-                    state
-                        .busy
-                        .is_none()
-                        .then(|| Event::ProjectGraph(item.id.clone())),
-                )
-                .padding([3, 6])
-                .style(style::button(theme::secondary)),
+            theme::compact_button(i18n.text(Key::DockerGraph)).on_press_maybe(
+                state
+                    .busy
+                    .is_none()
+                    .then(|| Event::ProjectGraph(item.id.clone())),
+            ),
         );
     }
     for action in Action::actions(state.kind, item, terminal) {
-        let label = text(i18n.text(action.key())).size(12);
-        let label = if action == Action::Remove {
-            label.style(theme::RED.text())
-        } else {
-            label
-        };
         buttons = buttons.push(
-            button(label)
+            theme::compact_button(i18n.text(action.key()))
                 .on_press_maybe(state.busy.is_none().then_some(Event::Act(action)))
-                .padding([3, 6])
-                .style(style::button(theme::secondary)),
+                .style(if action == Action::Remove {
+                    theme::danger
+                } else {
+                    theme::secondary
+                }),
         );
     }
     let details = column![
@@ -558,7 +521,7 @@ fn properties<'a>(
         header.into(),
         scrollable(details)
             .height(Length::Fill)
-            .style(style::scroll)
+            .style(theme::scroll)
             .into(),
         Length::Fill,
     )
@@ -568,16 +531,10 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
     responsive(move |size| {
         let compact = size.width < COMPACT_WIDTH;
         let selected = state.selected();
-        let divider = || {
-            container(space())
-                .width(1)
-                .height(Length::Fill)
-                .style(theme::separator)
-        };
-        let mut body = row![navigation(state, i18n), divider()].height(Length::Fill);
+        let mut body = row![navigation(state, i18n), vertical_divider()].height(Length::Fill);
         let body = if state.registry_open {
             body.push(
-                super::registry::panel(
+                crate::ui::focus::form(super::registry::panel(
                     &state.registry,
                     &state.profiles,
                     state
@@ -585,7 +542,7 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
                         .as_deref()
                         .filter(|_| state.connection_error.is_none()),
                     i18n,
-                )
+                ))
                 .map(Event::Registry),
             )
             .into()
@@ -614,7 +571,7 @@ pub(crate) fn panel<'a>(state: &'a State, i18n: &'a I18n, terminal: bool) -> Ele
                 let properties = properties(state, item, i18n, terminal, compact);
                 if split {
                     body = body
-                        .push(divider())
+                        .push(vertical_divider())
                         .push(container(properties).width(properties_width));
                 } else {
                     body = body.push(properties);
@@ -694,7 +651,6 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
             },
             850.,
             map(Event::Dismiss),
-            style::surface(theme::dialog),
         );
     }
     if let Some(project) = &state.project_graph {
@@ -708,7 +664,6 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
             },
             850.,
             map(Event::Dismiss),
-            style::surface(theme::dialog),
         );
     }
     if let Some(draft) = &state.draft {
@@ -717,7 +672,6 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
             move |height| form::contents(state, draft, i18n, map, height),
             516.,
             map(Event::Dismiss),
-            style::surface(theme::dialog),
         );
     }
     if let Some((id, point)) = &state.menu
@@ -735,7 +689,7 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
                         .push(
                             container(
                                 context_menu::row(context_menu::label(key, i18n.text(key)))
-                                    .style(style::button(context_menu::action_style(key, false)))
+                                    .style(context_menu::action_style(key, false))
                                     .on_press(map(Event::ProjectGraph(id.clone()))),
                             )
                             .id("docker-menu-project-graph"),
@@ -747,10 +701,7 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
                         action.key(),
                         i18n.text(action.key()),
                     ))
-                    .style(style::button(context_menu::action_style(
-                        action.key(),
-                        false,
-                    )))
+                    .style(context_menu::action_style(action.key(), false))
                     .on_press(map(Event::Act(*action)));
                     if *action == Action::Remove {
                         container(row).id("docker-menu-remove").into()
@@ -758,11 +709,12 @@ pub(crate) fn overlay<'a, M: Clone + 'a>(
                         row.into()
                     }
                 }));
-                iced::widget::opaque(
-                    container(scrollable(rows).height(Length::Shrink).style(style::scroll))
-                        .padding(context_menu::SURFACE_PADDING)
-                        .width((210. + context_menu::ICON_COLUMN_WIDTH).min(available))
-                        .style(style::surface(theme::tooltip)),
+                context_menu::surface(
+                    scrollable(rows)
+                        .height(Length::Shrink)
+                        .style(theme::scroll)
+                        .into(),
+                    (210. + context_menu::ICON_COLUMN_WIDTH).min(available),
                 )
             },
             map(Event::Dismiss),

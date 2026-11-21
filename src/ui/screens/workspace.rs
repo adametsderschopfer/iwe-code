@@ -9,6 +9,7 @@ use crate::{
     ui::{
         changed_tree, code, context_menu, external_module_panel, file_icons,
         icons::{Icon, icon, sized_icon},
+        presentation::{IconButton, center_message, divider, icon_button, short, vertical_divider},
         reorder, resize, tab_label, theme,
     },
 };
@@ -318,7 +319,7 @@ fn header(app: &App) -> Element<'_, Message> {
     }
     let action = if is_settings {
         icon_button(
-            app,
+            &app.i18n,
             Icon::Close,
             Key::BackToWorkspace,
             Message::Navigate(Navigation::Projects),
@@ -326,7 +327,7 @@ fn header(app: &App) -> Element<'_, Message> {
         )
     } else {
         icon_button(
-            app,
+            &app.i18n,
             Icon::Refresh,
             Key::RefreshGitRepositories,
             Message::RefreshGitRepositories,
@@ -337,7 +338,7 @@ fn header(app: &App) -> Element<'_, Message> {
     if !is_settings {
         heading = heading.push(
             container(icon_button(
-                app,
+                &app.i18n,
                 Icon::Settings,
                 Key::Settings,
                 Message::Navigate(Navigation::Settings),
@@ -384,7 +385,7 @@ fn header_controls(app: &App, panel_span: f32) -> Element<'_, Message> {
     let minimum = inset + theme::WORKSPACE_HEADER_BUTTON_SIZE + 8.;
     let controls = row![
         container(icon_button(
-            app,
+            &app.i18n,
             Icon::Sidebar,
             if show_spaces {
                 Key::HideSpacesSidebar
@@ -396,11 +397,9 @@ fn header_controls(app: &App, panel_span: f32) -> Element<'_, Message> {
         ))
         .id("toggle-spaces-sidebar"),
         space().width(Length::Fill),
-        container(space())
+        vertical_divider()
             .id("workspace-header-separator")
-            .width(1)
-            .height(22)
-            .style(theme::separator),
+            .height(22),
     ]
     .align_y(Alignment::Center);
     mouse_area(
@@ -443,17 +442,11 @@ fn panel_buttons(app: &App) -> Element<'_, Message> {
     .map(move |(id, symbol, label, widget_id)| {
         let active = app.module_open(id);
         tooltip::view(
-            container(
-                button(icon(
-                    symbol,
-                    if active { theme::TEXT } else { theme::MUTED },
-                ))
-                .on_press(Message::Module(crate::app::modules::Event::Toggle(id)))
-                .width(theme::FILE_PANEL_TOOL_SIZE)
-                .height(theme::FILE_PANEL_TOOL_SIZE)
-                .padding(10)
-                .style(theme::action(active)),
-            )
+            container(IconButton::Inline(theme::FILE_PANEL_TOOL_SIZE).button(
+                symbol,
+                Some(Message::Module(crate::app::modules::Event::Toggle(id))),
+                active,
+            ))
             .id(widget_id),
             text(app.i18n.text(label)).size(12),
             tooltip::Position::Right,
@@ -540,15 +533,12 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                 .width(Length::Fill),
                 tooltip::view(
                     container(
-                        button(icon(Icon::Plus, theme::MUTED))
-                            .padding(4)
-                            .width(28)
-                            .height(28)
-                            .style(theme::action(false))
-                            .on_press_maybe(
-                                (app.loaded && !app.picking)
-                                    .then_some(Message::Space(crate::app::spaces::Message::New))
-                            )
+                        IconButton::Inline(28.).button(
+                            Icon::Plus,
+                            (app.loaded && !app.picking)
+                                .then_some(Message::Space(crate::app::spaces::Message::New)),
+                            false
+                        )
                     )
                     .id("new-space"),
                     text(app.i18n.text(Key::NewSpace)).size(12),
@@ -627,16 +617,13 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                         .on_press(Message::ToggleSpace(space_index))
                         .style(theme::action(false)),
                         tooltip::view(
-                            container(
-                                button(icon(Icon::Settings, theme::FAINT))
-                                    .padding(4)
-                                    .width(26)
-                                    .height(26)
-                                    .style(theme::action(false))
-                                    .on_press_maybe((!app.picking).then_some(Message::Space(
-                                        crate::app::spaces::Message::Edit(space_index)
-                                    )))
-                            )
+                            container(IconButton::Inline(26.).button(
+                                Icon::Settings,
+                                (!app.picking).then_some(Message::Space(
+                                    crate::app::spaces::Message::Edit(space_index)
+                                )),
+                                false
+                            ))
                             .id(format!("edit-space-{space_index}")),
                             text(app.i18n.text(Key::EditSpace)).size(12),
                             tooltip::Position::Right
@@ -788,14 +775,11 @@ fn deployment_content(app: &App, width: f32) -> Element<'_, Message> {
     let visible = app.modules.deployment.open;
     let reserved = toolbar_width + 1. + if visible { panel_width } else { 0. };
     let tools = container(tooltip::view(
-        container(
-            button(icon(Icon::Server, theme::MUTED))
-                .on_press(deployment_message(Event::Toggle))
-                .width(theme::FILE_PANEL_TOOL_SIZE)
-                .height(theme::FILE_PANEL_TOOL_SIZE)
-                .padding(10)
-                .style(theme::action(visible)),
-        )
+        container(IconButton::Inline(theme::FILE_PANEL_TOOL_SIZE).button(
+            Icon::Server,
+            Some(deployment_message(Event::Toggle)),
+            visible,
+        ))
         .id("deployment-toggle"),
         text(app.i18n.text(Key::Deployment)).size(12),
         tooltip::Position::Left,
@@ -808,7 +792,7 @@ fn deployment_content(app: &App, width: f32) -> Element<'_, Message> {
             .width(Length::Fill)
             .height(Length::Fill)
             .into(),
-        vertical_divider(),
+        vertical_divider().into(),
         container(
             crate::modules::deployment::panel(
                 &app.modules.deployment,
@@ -826,7 +810,7 @@ fn deployment_content(app: &App, width: f32) -> Element<'_, Message> {
         .into(),
     ];
     if !app.external_zone_modules(Placement::Right).is_empty() {
-        children.push(vertical_divider());
+        children.push(vertical_divider().into());
         children.push(
             container(external_module_panel::zone_panel(app, Placement::Right))
                 .width(EXTERNAL_ZONE_WIDTH)
@@ -876,16 +860,11 @@ fn project_content(app: &App, width: f32) -> Element<'_, Message> {
             FilePanel::Changes => (Icon::Changes, Key::WorkingChanges, "file-panel-changes"),
         };
         tools = tools.push(tooltip::view(
-            container(
-                button(icon(symbol, theme::MUTED))
-                    .on_press(Message::ToggleFilePanel(*panel))
-                    .width(theme::FILE_PANEL_TOOL_SIZE)
-                    .height(theme::FILE_PANEL_TOOL_SIZE)
-                    .padding(10)
-                    .style(theme::action(
-                        app.file_panel_visible && app.file_panel == *panel,
-                    )),
-            )
+            container(IconButton::Inline(theme::FILE_PANEL_TOOL_SIZE).button(
+                symbol,
+                Some(Message::ToggleFilePanel(*panel)),
+                app.file_panel_visible && app.file_panel == *panel,
+            ))
             .id(id),
             text(
                 app.i18n
@@ -939,13 +918,12 @@ fn project_content(app: &App, width: f32) -> Element<'_, Message> {
     ]
     .align_y(Alignment::Center);
     if app.file_panel == FilePanel::Project {
-        let select = button(icon(Icon::Locate, theme::MUTED))
-            .padding(3)
-            .on_press_maybe(
-                app.tree_target()
-                    .map(|_| Message::Files(Files::RevealOpened)),
-            )
-            .style(theme::icon_action(false));
+        let select = IconButton::Inline(26.).button(
+            Icon::Locate,
+            app.tree_target()
+                .map(|_| Message::Files(Files::RevealOpened)),
+            false,
+        );
         let more = context_menu::anchored(
             container(icon(Icon::More, theme::MUTED)).padding(3),
             |point| Message::Files(Files::BehaviorMenu(Some(point))),
@@ -976,7 +954,7 @@ fn project_content(app: &App, width: f32) -> Element<'_, Message> {
         files = files
             .push(
                 container(row![icon_button(
-                    app,
+                    &app.i18n,
                     Icon::Refresh,
                     Key::RefreshWorkingChanges,
                     Message::Worktree(crate::app::changes::Event::RefreshManually),
@@ -1015,8 +993,8 @@ fn project_content(app: &App, width: f32) -> Element<'_, Message> {
         .height(Length::Fill)
         .style(theme::surface);
     // Keep the preview in the same child slot when the file panel is hidden.
-    let file_divider = if app.file_panel_visible {
-        vertical_divider()
+    let file_divider: Element<'_, Message> = if app.file_panel_visible {
+        vertical_divider().into()
     } else {
         space().width(1).into()
     };
@@ -1579,12 +1557,9 @@ fn file_tree<'a>(
                 text(app.i18n.text(error_key(*error)))
                     .size(12)
                     .style(theme::YELLOW.text()),
-                button(text(app.i18n.text(Key::Retry)).size(12))
-                    .on_press(Message::Files(crate::app::files::Event::Retry(
-                        directory.to_path_buf()
-                    )))
-                    .padding([6, 10])
-                    .style(theme::secondary),
+                theme::compact_button(app.i18n.text(Key::Retry)).on_press(Message::Files(
+                    crate::app::files::Event::Retry(directory.to_path_buf())
+                )),
             ]
             .spacing(6),
         );
@@ -1759,7 +1734,7 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
                     container(space())
                         .height(2)
                         .width(Length::Fill)
-                        .style(theme::file_tab_indicator(active)),
+                        .style(theme::tab_indicator(active)),
                 ])
                 .width(width)
                 .style(theme::file_tab(active)),
@@ -1789,7 +1764,7 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
         let available =
             !tab.loading && tab.editor.as_ref().is_none_or(|buffer| !buffer.protected());
         bar = bar.push(
-            button(text(app.i18n.text(label)).size(12))
+            theme::compact_button(app.i18n.text(label))
                 .style(theme::action(false))
                 .on_press_maybe(available.then_some(Message::ToggleSvgSource(tab.id))),
         );
@@ -1895,9 +1870,9 @@ fn preview(app: &App) -> Element<'_, Message> {
     } else if app.preview().loading
         && (app.preview().document.is_none() || app.preview().awaiting_editor())
     {
-        center_message(app, Key::Loading)
+        center_message(&app.i18n, Key::Loading)
     } else if let Some(error) = app.preview().error {
-        center_message(app, error_key(error))
+        center_message(&app.i18n, error_key(error))
     } else if let Some(image) = &app.preview().image {
         container(
             widget::image(image.clone())
@@ -2190,14 +2165,11 @@ fn preview(app: &App) -> Element<'_, Message> {
         if show_action {
             content = content.push(space().height(8)).push(
                 container(
-                    button(
-                        text(app.i18n.text(if no_project {
-                            Key::NewSpace
-                        } else {
-                            Key::ProjectFiles
-                        }))
-                        .size(14),
-                    )
+                    theme::text_button(app.i18n.text(if no_project {
+                        Key::NewSpace
+                    } else {
+                        Key::ProjectFiles
+                    }))
                     .on_press_maybe(if no_project {
                         (app.loaded && !app.picking)
                             .then_some(Message::Space(crate::app::spaces::Message::New))
@@ -2206,7 +2178,6 @@ fn preview(app: &App) -> Element<'_, Message> {
                             crate::domain::workspace::FilePanel::Project,
                         ))
                     })
-                    .padding([12, 24])
                     .style(theme::primary),
                 )
                 .id("preview-empty-action"),
@@ -2318,9 +2289,8 @@ fn file_part_controls(app: &App) -> Element<'_, Message> {
     let ready = !app.preview().loading;
     use crate::app::tabs::PageDirection;
     let control = |key, direction, enabled| {
-        button(text(app.i18n.text(key)).size(12))
+        theme::compact_button(app.i18n.text(key))
             .on_press_maybe((ready && enabled).then_some(Message::ReadFilePart(id, direction)))
-            .padding([6, 8])
             .style(theme::action(false))
     };
     container(
@@ -2346,46 +2316,6 @@ fn file_part_controls(app: &App) -> Element<'_, Message> {
     .into()
 }
 
-pub(super) fn icon_button<'a>(
-    app: &'a App,
-    symbol: Icon,
-    label: Key,
-    message: Message,
-    active: bool,
-) -> Element<'a, Message> {
-    tooltip::view(
-        button(
-            container(icon(
-                symbol,
-                if active { theme::TEXT } else { theme::MUTED },
-            ))
-            .center(theme::WORKSPACE_HEADER_BUTTON_SIZE - 8.),
-        )
-        .on_press(message)
-        .padding(4)
-        .style(theme::icon_action(active)),
-        text(app.i18n.text(label)).size(12),
-        tooltip::Position::Bottom,
-    )
-    .into()
-}
-
-pub(super) fn divider<'a>() -> Element<'a, Message> {
-    container(space())
-        .height(1)
-        .width(Length::Fill)
-        .style(theme::separator)
-        .into()
-}
-
-pub(super) fn vertical_divider<'a>() -> Element<'a, Message> {
-    container(space())
-        .width(1)
-        .height(Length::Fill)
-        .style(theme::separator)
-        .into()
-}
-
 fn vertical_toolbar<'a>(
     content: Element<'a, Message>,
     divider_id: &'static str,
@@ -2402,26 +2332,6 @@ fn vertical_toolbar<'a>(
         container(vertical_divider()).id(divider_id),
     ]
     .into()
-}
-
-pub(super) fn center_message(app: &App, key: Key) -> Element<'_, Message> {
-    container(
-        text(app.i18n.text(key))
-            .size(14)
-            .style(theme::MUTED.text())
-            .align_x(Alignment::Center),
-    )
-    .padding(20)
-    .center(Length::Fill)
-    .into()
-}
-
-pub(super) fn short(value: &str, limit: usize) -> String {
-    if value.chars().count() <= limit {
-        value.to_owned()
-    } else {
-        format!("{}…", value.chars().take(limit).collect::<String>())
-    }
 }
 
 pub(super) fn short_path(value: &str, limit: usize) -> String {

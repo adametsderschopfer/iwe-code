@@ -37,14 +37,14 @@ pub(super) fn controls(app: &App) -> Element<'_, Message> {
         let label = if multiple {
             format!(
                 "{}: {}",
-                super::workspace::short(
+                crate::ui::presentation::short(
                     &repo.root.file_name().unwrap_or_default().to_string_lossy(),
                     14
                 ),
-                super::workspace::short(&branch, 18)
+                crate::ui::presentation::short(&branch, 18)
             )
         } else {
-            super::workspace::short(&branch, 24)
+            crate::ui::presentation::short(&branch, 24)
         };
         let root = repo.root.clone();
         badges = badges.push(tooltip::view(

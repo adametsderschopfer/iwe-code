@@ -11,15 +11,15 @@ use crate::{
     modules::deployment::state::{Event, Field, NameAction, ProfileTab, State},
     ui::{
         icons::{Icon, icon},
-        theme, tooltip,
+        modal,
+        presentation::{IconButton, divider, vertical_divider},
+        service_controls::action,
+        theme,
     },
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{
-        Column, button, checkbox, column, container, pick_list, row, scrollable, space, text,
-        text_input, toggler,
-    },
+    widget::{Column, button, column, container, row, scrollable, space, text},
 };
 use std::path::Path;
 
@@ -37,14 +37,6 @@ impl<T> std::fmt::Display for Choice<T> {
     }
 }
 
-fn action<'a>(i18n: &I18n, key: Key, event: Event) -> Element<'a, Event> {
-    button(text(i18n.text(key)).size(13))
-        .on_press(event)
-        .padding([7, 12])
-        .style(style::secondary)
-        .into()
-}
-
 fn select<'a, T: Clone + PartialEq + 'a>(
     options: Vec<(T, String)>,
     selected: Option<&T>,
@@ -58,16 +50,9 @@ fn select<'a, T: Clone + PartialEq + 'a>(
         .iter()
         .find(|option| Some(&option.value) == selected)
         .cloned();
-    pick_list(options, selected, move |choice| on_select(choice.value))
-        .text_size(13)
-        .padding([6, 9])
+    theme::Select::Standard
+        .view(options, selected, move |choice| on_select(choice.value))
         .width(Length::Fill)
-        .style(|theme, status| {
-            let mut style = theme::select(theme, status);
-            style.border.radius = 4.into();
-            style
-        })
-        .menu_style(theme::select_menu)
         .into()
 }
 
@@ -119,9 +104,7 @@ fn test_controls<'a>(
     }
     let mut buttons = row![
         container(
-            button(text(i18n.text(Key::DeploymentTest)).size(13))
-                .padding([7, 12])
-                .style(style::secondary)
+            theme::text_button(i18n.text(Key::DeploymentTest))
                 .on_press_maybe((!state.busy).then_some(event))
         )
         .id("deployment-test-button"),
@@ -148,19 +131,6 @@ fn protocols(i18n: &I18n) -> Vec<(Protocol, String)> {
     ]
 }
 
-fn field<'a>(value: &str, on_input: impl Fn(String) -> Event + 'a) -> Element<'a, Event> {
-    text_input("", value)
-        .on_input(on_input)
-        .size(13)
-        .padding([6, 9])
-        .style(|theme, status| {
-            let mut style = theme::input(theme, status);
-            style.border.radius = 4.into();
-            style
-        })
-        .into()
-}
-
 fn form_row<'a>(
     i18n: &I18n,
     key: Key,
@@ -172,26 +142,6 @@ fn form_row<'a>(
     ]
     .spacing(12)
     .align_y(Alignment::Center)
-    .into()
-}
-
-fn rule<'a>() -> Element<'a, Event> {
-    container(space())
-        .height(1)
-        .width(Length::Fill)
-        .style(theme::separator)
-        .into()
-}
-
-fn tool<'a>(i18n: &I18n, symbol: Icon, key: Key, event: Option<Event>) -> Element<'a, Event> {
-    tooltip::view(
-        button(icon(symbol, theme::MUTED))
-            .on_press_maybe(event)
-            .padding(5)
-            .style(theme::action(false)),
-        text(i18n.text(key)).size(12),
-        tooltip::Position::Bottom,
-    )
     .into()
 }
 
@@ -223,15 +173,7 @@ fn list_row<'a>(
         .on_press_maybe(event)
         .padding([7, 8])
         .width(Length::Fill)
-        .style(move |theme: &iced::Theme, status| {
-            let mut style = theme::action(false)(theme, status);
-            if selected {
-                style.background = Some(theme::BLUE.resolve(theme).scale_alpha(0.18).into());
-                style.text_color = theme::TEXT.resolve(theme);
-            }
-            style.border.radius = 4.into();
-            style
-        })
+        .style(theme::tree_item(selected))
         .into()
 }
 
@@ -242,7 +184,7 @@ fn editor<'a>(
 ) -> Element<'a, Event> {
     let list = container(column![
         container(tools).padding([4, 6]),
-        rule(),
+        divider(),
         scrollable(list.spacing(2).padding(6))
             .style(theme::scroll)
             .height(Length::Fill)
@@ -250,32 +192,21 @@ fn editor<'a>(
     .width(LIST_WIDTH)
     .height(Length::Fill)
     .style(theme::sidebar);
-    row![
-        list,
-        container(space())
-            .width(1)
-            .height(Length::Fill)
-            .style(theme::separator),
-        detail
-    ]
-    .height(Length::Fill)
-    .width(Length::Fill)
-    .into()
+    row![list, vertical_divider(), crate::ui::focus::form(detail)]
+        .height(Length::Fill)
+        .width(Length::Fill)
+        .into()
 }
 
 fn footer<'a>(i18n: &I18n, save: Event, dirty: bool, saving: bool) -> Element<'a, Event> {
     row![
         space().width(Length::Fill),
-        button(
-            text(i18n.text(if saving {
-                Key::DeploymentSaving
-            } else {
-                Key::DeploymentSave
-            }))
-            .size(13)
-        )
-        .padding([7, 16])
-        .style(style::primary)
+        theme::text_button(i18n.text(if saving {
+            Key::DeploymentSaving
+        } else {
+            Key::DeploymentSave
+        }))
+        .style(theme::primary)
         .on_press_maybe((dirty && !saving).then_some(save))
     ]
     .spacing(8)
@@ -291,26 +222,26 @@ pub(crate) fn connections_view<'a>(
     let enabled = !state.saving && !state.busy;
     let selected = state.connection.as_ref();
     let tools = row![
-        tool(
+        IconButton::Tool.view(
             i18n,
             Icon::Plus,
             Key::DeploymentNewConnection,
             enabled.then_some(Event::BeginName(NameAction::NewConnection))
         ),
-        tool(
+        IconButton::Tool.view(
             i18n,
             Icon::Minus,
             Key::DeploymentDelete,
             (enabled && selected.is_some()).then_some(Event::DeleteConnection)
         ),
-        tool(
+        IconButton::Tool.view(
             i18n,
             Icon::Duplicate,
             Key::DeploymentDuplicate,
             (enabled && selected.is_some())
                 .then_some(Event::BeginName(NameAction::DuplicateConnection))
         ),
-        tool(
+        IconButton::Tool.view(
             i18n,
             Icon::Rename,
             Key::DeploymentRename,
@@ -398,7 +329,7 @@ pub(super) fn connection_form<'a>(
         form_row(
             i18n,
             Key::DeploymentName,
-            field(&connection.name, |v| Event::Input(Field::Name, v))
+            theme::text_field("", &connection.name).on_input(|v| Event::Input(Field::Name, v))
         ),
         form_row(
             i18n,
@@ -409,9 +340,12 @@ pub(super) fn connection_form<'a>(
             i18n,
             Key::DeploymentHost,
             row![
-                field(&connection.host, |v| Event::Input(Field::Host, v)),
+                theme::text_field("", &connection.host).on_input(|v| Event::Input(Field::Host, v)),
                 text(i18n.text(Key::DeploymentPort)).size(13),
-                container(field(&state.port, |v| Event::Input(Field::Port, v))).width(70)
+                container(
+                    theme::text_field("", &state.port).on_input(|v| Event::Input(Field::Port, v))
+                )
+                .width(70)
             ]
             .spacing(8)
             .align_y(Alignment::Center)
@@ -419,7 +353,8 @@ pub(super) fn connection_form<'a>(
         form_row(
             i18n,
             Key::DeploymentUsername,
-            field(&connection.username, |v| Event::Input(Field::Username, v))
+            theme::text_field("", &connection.username)
+                .on_input(|v| Event::Input(Field::Username, v))
         ),
     ]
     .spacing(12);
@@ -464,13 +399,13 @@ pub(super) fn connection_form<'a>(
                         Some(id),
                         |id| Event::Authentication(Authentication::Key(id))
                     ),
-                    tool(
+                    IconButton::Tool.view(
                         i18n,
                         Icon::Plus,
                         Key::DeploymentAddIdentity,
                         Some(Event::NewKey)
                     ),
-                    tool(
+                    IconButton::Tool.view(
                         i18n,
                         Icon::Settings,
                         Key::DeploymentKeys,
@@ -494,12 +429,9 @@ pub(super) fn connection_form<'a>(
             .push(form_row(
                 i18n,
                 label,
-                text_input("", &state.secret.0)
+                theme::text_field("", &state.secret.0)
                     .secure(true)
-                    .size(13)
-                    .padding([6, 9])
-                    .on_input(|v| Event::Password(Secret(zeroize::Zeroizing::new(v))))
-                    .style(theme::input),
+                    .on_input(|v| Event::Password(Secret(zeroize::Zeroizing::new(v)))),
             ))
             .push(
                 row![
@@ -516,7 +448,7 @@ pub(super) fn connection_form<'a>(
         form = form.push(
             row![
                 space().width(LABEL_WIDTH),
-                checkbox(connection.uses_ssh_config())
+                theme::checkbox(connection.uses_ssh_config())
                     .label(i18n.text(Key::DeploymentUseSshConfig))
                     .text_size(13)
                     .on_toggle_maybe(
@@ -574,25 +506,25 @@ pub(crate) fn profiles_view<'a>(
     let destination = state.profile_destination.or(owner).or(active_space);
     let saved = owner.map_or(&[][..], |index| spaces[index].deployments.as_slice());
     let tools = row![
-        tool(
+        IconButton::Tool.view(
             i18n,
             Icon::Plus,
             Key::DeploymentNewProfile,
             has_projects.then_some(Event::BeginName(NameAction::NewProfile))
         ),
-        tool(
+        IconButton::Tool.view(
             i18n,
             Icon::Minus,
             Key::DeploymentDelete,
             (selected.is_some() && !state.busy).then_some(Event::DeleteProfile)
         ),
-        tool(
+        IconButton::Tool.view(
             i18n,
             Icon::Duplicate,
             Key::DeploymentDuplicate,
             selected.map(|_| Event::BeginName(NameAction::DuplicateProfile))
         ),
-        tool(
+        IconButton::Tool.view(
             i18n,
             Icon::Rename,
             Key::DeploymentRename,
@@ -709,7 +641,7 @@ pub(super) fn profile_tabs<'a>(active: ProfileTab, i18n: &I18n) -> Element<'a, E
             ))
             .width(Length::Fill)
             .style(theme::scroll),
-        rule(),
+        divider(),
     ]
     .spacing(0)
     .width(Length::Fill)
@@ -732,8 +664,9 @@ fn profile_form<'a>(
                 .iter()
                 .find(|connection| connection.id == profile.connection);
             let mut root_controls = row![
-                field(&profile.root, |value| Event::Input(Field::Root, value)),
-                tool(
+                theme::text_field("", &profile.root)
+                    .on_input(|value| Event::Input(Field::Root, value)),
+                IconButton::Tool.view(
                     i18n,
                     Icon::Folder,
                     Key::DeploymentBrowse,
@@ -745,10 +678,8 @@ fn profile_form<'a>(
             if connection.is_some_and(|connection| connection.protocol == Protocol::Sftp) {
                 root_controls = root_controls.push(
                     container(
-                        button(text(i18n.text(Key::DeploymentAutodetectRoot)).size(13))
-                            .on_press_maybe((!state.busy).then_some(Event::AutodetectRoot))
-                            .padding([7, 12])
-                            .style(style::secondary),
+                        theme::text_button(i18n.text(Key::DeploymentAutodetectRoot))
+                            .on_press_maybe((!state.busy).then_some(Event::AutodetectRoot)),
                     )
                     .id("deployment-autodetect-root"),
                 );
@@ -778,7 +709,8 @@ fn profile_form<'a>(
                 .push(form_row(
                     i18n,
                     Key::DeploymentName,
-                    field(&profile.name, |v| Event::Input(Field::ProfileName, v)),
+                    theme::text_field("", &profile.name)
+                        .on_input(|v| Event::Input(Field::ProfileName, v)),
                 ))
                 .push(form_row(
                     i18n,
@@ -800,7 +732,7 @@ fn profile_form<'a>(
                             Some(&profile.connection),
                             Event::ProfileConnection
                         ),
-                        tool(
+                        IconButton::Tool.view(
                             i18n,
                             Icon::Settings,
                             Key::DeploymentConnections,
@@ -818,10 +750,9 @@ fn profile_form<'a>(
                     Some(&profile.id),
                 ))
                 .push(
-                    toggler(profile.default)
+                    theme::switch(profile.default)
                         .label(i18n.text(Key::DeploymentDefault))
-                        .on_toggle(Event::DefaultProfile)
-                        .style(theme::toggle),
+                        .on_toggle(Event::DefaultProfile),
                 );
         }
         ProfileTab::Mappings => {
@@ -845,7 +776,7 @@ fn profile_form<'a>(
                                     .size(12)
                                     .style(theme::MUTED.text()),
                                 space().width(Length::Fill),
-                                tool(
+                                IconButton::Tool.view(
                                     i18n,
                                     Icon::Close,
                                     Key::DeploymentRemove,
@@ -857,11 +788,12 @@ fn profile_form<'a>(
                                 i18n,
                                 Key::DeploymentLocalFolder,
                                 row![
-                                    field(
-                                        &profile.project.join(&mapping.local).to_string_lossy(),
-                                        move |v| { Event::MappingLocal(index, v) }
-                                    ),
-                                    tool(
+                                    theme::text_field(
+                                        "",
+                                        &profile.project.join(&mapping.local).to_string_lossy()
+                                    )
+                                    .on_input(move |v| { Event::MappingLocal(index, v) }),
+                                    IconButton::Tool.view(
                                         i18n,
                                         Icon::Folder,
                                         Key::DeploymentBrowse,
@@ -874,8 +806,9 @@ fn profile_form<'a>(
                                 i18n,
                                 Key::DeploymentRemoteFolder,
                                 row![
-                                    field(&mapping.remote, move |v| Event::MappingRemote(index, v)),
-                                    tool(
+                                    theme::text_field("", &mapping.remote)
+                                        .on_input(move |v| Event::MappingRemote(index, v)),
+                                    IconButton::Tool.view(
                                         i18n,
                                         Icon::Folder,
                                         Key::DeploymentBrowse,
@@ -903,8 +836,9 @@ fn profile_form<'a>(
             for (index, path) in profile.excluded.iter().enumerate() {
                 form = form.push(
                     row![
-                        field(&path.to_string_lossy(), move |v| Event::Exclusion(index, v)),
-                        tool(
+                        theme::text_field("", &path.to_string_lossy())
+                            .on_input(move |v| Event::Exclusion(index, v)),
+                        IconButton::Tool.view(
                             i18n,
                             Icon::Close,
                             Key::DeploymentRemove,
@@ -948,13 +882,13 @@ pub(super) fn keys_view<'a>(
                         .style(theme::MUTED.text())
                 ]
                 .width(Length::Fill),
-                tool(
+                IconButton::Tool.view(
                     i18n,
                     Icon::Rename,
                     Key::DeploymentEdit,
                     Some(Event::EditKey(key.id.clone()))
                 ),
-                tool(
+                IconButton::Tool.view(
                     i18n,
                     Icon::Close,
                     Key::DeploymentDelete,
@@ -969,10 +903,11 @@ pub(super) fn keys_view<'a>(
         list = list.push(text(i18n.text(error_key(error))).size(13));
     }
     list.push(action(i18n, Key::DeploymentAddIdentity, Event::NewKey))
-        .push(row![
-            space().width(Length::Fill),
-            action(i18n, Key::DeploymentClose, Event::CloseDialog)
-        ])
+        .push(
+            modal::actions().push(
+                theme::text_button(i18n.text(Key::DeploymentClose)).on_press(Event::CloseDialog),
+            ),
+        )
         .into()
 }
 
@@ -986,12 +921,16 @@ pub(crate) fn settings_dialog<'a>(
             Key::DeploymentUnsaved,
             column![
                 text(i18n.text(Key::DeploymentDiscardHelp)).size(13),
-                row![
-                    space().width(Length::Fill),
-                    action(i18n, Key::DeploymentCancel, Event::CloseDialog),
-                    action(i18n, Key::DeploymentDiscard, Event::DiscardChanges)
-                ]
-                .spacing(8)
+                modal::actions()
+                    .push(
+                        theme::text_button(i18n.text(Key::DeploymentCancel))
+                            .on_press(Event::CloseDialog)
+                    )
+                    .push(
+                        theme::text_button(i18n.text(Key::DeploymentDiscard))
+                            .style(theme::danger)
+                            .on_press(Event::DiscardChanges)
+                    )
             ]
             .spacing(16)
             .into(),
@@ -1019,27 +958,28 @@ pub(crate) fn settings_dialog<'a>(
             );
         }
         browser = browser.push(
-            row![
-                action(i18n, Key::DeploymentCancel, Event::StopBrowsing),
-                space().width(Length::Fill),
-                action(
-                    i18n,
-                    Key::DeploymentUseRoot,
-                    Event::UseRoot(state.browsing_root().to_owned())
+            modal::actions()
+                .push(
+                    theme::text_button(i18n.text(Key::DeploymentCancel))
+                        .on_press(Event::StopBrowsing),
+                )
+                .push(
+                    theme::text_button(i18n.text(Key::DeploymentUseRoot))
+                        .on_press(Event::UseRoot(state.browsing_root().to_owned())),
+                )
+                .push(
+                    theme::text_button(i18n.text(Key::DeploymentUseFolder))
+                        .style(theme::primary)
+                        .on_press_maybe(selected.map(|entry| Event::UseRoot(entry.path.clone()))),
                 ),
-                button(text(i18n.text(Key::DeploymentUseFolder)).size(13))
-                    .style(style::primary)
-                    .padding([8, 12])
-                    .on_press_maybe(selected.map(|entry| Event::UseRoot(entry.path.clone()))),
-            ]
-            .spacing(8),
         );
         (Key::DeploymentBrowse, browser.into())
     } else if let Some(name_action) = state.naming {
         let mut content = column![form_row(
             i18n,
             Key::DeploymentName,
-            field(&state.name_value, |v| Event::Input(Field::DraftName, v))
+            theme::text_field("", &state.name_value)
+                .on_input(|v| Event::Input(Field::DraftName, v))
         )]
         .spacing(12);
         if name_action == NameAction::NewConnection {
@@ -1061,18 +1001,19 @@ pub(crate) fn settings_dialog<'a>(
             );
         }
         content = content.push(
-            row![
-                space().width(Length::Fill),
-                action(i18n, Key::DeploymentCancel, Event::CloseDialog),
-                button(text(i18n.text(Key::DeploymentContinue)).size(13))
-                    .padding([8, 12])
-                    .style(style::primary)
-                    .on_press_maybe(
-                        (!state.name_value.trim().is_empty() && safe_text(&state.name_value))
-                            .then_some(Event::ConfirmName)
-                    )
-            ]
-            .spacing(8),
+            modal::actions()
+                .push(
+                    theme::text_button(i18n.text(Key::DeploymentCancel))
+                        .on_press(Event::CloseDialog),
+                )
+                .push(
+                    theme::text_button(i18n.text(Key::DeploymentContinue))
+                        .style(theme::primary)
+                        .on_press_maybe(
+                            (!state.name_value.trim().is_empty() && safe_text(&state.name_value))
+                                .then_some(Event::ConfirmName),
+                        ),
+                ),
         );
         let title = match name_action {
             NameAction::NewConnection => Key::DeploymentNewConnection,
@@ -1091,14 +1032,16 @@ pub(crate) fn settings_dialog<'a>(
             form_row(
                 i18n,
                 Key::DeploymentName,
-                field(&state.key_name, |v| Event::Input(Field::KeyName, v))
+                theme::text_field("", &state.key_name)
+                    .on_input(|v| Event::Input(Field::KeyName, v))
             ),
             form_row(
                 i18n,
                 Key::DeploymentKeyPath,
                 row![
-                    field(&state.key_path, |v| Event::Input(Field::KeyPath, v)),
-                    tool(
+                    theme::text_field("", &state.key_path)
+                        .on_input(|v| Event::Input(Field::KeyPath, v)),
+                    IconButton::Tool.view(
                         i18n,
                         Icon::Folder,
                         Key::DeploymentChooseFile,
@@ -1120,12 +1063,16 @@ pub(crate) fn settings_dialog<'a>(
             );
         }
         content = content.push(
-            row![
-                space().width(Length::Fill),
-                action(i18n, Key::DeploymentCancel, Event::CloseDialog),
-                action(i18n, Key::DeploymentSave, Event::AddKey)
-            ]
-            .spacing(8),
+            modal::actions()
+                .push(
+                    theme::text_button(i18n.text(Key::DeploymentCancel))
+                        .on_press(Event::CloseDialog),
+                )
+                .push(
+                    theme::text_button(i18n.text(Key::DeploymentSave))
+                        .style(theme::primary)
+                        .on_press(Event::AddKey),
+                ),
         );
         (
             if state.key_editing.is_some() {
@@ -1141,12 +1088,9 @@ pub(crate) fn settings_dialog<'a>(
         return None;
     };
     Some(
-        column![
-            text(i18n.text(title)).size(19).font(theme::semibold()),
-            container(scrollable(content).style(theme::scroll)).max_height(480)
-        ]
-        .spacing(20)
-        .into(),
+        modal::content(i18n.text(title))
+            .push(container(scrollable(content).style(theme::scroll)).max_height(480))
+            .into(),
     )
 }
 

@@ -1,13 +1,14 @@
 use super::{Event as Message, View};
 use crate::modules::git::actions::{self as git_actions, Action, Message as GitMessage};
+use crate::ui::modal;
 use crate::ui::tooltip;
 use crate::{
     i18n::{FluentArgs, Key},
     ui::{context_menu, ellipsis, theme},
 };
 use iced::{
-    Alignment, Element, Length, Size,
-    widget::{button, column, container, pick_list, row, space, text, text_input, toggler},
+    Element, Length, Size,
+    widget::{column, container, text},
 };
 
 pub(super) fn label(app: View<'_>, action: Action, branch: &str) -> String {
@@ -81,17 +82,11 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
     let Some(dialog) = &app.state.git_actions.dialog else {
         return base;
     };
-    let mut content = column![
-        text(app.i18n.text(action_key(dialog.action)))
-            .size(22)
-            .font(theme::semibold()),
-        tooltip::view(
-            ellipsis::text(&dialog.branch.name, 14.),
-            text(&dialog.branch.name).size(12),
-            tooltip::Position::Bottom
-        ),
-    ]
-    .spacing(16);
+    let mut content = modal::content(app.i18n.text(action_key(dialog.action))).push(tooltip::view(
+        ellipsis::text(&dialog.branch.name, 14.),
+        text(&dialog.branch.name).size(12),
+        tooltip::Position::Bottom,
+    ));
     if app
         .repository
         .as_ref()
@@ -117,13 +112,13 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
         content = content
             .push(text(app.i18n.text(Key::GitBranchName)).size(13))
             .push(
-                text_input(&app.i18n.text(Key::GitBranchName), &dialog.name)
+                theme::text_field(&app.i18n.text(Key::GitBranchName), &dialog.name)
                     .id("git-branch-name")
+                    .style(theme::validated_input(
+                        dialog.error == Some(crate::domain::git::Error::InvalidName),
+                    ))
                     .on_input(|name| Message::Git(GitMessage::Name(name)))
-                    .on_submit(Message::Git(GitMessage::Submit))
-                    .padding(12)
-                    .size(14)
-                    .style(theme::input),
+                    .on_submit(Message::Git(GitMessage::Submit)),
             );
     } else if dialog.action == Action::Delete {
         content = content.push(
@@ -139,9 +134,8 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
     }
     if dialog.action == Action::Create {
         content = content.push(
-            toggler(dialog.checkout)
+            theme::switch(dialog.checkout)
                 .label(app.i18n.text(Key::GitSwitchAfterCreate))
-                .style(theme::toggle)
                 .on_toggle(|value| Message::Git(GitMessage::Checkout(value))),
         );
     }
@@ -155,14 +149,11 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
         content = content
             .push(text(app.i18n.text(Key::GitRemote)).size(13))
             .push(
-                pick_list(remotes, Some(dialog.remote.clone()), |remote| {
-                    Message::Git(GitMessage::Remote(remote))
-                })
-                .padding(12)
-                .text_size(14)
-                .style(theme::select)
-                .menu_style(theme::select_menu)
-                .width(Length::Fill),
+                theme::Select::Standard
+                    .view(remotes, Some(dialog.remote.clone()), |remote| {
+                        Message::Git(GitMessage::Remote(remote))
+                    })
+                    .width(Length::Fill),
             );
     }
     if let Some(error) = dialog.error {
@@ -180,30 +171,30 @@ pub(crate) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
         );
     }
     content = content.push(
-        row![
-            space().width(Length::Fill),
-            button(text(app.i18n.text(Key::Cancel)).size(14))
-                .padding([10, 16])
-                .style(theme::secondary)
-                .on_press_maybe(
-                    (!app.state.git_actions.pending).then_some(Message::Git(GitMessage::Close))
+        modal::actions()
+            .push(
+                theme::text_button(app.i18n.text(Key::Cancel)).on_press_maybe(
+                    (!app.state.git_actions.pending).then_some(Message::Git(GitMessage::Close)),
                 ),
-            container(
-                button(text(app.i18n.text(action_key(dialog.action))).size(14))
-                    .padding([10, 16])
-                    .style(theme::primary)
-                    .on_press_maybe(
-                        (!app.state.git_actions.pending
-                            && (matches!(dialog.action, Action::Delete | Action::Checkout)
-                                || !dialog.name.trim().is_empty())
-                            && (dialog.action != Action::Push || !dialog.remote.is_empty()))
-                        .then_some(Message::Git(GitMessage::Submit))
-                    )
             )
-            .id("git-confirm"),
-        ]
-        .spacing(8)
-        .align_y(Alignment::Center),
+            .push(
+                container(
+                    theme::text_button(app.i18n.text(action_key(dialog.action)))
+                        .style(if dialog.action == Action::Delete {
+                            theme::danger
+                        } else {
+                            theme::primary
+                        })
+                        .on_press_maybe(
+                            (!app.state.git_actions.pending
+                                && (matches!(dialog.action, Action::Delete | Action::Checkout)
+                                    || !dialog.name.trim().is_empty())
+                                && (dialog.action != Action::Push || !dialog.remote.is_empty()))
+                            .then_some(Message::Git(GitMessage::Submit)),
+                        ),
+                )
+                .id("git-confirm"),
+            ),
     );
     crate::ui::modal::overlay(base, content.into(), 560., Message::Git(GitMessage::Close))
 }

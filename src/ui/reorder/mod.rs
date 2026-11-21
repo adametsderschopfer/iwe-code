@@ -354,7 +354,7 @@ impl<Message> Widget<Message, Theme, Renderer> for Reorder<'_, Message> {
                         border: Border {
                             color: theme::BLUE.resolve(theme),
                             width: 1.,
-                            radius: 6.into(),
+                            radius: theme::CONTROL_RADIUS.into(),
                         },
                         ..Default::default()
                     },

@@ -765,7 +765,7 @@ fn container_form_keeps_its_actions_reachable_below_scrollable_settings() {
 }
 
 #[test]
-fn section_dividers_meet_the_header_and_filter_corners_stay_square_in_both_themes() {
+fn section_dividers_meet_the_header_and_filter_corners_match_the_ui_kit() {
     use crate::i18n::{I18n, Language};
     use iced::widget::Id;
 
@@ -808,12 +808,14 @@ fn section_dividers_meet_the_header_and_filter_corners_stay_square_in_both_theme
             for y in [area.y + 0.5, area.y + area.height - 0.5] {
                 let edge = pixel(area.center_x(), y);
                 assert_ne!(edge, pixel(area.x - 2., y), "{id} has a visible border");
-                assert_eq!(pixel(area.x + 0.5, y), edge, "{id} left corner");
-                assert_eq!(
-                    pixel(area.x + area.width - 0.5, y),
-                    edge,
-                    "{id} right corner"
-                );
+                let outside = pixel(area.x - 2., y);
+                let radius = crate::ui::theme::CONTROL_RADIUS;
+                for offset in [0.5, area.width - 0.5] {
+                    assert_eq!(pixel(area.x + offset, y), outside, "{id} rounded corner");
+                }
+                for offset in [radius + 1., area.width - radius - 1.] {
+                    assert_eq!(pixel(area.x + offset, y), edge, "{id} straight edge");
+                }
             }
         }
     }

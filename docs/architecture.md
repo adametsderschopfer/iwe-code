@@ -77,7 +77,8 @@ File writes reuse the editor's conflict-checked save with a revision token from 
 | `ui/code.rs`, `ui/code/`                              | Prepare highlighted source lines and preserve their text layout                          |
 | `ui/icons.rs`, `ui/file_icons.rs`                     | Draw interface icons and compact file-type symbols                                       |
 | `ui/graph.rs`                                         | Draw commit ancestry                                                                     |
-| `ui/theme/`                                           | Define interface colors, syntax colors, and the native material fallback                 |
+| `ui/theme/`                                           | Define shared Iced controls, theme colors, typography, and the native material fallback  |
+| `ui/modal/`                                           | Compose dialog panels, titles, actions, backdrops, and keyboard handling                 |
 | `ui/tooltip.rs`                                       | Apply shared spacing and styling to hover hints                                          |
 | `i18n/`                                               | Format embedded Fluent translations and recover from missing messages                    |
 | `infrastructure/workspace.rs`                         | Save workspace metadata and read bounded local previews                                  |
@@ -542,10 +543,8 @@ changes.
 
 The left sidebar contains navigation and projects. A separate file panel sits beside the source
 preview, with a vertical toolbar on its left. Flat content panes use subtle separators instead of
-nested frames. Buttons, inputs, scrollbars, tooltips, and authentication dialogs share neutral
-styles. macOS uses Helvetica Neue. Windows uses Segoe UI. Linux retains the bundled sans-serif
-fallback. Source previews keep their monospace font. Empty states use concise messages in all three
-catalogs.
+nested frames. macOS uses Helvetica Neue. Windows uses Segoe UI. Linux uses the bundled sans-serif
+fallback. Source previews use the selected monospace font.
 
 Selecting a project immediately opens its file panel. The file toolbar selects the project-files
 mode directly. Project rows have no separate file button. Project selection preserves the sidebar.
@@ -583,6 +582,38 @@ The launcher tries these backends in order:
 Each attempt uses a separate process. Only graphics initialization failures trigger another attempt.
 The macOS fallback paths require external Vulkan/MoltenVK or ANGLE runtimes. The application does
 not bundle those runtimes. Normal macOS startup uses Metal.
+
+### Shared Iced components
+
+The workspace and module views use the same controls from `ui/theme`. The theme sets
+`CONTROL_RADIUS` to five logical pixels for rectangular controls, cards, and menus. Native window
+corners and round switch handles keep their platform or widget geometry.
+
+Use `text_field` for forms and `compact_field` for toolbars and dense lists. Use `labeled_field` to
+place a label above its control. Use `multiline_field` for editable messages. The source editor uses
+`code_editor` with its own font, syntax colors, and editing commands. Each field uses an accent
+outline for focus. Use `validated_input` when validation identifies a specific field. The error
+outline thickens when that field has focus. Show the corresponding error message beside the field or
+in its form.
+
+Use `Select` for standard and compact lists, `switch` for switches, and `checkbox` for checkboxes.
+
+Use `text_button` for standard actions and `compact_button` for actions in toolbars and dense
+panels. Both constructors apply the secondary style by default. Use `primary` for the main action,
+`secondary` for other form actions, and `danger` for destructive confirmations. Use
+`ui::presentation::IconButton` for icon actions. It sets the click area, icon size, and tooltip. Use
+the horizontal and vertical dividers from the same module. Menus and lists use selection-aware row
+styles. The theme also styles checkboxes, switches, sliders, scrollbars, and tooltips.
+
+Use `ui/modal` for workspace and module dialogs. The shared panel sets padding, border, background,
+and shadow. The backdrop dims the underlying window. Each dialog supplies its content and maximum
+width. Use the shared title and right-aligned action row. Place Cancel before the primary or
+destructive action. Docker forms keep their action row visible while the fields scroll.
+
+Tab and Shift+Tab cycle through editable fields in a dialog and reveal the focused field. Use
+`ui::focus::form` around an embedded form to enable the same behavior after a field receives focus.
+Search Everywhere uses Tab to switch search scopes. The source editor handles Tab through its
+editing commands.
 
 ## Application updates
 

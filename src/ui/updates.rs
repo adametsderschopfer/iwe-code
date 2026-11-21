@@ -8,10 +8,7 @@ use crate::{
     i18n::{FluentArgs, Key},
     ui::{icons::Icon, theme},
 };
-use iced::{
-    Element,
-    widget::{button, container, text},
-};
+use iced::{Element, widget::container};
 
 pub(crate) fn sidebar(app: &App) -> Option<Element<'_, Message>> {
     let (label, action) = match &app.updates {
@@ -53,8 +50,7 @@ pub(crate) fn settings(app: &App) -> Element<'_, Message> {
         app.i18n.text(Key::Updates),
         description,
         container(
-            button(text(app.i18n.text(label)).size(13))
-                .padding([8, 14])
+            theme::text_button(app.i18n.text(label))
                 .on_press_maybe(action.map(Message::Update))
                 .style(theme::primary),
         )

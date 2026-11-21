@@ -2,6 +2,7 @@
 
 mod motion;
 
+use crate::ui::presentation::IconButton;
 use crate::ui::tooltip;
 use crate::{
     app::notifications::{Event, Kind, State},
@@ -14,9 +15,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{
-        button, column, container, keyed_column, mouse_area, opaque, progress_bar, row, stack, text,
-    },
+    widget::{column, container, keyed_column, mouse_area, opaque, progress_bar, row, stack, text},
 };
 
 pub(crate) fn overlay<'a, Message: Clone + 'a>(
@@ -46,12 +45,11 @@ pub(crate) fn overlay<'a, Message: Clone + 'a>(
             ));
         }
         let close = tooltip::view(
-            container(
-                button(icon(Icon::Close, theme::MUTED))
-                    .padding(3)
-                    .style(theme::action(false))
-                    .on_press(on_event(Event::Dismiss(item.id))),
-            )
+            container(IconButton::Inline(26.).button(
+                Icon::Close,
+                Some(on_event(Event::Dismiss(item.id))),
+                false,
+            ))
             .id(format!("notification-close-{}", item.id)),
             text(i18n.text(Key::Dismiss)).size(12),
             tooltip::Position::Top,

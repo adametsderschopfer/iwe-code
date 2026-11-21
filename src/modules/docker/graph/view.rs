@@ -3,14 +3,19 @@ use super::{Data, Id, Node, Project};
 use crate::{
     i18n::{I18n, Key},
     modules::docker::{Event, Kind},
-    ui::{context_menu, ellipsis, icons::Icon, presentation::short, theme},
+    ui::{
+        context_menu,
+        icons::Icon,
+        modal,
+        presentation::{IconButton, short},
+        theme,
+    },
 };
 use iced::{
     Alignment, Element, Length, Point, Rectangle, Renderer, Size, Theme, Vector, mouse,
     widget::{
-        button,
         canvas::{self, Frame, Geometry, Path, Stroke},
-        column, container, row, text,
+        column, container, text,
     },
 };
 use std::collections::BTreeMap;
@@ -89,19 +94,15 @@ pub(in crate::modules::docker) fn panel<'a>(
     busy: bool,
     i18n: &'a I18n,
 ) -> Element<'a, Event> {
-    let tool = |symbol, key, message| super::super::view::tool(i18n, symbol, key, Some(message));
+    let tool = |symbol, key, message| IconButton::Compact.view(i18n, symbol, key, Some(message));
     let mut args = crate::i18n::FluentArgs::new();
     args.set("project", project.name.as_str());
-    let title = ellipsis::text(i18n.format(Key::DockerProjectGraph, &args), 14.);
-    let mut header = row![container(title).width(Length::Fill)]
-        .align_y(Alignment::Center)
-        .spacing(4);
+    let title = modal::clipped_title(i18n.format(Key::DockerProjectGraph, &args));
+    let mut header = modal::header(title);
     if let Some(key) = &project.viewport.selected {
         header = header.push(
-            button(text(i18n.text(Key::DockerOpenResource)).size(12))
-                .on_press_maybe((!busy).then(|| Event::OpenNode(key.clone())))
-                .padding([3, 6])
-                .style(super::super::view::style::button(theme::secondary)),
+            theme::compact_button(i18n.text(Key::DockerOpenResource))
+                .on_press_maybe((!busy).then(|| Event::OpenNode(key.clone()))),
         );
     }
     header = header
@@ -120,7 +121,7 @@ pub(in crate::modules::docker) fn panel<'a>(
             Key::DockerResetGraph,
             Event::Diagram(Interaction::Reset),
         ))
-        .push(super::super::view::tool(
+        .push(IconButton::Compact.view(
             i18n,
             Icon::Refresh,
             Key::DockerRefresh,

@@ -1,5 +1,5 @@
 use super::*;
-use iced::widget::{button, column, text_input};
+use iced::widget::{button, column, space, text_input};
 
 #[derive(Debug, Clone, PartialEq)]
 enum Message {

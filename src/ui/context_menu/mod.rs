@@ -10,7 +10,7 @@ use iced::{
         widget::{Operation, Tree},
     },
     keyboard,
-    widget::{container, mouse_area, opaque, responsive, space, stack},
+    widget::{container, mouse_area, opaque, responsive, stack},
 };
 
 pub(crate) fn trigger<'a, Message: 'a>(
@@ -310,6 +310,8 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
     }
 }
 
+pub(crate) use super::presentation::divider as separator;
+
 pub(crate) const ROW_PADDING: [u16; 2] = [5, 8];
 pub(crate) const TEXT_SIZE: f32 = 13.;
 pub(crate) const SURFACE_PADDING: u16 = 6;
@@ -323,6 +325,14 @@ pub(crate) fn row<'a, Message: Clone + 'a>(
         .style(super::theme::action(false))
 }
 
+pub(crate) fn text_row<'a, Message: Clone + 'a>(
+    label: String,
+) -> iced::widget::Button<'a, Message> {
+    row(iced::widget::text(label)
+        .size(TEXT_SIZE)
+        .wrapping(iced::widget::text::Wrapping::None))
+}
+
 pub(crate) fn surface<'a, Message: 'a>(
     content: Element<'a, Message>,
     width: f32,
@@ -333,14 +343,6 @@ pub(crate) fn surface<'a, Message: 'a>(
             .width(width)
             .style(super::theme::tooltip),
     )
-}
-
-pub(crate) fn separator<'a, Message: 'a>() -> Element<'a, Message> {
-    container(space())
-        .height(1)
-        .width(Length::Fill)
-        .style(super::theme::separator)
-        .into()
 }
 
 fn popup_origin(anchor: f32, extent: f32, available: f32) -> f32 {

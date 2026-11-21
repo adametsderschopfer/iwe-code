@@ -134,11 +134,16 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
             );
         }
         container(opaque(
-            container(scrollable(rows).id("editor-completions").height(height))
-                .id("editor-completion-popup")
-                .padding(6)
-                .width(width)
-                .style(theme::tooltip),
+            container(
+                scrollable(rows)
+                    .style(theme::scroll)
+                    .id("editor-completions")
+                    .height(height),
+            )
+            .id("editor-completion-popup")
+            .padding(6)
+            .width(width)
+            .style(theme::tooltip),
         ))
         .padding(Padding {
             top,

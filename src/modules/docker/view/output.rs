@@ -1,11 +1,12 @@
-use super::{GUTTER, error_key, pagination, style, tool};
+use super::{GUTTER, error_key, pagination};
+use crate::ui::presentation::IconButton;
 use crate::{
     i18n::{I18n, Key},
     modules::docker::{
         Action, Event,
         output::{Content, Dialog, SCROLL_ID},
     },
-    ui::{context_menu, ellipsis, icons::Icon, theme},
+    ui::{context_menu, ellipsis, icons::Icon, modal, theme},
 };
 use iced::{
     Alignment, Element, Length,
@@ -14,23 +15,31 @@ use iced::{
 
 pub(super) fn contents<'a>(dialog: &'a Dialog, i18n: &'a I18n) -> Element<'a, Event> {
     let ready = !matches!(dialog.content, Content::Loading { .. });
-    let header = row![
-        text(i18n.text(dialog.request.action.key()))
-            .font(theme::semibold())
-            .size(16),
-        container(ellipsis::text(&dialog.request.name, 14.)).width(Length::Fill),
-        container(tool(
-            i18n,
-            Icon::Refresh,
-            Key::DockerRefresh,
-            ready.then_some(Event::Refresh)
-        ))
-        .id("docker-output-refresh"),
-        container(tool(i18n, Icon::Close, Key::Dismiss, Some(Event::Dismiss)))
-            .id("docker-output-close"),
+    let heading = row![
+        modal::title(i18n.text(dialog.request.action.key())),
+        ellipsis::text(&dialog.request.name, 14.),
     ]
     .spacing(GUTTER)
     .align_y(Alignment::Center);
+    let header = modal::header(heading)
+        .push(
+            container(IconButton::Compact.view(
+                i18n,
+                Icon::Refresh,
+                Key::DockerRefresh,
+                ready.then_some(Event::Refresh),
+            ))
+            .id("docker-output-refresh"),
+        )
+        .push(
+            container(IconButton::Compact.view(
+                i18n,
+                Icon::Close,
+                Key::Dismiss,
+                Some(Event::Dismiss),
+            ))
+            .id("docker-output-close"),
+        );
     let mut contents = column![header, context_menu::separator()].spacing(GUTTER);
     let status = match &dialog.content {
         Content::Loading { .. } => Key::Loading,
@@ -45,7 +54,7 @@ pub(super) fn contents<'a>(dialog: &'a Dialog, i18n: &'a I18n) -> Element<'a, Ev
                         .width(Length::Fill),
                 )
                 .id(SCROLL_ID)
-                .style(style::scroll)
+                .style(theme::scroll)
                 .height(Length::Fill),
             );
             if output.offsets.len() > 1 {

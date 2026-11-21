@@ -1,14 +1,22 @@
 //! Share neutral dark and light surfaces above the native window material.
 
+mod buttons;
+mod fields;
 mod palette;
+mod selection;
 pub(crate) mod syntax;
+pub(crate) use buttons::{compact_button, text_button};
+pub(crate) use fields::{
+    code_editor, compact_field, labeled_field, multiline_field, text_field, validated_input,
+};
 pub(crate) use palette::*;
+pub(crate) use selection::{Select, checkbox, switch};
 
 use iced::{
     Border, Color, Font, Theme, font, theme,
     widget::{
-        button, container, overlay::menu, pane_grid, pick_list, scrollable, slider, text_input,
-        toggler,
+        button, checkbox as iced_checkbox, container, overlay::menu, pane_grid, pick_list,
+        scrollable, slider, toggler,
     },
 };
 
@@ -97,6 +105,7 @@ pub(crate) fn diff_row(
     }
 }
 
+pub(crate) const CONTROL_RADIUS: f32 = 5.;
 pub(crate) const COMMIT_GRAPH_PADDING: f32 = 12.;
 pub(crate) const COMMIT_REPOSITORY_GRAPH_PADDING: f32 = 4.;
 pub(crate) const COMMIT_REPOSITORY_MAX_WIDTH: f32 = 160.;
@@ -229,60 +238,97 @@ pub(crate) fn selected_code_font(choice: crate::domain::workspace::CodeFont) -> 
     }
 }
 
-pub(crate) fn toggle(theme: &Theme, status: toggler::Status) -> toggler::Style {
-    let active = match status {
-        toggler::Status::Active { is_toggled }
-        | toggler::Status::Hovered { is_toggled }
-        | toggler::Status::Disabled { is_toggled } => is_toggled,
+fn toggle_style(theme: &Theme, status: toggler::Status) -> toggler::Style {
+    use toggler::Status::*;
+    let (track, knob) = match status {
+        Active { is_toggled: true } => (TEXT, PRIMARY_TEXT),
+        Active { is_toggled: false } => (LINE, MUTED),
+        Hovered { is_toggled: true } => (PRIMARY_HOVER, PRIMARY_TEXT),
+        Hovered { is_toggled: false } => (INPUT_BORDER, TEXT),
+        Disabled { .. } => (PRIMARY_DISABLED, FAINT),
     };
-    let mut style = toggler::default(theme, status);
-    style.background = if active {
-        TEXT.resolve(theme)
-    } else {
-        LINE.resolve(theme)
+    toggler::Style {
+        background: track.resolve(theme).into(),
+        foreground: knob.resolve(theme).into(),
+        text_color: Some(
+            if matches!(status, Disabled { .. }) {
+                FAINT
+            } else {
+                TEXT
+            }
+            .resolve(theme),
+        ),
+        ..toggler::default(theme, status)
     }
-    .into();
-    style.foreground = if active {
-        PRIMARY_TEXT.resolve(theme)
-    } else {
-        MUTED.resolve(theme)
+}
+
+fn checkbox_style(theme: &Theme, status: iced_checkbox::Status) -> iced_checkbox::Style {
+    use iced_checkbox::Status::*;
+    let (background, outline, icon) = match status {
+        Active { is_checked: true } => (PRIMARY, PRIMARY, PRIMARY_TEXT),
+        Hovered { is_checked: true } => (PRIMARY_HOVER, PRIMARY_HOVER, PRIMARY_TEXT),
+        Active { is_checked: false } => (ELEVATED, INPUT_BORDER, TEXT),
+        Hovered { is_checked: false } => (ELEVATED, MUTED, TEXT),
+        Disabled { .. } => (PRIMARY_DISABLED, LINE, FAINT),
+    };
+    iced_checkbox::Style {
+        background: background.resolve(theme).into(),
+        icon_color: icon.resolve(theme),
+        border: Border {
+            color: outline.resolve(theme),
+            width: 1.,
+            radius: CONTROL_RADIUS.into(),
+        },
+        text_color: Some(
+            if matches!(status, Disabled { .. }) {
+                FAINT
+            } else {
+                TEXT
+            }
+            .resolve(theme),
+        ),
     }
-    .into();
-    style
 }
 
 pub(crate) fn font_slider(theme: &Theme, status: slider::Status) -> slider::Style {
     let mut style = slider::default(theme, status);
     style.rail.backgrounds = (TEXT.resolve(theme).into(), LINE.resolve(theme).into());
-    style.handle.background = TEXT.resolve(theme).into();
+    style.handle.background = match status {
+        slider::Status::Active => TEXT,
+        slider::Status::Hovered => MUTED,
+        slider::Status::Dragged => BLUE,
+    }
+    .resolve(theme)
+    .into();
     style
 }
 
-pub(crate) fn select(theme: &Theme, status: pick_list::Status) -> pick_list::Style {
+fn select(theme: &Theme, status: pick_list::Status) -> pick_list::Style {
     pick_list::Style {
         text_color: TEXT.resolve(theme),
         placeholder_color: FAINT.resolve(theme),
         handle_color: MUTED.resolve(theme),
         background: ELEVATED.resolve(theme).into(),
         border: Border {
-            color: if matches!(status, pick_list::Status::Active) {
-                LINE.resolve(theme)
-            } else {
-                MUTED.resolve(theme)
-            },
+            color: match status {
+                pick_list::Status::Active => INPUT_BORDER,
+                pick_list::Status::Hovered => MUTED,
+                pick_list::Status::Opened { .. } => BLUE,
+            }
+            .resolve(theme),
             width: 1.,
-            radius: 10.0.into(),
+            radius: CONTROL_RADIUS.into(),
         },
     }
 }
 
-pub(crate) fn select_menu(theme: &Theme) -> menu::Style {
+fn select_menu(theme: &Theme) -> menu::Style {
     menu::Style {
         background: ELEVATED.resolve(theme).into(),
         border: Border {
             color: LINE.resolve(theme),
             width: 1.,
-            radius: 10.0.into(),
+            radius: CONTROL_RADIUS.into(),
         },
         text_color: TEXT.resolve(theme),
         selected_text_color: TEXT.resolve(theme),
@@ -345,12 +391,11 @@ pub(crate) fn file_tab_button(theme: &Theme, status: button::Status) -> button::
     button::Style {
         background: matches!(status, button::Status::Hovered | button::Status::Pressed)
             .then_some(ELEVATED.resolve(theme).into()),
-        text_color: TEXT.resolve(theme),
-        ..Default::default()
+        ..action(false)(theme, status)
     }
 }
 
-pub(crate) fn file_tab_indicator(active: bool) -> impl Fn(&Theme) -> container::Style {
+pub(crate) fn tab_indicator(active: bool) -> impl Fn(&Theme) -> container::Style {
     move |theme| container::Style {
         background: Some(
             if active {
@@ -377,7 +422,7 @@ pub(crate) fn menu_title(open: bool) -> impl Fn(&Theme) -> container::Style {
         background: open.then_some(SELECTED.resolve(theme).into()),
         text_color: Some(TEXT.resolve(theme)),
         border: Border {
-            radius: 8.0.into(),
+            radius: CONTROL_RADIUS.into(),
             ..Default::default()
         },
         ..Default::default()
@@ -406,7 +451,7 @@ pub(crate) fn notification_progress(
     tone: Tone,
 ) -> iced::widget::progress_bar::Style {
     iced::widget::progress_bar::Style {
-        background: HOVER.resolve(theme).into(),
+        background: ELEVATED.resolve(theme).into(),
         bar: tone.resolve(theme).into(),
         border: Border {
             radius: 2.0.into(),
@@ -451,7 +496,7 @@ pub(crate) fn tooltip(theme: &Theme) -> container::Style {
         border: Border {
             color: LINE.resolve(theme),
             width: 1.0,
-            radius: 10.0.into(),
+            radius: CONTROL_RADIUS.into(),
         },
         ..Default::default()
     }
@@ -472,7 +517,7 @@ pub(crate) fn badge(theme: &Theme) -> container::Style {
     container::Style {
         background: Some(ELEVATED.resolve(theme).into()),
         border: Border {
-            radius: 999.0.into(),
+            radius: CONTROL_RADIUS.into(),
             ..Default::default()
         },
         text_color: Some(MUTED.resolve(theme)),
@@ -490,7 +535,7 @@ pub(crate) fn branch_badge(theme: &Theme, status: button::Status) -> button::Sty
         ),
         text_color: if hovered { TEXT } else { MUTED }.resolve(theme),
         border: Border {
-            radius: 999.0.into(),
+            radius: CONTROL_RADIUS.into(),
             ..Default::default()
         },
         ..Default::default()
@@ -508,13 +553,20 @@ pub(crate) fn branch_attention(active: bool) -> impl Fn(&Theme) -> container::St
     }
 }
 
+pub(crate) fn backdrop(_theme: &Theme) -> container::Style {
+    container::Style {
+        background: Some(Color::BLACK.scale_alpha(0.5).into()),
+        ..Default::default()
+    }
+}
+
 pub(crate) fn dialog(theme: &Theme) -> container::Style {
     container::Style {
         background: Some(DIALOG.resolve(theme).into()),
         border: Border {
             color: LINE.resolve(theme),
             width: 1.0,
-            radius: 24.0.into(),
+            radius: CONTROL_RADIUS.into(),
         },
         shadow: iced::Shadow {
             color: Color::from_rgba(0.0, 0.0, 0.0, 0.35),
@@ -540,7 +592,7 @@ pub(crate) fn action(selected: bool) -> impl Fn(&Theme, button::Status) -> butto
                 TEXT.resolve(theme)
             },
             border: Border {
-                radius: 10.0.into(),
+                radius: CONTROL_RADIUS.into(),
                 ..Default::default()
             },
             ..Default::default()
@@ -549,31 +601,17 @@ pub(crate) fn action(selected: bool) -> impl Fn(&Theme, button::Status) -> butto
 }
 
 pub(crate) fn completion_row(selected: bool) -> impl Fn(&Theme, button::Status) -> button::Style {
-    move |theme, status| {
-        let mut style = action(selected)(theme, status);
-        style.border.radius = 5.0.into();
-        if selected {
-            style.background = Some(Tone::new(0x48494b, 0xd5e4f4).resolve(theme).into());
-        }
-        style
-    }
+    selectable_row(selected, COMPLETION_SELECTED)
 }
 
 pub(crate) fn fold_row(theme: &Theme, status: button::Status) -> button::Style {
     let mut style = action(false)(theme, status);
     style.background.get_or_insert(FOLD.resolve(theme).into());
-    style.border.radius = 2.0.into();
     style.text_color = MUTED.resolve(theme);
     style
 }
 
-pub(crate) fn icon_action(selected: bool) -> impl Fn(&Theme, button::Status) -> button::Style {
-    move |theme, status| {
-        let mut style = action(selected)(theme, status);
-        style.border.radius = 999.0.into();
-        style
-    }
-}
+pub(crate) use action as icon_action;
 
 #[cfg(target_os = "windows")]
 pub(crate) fn window_control(theme: &Theme, status: button::Status) -> button::Style {
@@ -583,71 +621,55 @@ pub(crate) fn window_control(theme: &Theme, status: button::Status) -> button::S
 }
 
 pub(crate) fn tree_item(selected: bool) -> impl Fn(&Theme, button::Status) -> button::Style {
+    selectable_row(selected, TREE_SELECTED)
+}
+
+fn selectable_row(selected: bool, fill: Tone) -> impl Fn(&Theme, button::Status) -> button::Style {
     move |theme, status| {
         let mut style = action(selected)(theme, status);
-        style.border.radius = 3.0.into();
         if selected {
-            style.background = Some(TREE_SELECTED.resolve(theme).into());
+            style.background = Some(fill.resolve(theme).into());
         }
         style
     }
 }
 
 pub(crate) fn primary(theme: &Theme, status: button::Status) -> button::Style {
-    let disabled = matches!(status, button::Status::Disabled);
-    let background = if disabled {
-        PRIMARY_DISABLED
-    } else if matches!(status, button::Status::Hovered) {
-        PRIMARY_HOVER
-    } else {
-        PRIMARY
-    }
-    .resolve(theme);
+    filled_button(theme, status, PRIMARY, PRIMARY_HOVER)
+}
+
+pub(crate) fn danger(theme: &Theme, status: button::Status) -> button::Style {
+    filled_button(theme, status, RED, DANGER_HOVER)
+}
+
+fn filled_button(theme: &Theme, status: button::Status, fill: Tone, hover: Tone) -> button::Style {
+    let (background, text) = match status {
+        button::Status::Active | button::Status::Pressed => (fill, PRIMARY_TEXT),
+        button::Status::Hovered => (hover, PRIMARY_TEXT),
+        button::Status::Disabled => (PRIMARY_DISABLED, MUTED),
+    };
     button::Style {
-        background: Some(background.into()),
-        text_color: if disabled {
-            MUTED.resolve(theme)
-        } else {
-            PRIMARY_TEXT.resolve(theme)
-        },
+        background: Some(background.resolve(theme).into()),
+        text_color: text.resolve(theme),
         border: Border {
-            radius: 999.0.into(),
+            radius: CONTROL_RADIUS.into(),
             ..Default::default()
         },
         ..Default::default()
     }
 }
 
-pub(crate) fn input(theme: &Theme, status: text_input::Status) -> text_input::Style {
-    let focused = matches!(status, text_input::Status::Focused { .. });
-    text_input::Style {
-        background: ELEVATED.resolve(theme).into(),
-        border: Border {
-            color: if focused {
-                MUTED.resolve(theme)
-            } else {
-                INPUT_BORDER.resolve(theme)
-            },
-            width: 1.0,
-            radius: 12.0.into(),
-        },
-        icon: MUTED.resolve(theme),
-        placeholder: FAINT.resolve(theme),
-        value: if matches!(status, text_input::Status::Disabled) {
-            FAINT.resolve(theme)
-        } else {
-            TEXT.resolve(theme)
-        },
-        selection: INPUT_SELECTION.resolve(theme),
-    }
-}
-
 pub(crate) fn secondary(theme: &Theme, status: button::Status) -> button::Style {
     let mut style = action(false)(theme, status);
     style.border = Border {
-        color: OUTLINE.resolve(theme),
+        color: match status {
+            button::Status::Active => OUTLINE,
+            button::Status::Hovered | button::Status::Pressed => MUTED,
+            button::Status::Disabled => LINE,
+        }
+        .resolve(theme),
         width: 1.0,
-        radius: 999.0.into(),
+        radius: CONTROL_RADIUS.into(),
     };
     style
 }
@@ -692,7 +714,7 @@ pub(crate) fn scroll(theme: &Theme, status: scrollable::Status) -> scrollable::S
         rail.border = Border::default();
         rail.scroller.background = if disabled { Color::TRANSPARENT } else { thumb }.into();
         rail.scroller.border = Border {
-            radius: 8.0.into(),
+            radius: CONTROL_RADIUS.into(),
             ..Default::default()
         };
     }
@@ -733,43 +755,20 @@ pub(crate) fn success_tooltip(theme: &Theme) -> container::Style {
     }
 }
 
-/// Compact source search surfaces follow the editor rather than form dialogs.
+/// Source search uses these panels for its toolbar, results, and preview.
 pub(crate) fn search_panel(theme: &Theme) -> container::Style {
     container::Style {
         background: Some(ELEVATED.resolve(theme).into()),
         border: Border {
             color: LINE.resolve(theme),
             width: 1.,
-            radius: 0.into(),
+            radius: CONTROL_RADIUS.into(),
         },
         ..Default::default()
     }
 }
-pub(crate) fn search_dialog(theme: &Theme) -> container::Style {
-    container::Style {
-        border: Border {
-            radius: 8.into(),
-            ..dialog(theme).border
-        },
-        ..dialog(theme)
-    }
-}
-pub(crate) fn search_input(theme: &Theme, status: text_input::Status) -> text_input::Style {
-    text_input::Style {
-        background: Color::TRANSPARENT.into(),
-        border: Border::default(),
-        ..input(theme, status)
-    }
-}
 pub(crate) fn search_result(selected: bool) -> impl Fn(&Theme, button::Status) -> button::Style {
-    move |theme, status| {
-        let mut style = action(selected)(theme, status);
-        style.border.radius = 3.into();
-        if selected {
-            style.background = Some(CODE_SELECTION.resolve(theme).into());
-        }
-        style
-    }
+    selectable_row(selected, CODE_SELECTION)
 }
 
 pub(crate) fn search_preview(theme: &Theme) -> container::Style {

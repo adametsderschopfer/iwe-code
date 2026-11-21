@@ -9,7 +9,7 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Length,
-    widget::{button, column, container, row, text, toggler},
+    widget::{column, container, row, text},
 };
 
 pub(crate) fn title(id: ModuleId) -> Key {
@@ -115,22 +115,15 @@ pub(crate) fn settings(app: &App) -> Element<'_, Message> {
                     )
                     .padding([3, 8])
                     .style(theme::badge),
-                    container(
-                        toggler(app.module_enabled(module.id))
-                            .style(theme::toggle)
-                            .on_toggle(move |enabled| Message::Module(Event::SetEnabled(
-                                module.id, enabled
-                            )))
-                    )
+                    container(theme::switch(app.module_enabled(module.id)).on_toggle(
+                        move |enabled| Message::Module(Event::SetEnabled(module.id, enabled))
+                    ))
                     .id(format!("module-{}-enabled", module.id.key())),
                 ]
                 .spacing(16)
                 .align_y(Alignment::Center)
                 .padding([14, 0]),
-                container(iced::widget::space())
-                    .height(1)
-                    .width(Length::Fill)
-                    .style(theme::separator),
+                crate::ui::presentation::divider(),
             ])
             .id(format!("module-{}", module.id.key()))
             .width(Length::Fill),
@@ -149,20 +142,16 @@ pub(crate) fn external_settings(app: &App) -> Element<'_, Message> {
                 .size(14)
                 .font(theme::semibold())
                 .width(Length::Fill),
-            button(
-                text(if external_state.installing {
-                    app.i18n.text(Key::InstallingModule)
-                } else {
-                    app.i18n.text(Key::InstallModule)
-                })
-                .size(13),
-            )
+            theme::text_button(if external_state.installing {
+                app.i18n.text(Key::InstallingModule)
+            } else {
+                app.i18n.text(Key::InstallModule)
+            })
             .on_press_maybe(
                 (!external_state.installing && external_state.confirm.is_none()).then_some(
                     Message::Module(Event::External(crate::app::modules::external::Event::Pick,)),
                 ),
             )
-            .padding([8, 14])
             .style(theme::primary),
         ]
         .spacing(12)
@@ -231,23 +220,18 @@ pub(crate) fn external_settings(app: &App) -> Element<'_, Message> {
                     ]
                     .spacing(4)
                     .width(Length::Fill),
-                    button(text(app.i18n.text(Key::RemoveModule)).size(13))
+                    theme::text_button(app.i18n.text(Key::RemoveModule))
                         .on_press(external(&module.manifest))
-                        .padding([8, 14])
-                        .style(theme::secondary),
+                        .style(theme::danger),
                     container(
-                        toggler(enabled)
-                            .style(theme::toggle)
+                        theme::switch(enabled)
                             .on_toggle(move |value| set_external_enabled(&id, value)),
                     )
                     .id(format!("external-module-{}-enabled", module.manifest.id)),
                 ]
                 .spacing(16)
                 .align_y(Alignment::Center),
-                container(iced::widget::space())
-                    .height(1)
-                    .width(Length::Fill)
-                    .style(theme::separator),
+                crate::ui::presentation::divider(),
             ])
             .id(format!("external-module-{}", module.manifest.id))
             .width(Length::Fill),
@@ -286,18 +270,14 @@ fn confirm_card<'a>(
                 .style(theme::MUTED.text()),
             permissions,
             row![
-                button(text(app.i18n.text(Key::InstallModule)).size(13))
+                theme::text_button(app.i18n.text(Key::InstallModule))
                     .on_press(Message::Module(Event::External(
                         crate::app::modules::external::Event::Confirm,
                     )))
-                    .padding([8, 14])
                     .style(theme::primary),
-                button(text(app.i18n.text(Key::Cancel)).size(13))
-                    .on_press(Message::Module(Event::External(
-                        crate::app::modules::external::Event::Cancel,
-                    )))
-                    .padding([8, 14])
-                    .style(theme::secondary),
+                theme::text_button(app.i18n.text(Key::Cancel)).on_press(Message::Module(
+                    Event::External(crate::app::modules::external::Event::Cancel,)
+                )),
             ]
             .spacing(8),
         ]

@@ -2791,6 +2791,16 @@
           "es": "La navegación con el teclado omite los campos de texto desactivados, incluidos los de varias líneas."
         },
         "sources": ["vendor/iced_widget/src/text_input.rs", "vendor/iced_widget/src/text_editor.rs"]
+      },
+      {
+        "id": "shared-workspace-dialogs-and-controls",
+        "category": "changed",
+        "text": {
+          "en": "Workspace and module dialogs share the same layout. Buttons, fields, and menus use consistent corners and interaction states in both themes.",
+          "ru": "Диалоги приложения и модулей используют общую компоновку. Кнопки, поля и меню получили единые скругления и состояния в обеих темах.",
+          "es": "Los diálogos del espacio de trabajo y los módulos comparten la misma disposición. Los botones, campos y menús comparten esquinas y estados en ambos temas."
+        },
+        "sources": ["src/ui/modal/mod.rs", "src/ui/theme/fields.rs", "src/ui/theme/buttons.rs"]
       }
     ]
   }

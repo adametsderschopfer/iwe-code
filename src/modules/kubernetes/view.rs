@@ -5,13 +5,14 @@ use crate::{
     ui::icons::{Icon, sized_icon},
     ui::{
         context_menu::separator,
-        service_controls::{action, choice, divider, entry, field, heading, menu, select},
+        presentation::{IconButton, vertical_divider},
+        service_controls::{action, choice, entry, field, heading},
         theme,
     },
 };
 use iced::{
     Element, Length,
-    widget::{button, column, container, pick_list, row, scrollable, space, text},
+    widget::{button, column, container, row, scrollable, space, text},
 };
 impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -42,15 +43,13 @@ pub(crate) fn panel<'a>(
     let mut header = row![
         sized_icon(Icon::Kubernetes, theme::BLUE, 20.),
         heading(i.text(Key::Kubernetes)),
-        pick_list(
-            contexts,
-            (!s.target.context.is_empty()).then(|| s.target.context.clone()),
-            Event::Context
-        )
-        .placeholder(i.text(Key::KubeContext))
-        .text_size(12)
-        .style(select)
-        .menu_style(menu),
+        theme::Select::Compact
+            .view(
+                contexts,
+                (!s.target.context.is_empty()).then(|| s.target.context.clone()),
+                Event::Context
+            )
+            .placeholder(i.text(Key::KubeContext)),
         action(i, Key::KubeConfig, Some(Event::Config)),
         action(i, Key::Refresh, Some(Event::Refresh))
     ]
@@ -65,14 +64,7 @@ pub(crate) fn panel<'a>(
             (!s.busy).then_some(Event::Manifest),
         ))
     }
-    let close = crate::ui::tooltip::view(
-        button(sized_icon(Icon::Close, theme::MUTED, 16.))
-            .padding(4)
-            .on_press(Event::Hide)
-            .style(theme::icon_action(false)),
-        text(i.text(Key::HidePanel)).size(12),
-        crate::ui::tooltip::Position::Bottom,
-    );
+    let close = IconButton::Compact.view(i, Icon::Close, Key::HidePanel, Some(Event::Hide));
     let mut body = column![
         container(
             row![header.wrap(), space().width(Length::Fill), close]
@@ -118,11 +110,15 @@ pub(crate) fn panel<'a>(
             )
         }
         return body
-            .push(scrollable(preview).height(Length::Fill))
+            .push(
+                scrollable(preview)
+                    .style(theme::scroll)
+                    .height(Length::Fill),
+            )
             .push(
                 row![
                     action(i, Key::Cancel, Some(Event::Cancel)),
-                    action(i, Key::KubeApply, Some(Event::Confirm))
+                    action(i, Key::KubeApply, Some(Event::Confirm)).style(theme::primary)
                 ]
                 .padding(5)
                 .spacing(6),
@@ -175,7 +171,9 @@ pub(crate) fn panel<'a>(
             }
         }
         return body
-            .push(scrollable(form))
+            .push(crate::ui::focus::form(
+                scrollable(form).style(theme::scroll).into(),
+            ))
             .push(
                 row![
                     action(i, Key::Cancel, Some(Event::Cancel)),
@@ -192,6 +190,7 @@ pub(crate) fn panel<'a>(
                             Event::Review
                         })
                     )
+                    .style(theme::primary)
                 ]
                 .spacing(6)
                 .padding(5),
@@ -201,13 +200,8 @@ pub(crate) fn panel<'a>(
     if s.target.context.is_empty() {
         return body.into();
     }
-    let mut filters = row![
-        pick_list(&Kind::ALL[..], Some(s.kind), Event::Kind)
-            .text_size(12)
-            .style(select)
-            .menu_style(menu)
-    ]
-    .spacing(5);
+    let mut filters =
+        row![theme::Select::Compact.view(&Kind::ALL[..], Some(s.kind), Event::Kind)].spacing(5);
     if s.kind != Kind::Node {
         let all = i.text(Key::KubeAll);
         if s.namespaces.is_empty() {
@@ -240,14 +234,11 @@ pub(crate) fn panel<'a>(
             } else {
                 s.target.namespace.clone()
             };
-            filters = filters.push(
-                pick_list(options, Some(current), move |choice| {
-                    Event::Namespace(if choice == all { String::new() } else { choice })
-                })
-                .text_size(12)
-                .style(select)
-                .menu_style(menu),
-            );
+            filters = filters.push(theme::Select::Compact.view(
+                options,
+                Some(current),
+                move |choice| Event::Namespace(if choice == all { String::new() } else { choice }),
+            ));
         }
     }
     body = body
@@ -291,13 +282,10 @@ pub(crate) fn panel<'a>(
                 .width(Length::Fill)
                 .padding([5, 8])
                 .on_press(Event::Select(r.clone()))
-                .style(move |t, state| {
-                    let mut style = theme::tree_item(selected)(t, state);
-                    style.border.radius = Default::default();
-                    style
-                })
+                .style(theme::tree_item(selected))
                 .into()
         })))
+        .style(theme::scroll)
         .height(Length::Fill),
     );
     if s.rows.len() > 50 {
@@ -347,17 +335,14 @@ pub(crate) fn panel<'a>(
             Tab::Properties => {
                 if !d.containers.is_empty() {
                     props = props.push(text(i.text(Key::KubeContainer)).size(12)).push(
-                        pick_list(
+                        theme::Select::Compact.view(
                             d.containers
                                 .iter()
                                 .map(|c| c.name.clone())
                                 .collect::<Vec<_>>(),
                             Some(s.container.clone()),
                             Event::Container,
-                        )
-                        .text_size(12)
-                        .style(select)
-                        .menu_style(menu),
+                        ),
                     )
                 }
                 if let Some(c) = s.container() {
@@ -404,8 +389,8 @@ pub(crate) fn panel<'a>(
             }
         }
         panes = panes
-            .push(divider())
-            .push(container(scrollable(props)).width(Length::FillPortion(3)));
+            .push(vertical_divider())
+            .push(container(scrollable(props).style(theme::scroll)).width(Length::FillPortion(3)));
     }
     body = body.push(panes);
     if !s.sessions.is_empty() {
@@ -447,7 +432,7 @@ pub(crate) fn panel<'a>(
         }
         body = body
             .push(separator())
-            .push(container(scrollable(sessions)).max_height(150));
+            .push(container(scrollable(sessions).style(theme::scroll)).max_height(150));
     }
     body.into()
 }

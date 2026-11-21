@@ -10,10 +10,7 @@ use crate::{
 };
 use iced::{
     Element, Length, Size,
-    widget::{
-        Column, button, column, container, pick_list, row, scrollable, text, text_editor,
-        text_input, toggler,
-    },
+    widget::{Column, container, scrollable, text},
 };
 
 pub(super) fn event(value: Event) -> Message {
@@ -276,9 +273,8 @@ fn form<'a>(app: View<'a>, dialog: &'a Dialog) -> (Column<'a, Message>, bool) {
             [Reset::Soft, Reset::Mixed, Reset::Hard, Reset::Keep]
                 .into_iter()
                 .map(|mode| {
-                    button(text(app.i18n.text(reset_key(mode))).size(14))
+                    theme::text_button(app.i18n.text(reset_key(mode)))
                         .width(Length::Fill)
-                        .padding(8)
                         .style(theme::action(input.reset == mode))
                         .on_press(update(input, |input| {
                             input.reset = mode;
@@ -299,10 +295,11 @@ fn form<'a>(app: View<'a>, dialog: &'a Dialog) -> (Column<'a, Message>, bool) {
     } {
         let label = app.i18n.text(label);
         fields = fields.push(text(label.clone()).size(13)).push(
-            text_input(&label, &input.name)
-                .on_input(move |name| update(input, |input| input.name = name))
-                .padding(10)
-                .style(theme::input),
+            theme::text_field(&label, &input.name)
+                .style(theme::validated_input(
+                    dialog.error == Some(crate::domain::git::Error::InvalidName),
+                ))
+                .on_input(move |name| update(input, |input| input.name = name)),
         );
         enabled &= !input.name.trim().is_empty();
         if action == Action::Reset {
@@ -312,9 +309,8 @@ fn form<'a>(app: View<'a>, dialog: &'a Dialog) -> (Column<'a, Message>, bool) {
     }
     if action == Action::Create {
         fields = fields.push(
-            toggler(input.checkout)
+            theme::switch(input.checkout)
                 .label(app.i18n.text(Key::GitSwitchAfterCreate))
-                .style(theme::toggle)
                 .on_toggle(move |checkout| update(input, |input| input.checkout = checkout)),
         );
     }
@@ -325,11 +321,9 @@ fn form<'a>(app: View<'a>, dialog: &'a Dialog) -> (Column<'a, Message>, bool) {
             Key::GitHistoryCommitMessage
         });
         fields = fields.push(text(label).size(13)).push(
-            text_editor(&dialog.editor)
+            theme::multiline_field(&dialog.editor)
                 .on_action(|action| event(Event::Edit(action)))
-                .padding(10)
-                .height(100.)
-                .size(14),
+                .height(100.),
         );
         enabled &= action == Action::Tag || !input.message.trim().is_empty();
     }
@@ -343,21 +337,18 @@ fn form<'a>(app: View<'a>, dialog: &'a Dialog) -> (Column<'a, Message>, bool) {
         fields = fields
             .push(text(app.i18n.text(Key::GitRemote)).size(13))
             .push(
-                pick_list(remotes, Some(input.name.clone()), move |name| {
-                    update(input, |input| input.name = name)
-                })
-                .padding(10)
-                .style(theme::select)
-                .menu_style(theme::select_menu)
-                .width(Length::Fill),
+                theme::Select::Standard
+                    .view(remotes, Some(input.name.clone()), move |name| {
+                        update(input, |input| input.name = name)
+                    })
+                    .width(Length::Fill),
             );
         enabled &= !input.name.is_empty();
     }
     if action == Action::Patch {
         fields = fields.push(
-            button(text(app.i18n.text(Key::GitHistoryDestination)))
-                .on_press(event(Event::Browse))
-                .style(theme::secondary),
+            theme::text_button(app.i18n.text(Key::GitHistoryDestination))
+                .on_press(event(Event::Browse)),
         );
         if let Some(path) = &input.path {
             fields = fields.push(text(path.display().to_string()).size(13));
@@ -369,7 +360,7 @@ fn form<'a>(app: View<'a>, dialog: &'a Dialog) -> (Column<'a, Message>, bool) {
         for (index, id) in dialog.context.parents.iter().enumerate() {
             let parent = index + 1;
             fields = fields.push(
-                button(text(id).size(13))
+                theme::text_button(id)
                     .style(theme::action(input.parent == Some(parent)))
                     .on_press(update(input, |input| input.parent = Some(parent))),
             );
@@ -411,40 +402,36 @@ pub(super) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
         return base;
     };
     let pending = app.state.git_actions.pending;
-    let mut body = column![
-        text(app.i18n.text(key(dialog.action)))
-            .size(22)
-            .font(theme::semibold()),
-        text(
-            dialog
-                .target
-                .root()
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
+    let mut body = modal::content(app.i18n.text(key(dialog.action)))
+        .push(
+            text(
+                dialog
+                    .target
+                    .root()
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy(),
+            )
+            .size(13),
         )
-        .size(13),
-        text(
-            dialog
-                .target
-                .revision()
-                .strip_prefix("refs/heads/")
-                .or_else(|| dialog.target.revision().strip_prefix("refs/remotes/"))
-                .or_else(|| dialog.target.revision().strip_prefix("refs/tags/"))
-                .unwrap_or(dialog.target.revision())
-        )
-        .size(13),
-    ]
-    .spacing(12);
+        .push(
+            text(
+                dialog
+                    .target
+                    .revision()
+                    .strip_prefix("refs/heads/")
+                    .or_else(|| dialog.target.revision().strip_prefix("refs/remotes/"))
+                    .or_else(|| dialog.target.revision().strip_prefix("refs/tags/"))
+                    .unwrap_or(dialog.target.revision()),
+            )
+            .size(13),
+        );
     if !dialog.context.branch.is_empty() {
         body = body.push(text(dialog.context.branch.trim_start_matches("refs/heads/")).size(13));
     }
-    let mut footer = row![
-        button(text(app.i18n.text(Key::Cancel)))
-            .style(theme::secondary)
-            .on_press_maybe((!pending).then(close))
-    ]
-    .spacing(8);
+    let mut footer = modal::actions().push(
+        theme::text_button(app.i18n.text(Key::Cancel)).on_press_maybe((!pending).then(close)),
+    );
     if let Some(output) = &dialog.output {
         body = body
             .push(container(scrollable(results(app, output)).style(theme::scroll)).max_height(420));
@@ -461,12 +448,9 @@ pub(super) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
         {
             for action in [Action::Continue, Action::Abort] {
                 footer = footer.push(
-                    button(text(app.i18n.text(key(action))))
-                        .style(theme::secondary)
-                        .on_press_maybe(
-                            (!pending)
-                                .then_some(event(Event::Choose(dialog.target.clone(), action))),
-                        ),
+                    theme::text_button(app.i18n.text(key(action))).on_press_maybe(
+                        (!pending).then_some(event(Event::Choose(dialog.target.clone(), action))),
+                    ),
                 );
             }
         }
@@ -474,8 +458,16 @@ pub(super) fn overlay<'a>(app: View<'a>, base: Element<'a, Message>) -> Element<
         let (fields, enabled) = form(app, dialog);
         body = body.push(fields);
         footer = footer.push(
-            button(text(app.i18n.text(key(dialog.action))))
-                .style(theme::primary)
+            theme::text_button(app.i18n.text(key(dialog.action)))
+                .style(
+                    if dialog.action == Action::DeleteTag
+                        || (dialog.action == Action::Reset && dialog.input.reset == Reset::Hard)
+                    {
+                        theme::danger
+                    } else {
+                        theme::primary
+                    },
+                )
                 .on_press_maybe((enabled && !pending).then_some(event(Event::Submit))),
         );
     }

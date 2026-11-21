@@ -11,6 +11,7 @@ pub(crate) mod ellipsis;
 pub(crate) mod explain;
 pub(crate) mod external_module_panel;
 pub(crate) mod file_icons;
+pub(crate) mod focus;
 pub(crate) mod graph;
 pub(crate) mod icons;
 pub(crate) mod modules;

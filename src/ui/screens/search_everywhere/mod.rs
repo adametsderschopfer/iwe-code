@@ -6,28 +6,22 @@ use crate::{
         search_everywhere::{Event, INPUT_ID, RESULTS_ID, Row, Scope, visible_window},
     },
     i18n::Key,
-    ui::{context_menu, ellipsis, file_icons, icons, theme},
+    ui::{context_menu, ellipsis, file_icons, icons, modal, theme},
 };
 use iced::{
     Alignment, Element, Length,
     alignment::Horizontal,
-    widget::{
-        button, column, container, mouse_area, opaque, row, scrollable, space, stack, text,
-        text_input,
-    },
+    widget::{button, column, container, row, scrollable, text},
 };
 
 pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
     let Some(dialog) = &app.search_everywhere.dialog else {
         return base;
     };
-    let input = text_input(&app.i18n.text(Key::SearchPlaceholder), &dialog.query)
+    let input = theme::text_field(&app.i18n.text(Key::SearchPlaceholder), &dialog.query)
         .id(INPUT_ID)
         .on_input(|value| Message::SearchEverywhere(Event::Changed(value)))
-        .on_submit(Message::SearchEverywhere(Event::Selected))
-        .size(14)
-        .padding([10, 12])
-        .style(theme::search_input);
+        .on_submit(Message::SearchEverywhere(Event::Selected));
 
     let mut results = column(Vec::new()).spacing(theme::SEARCH_ROW_SPACING);
     if dialog.query.is_empty() {
@@ -88,10 +82,10 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
     );
 
     let content = column![
-        iced::widget::tooltip(
+        crate::ui::tooltip::view(
             tabs,
             text(app.i18n.text(Key::SearchEverywhereDescription)),
-            iced::widget::tooltip::Position::Bottom
+            crate::ui::tooltip::Position::Bottom
         ),
         row![icons::icon(icons::Icon::Search, theme::MUTED), input]
             .spacing(10)
@@ -102,30 +96,13 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
     ]
     .spacing(12);
 
-    let popup = container(content)
-        .width(theme::SEARCH_OVERLAY_WIDTH)
-        .padding(12)
-        .style(theme::search_dialog);
-    let area = container(popup)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .align_x(Horizontal::Center)
-        .padding(iced::Padding {
-            top: theme::SEARCH_OVERLAY_TOP_INSET,
-            ..Default::default()
-        });
-    let backdrop = container(stack![
-        mouse_area(container(space()).width(Length::Fill).height(Length::Fill))
-            .on_press(Message::SearchEverywhere(Event::Cancel)),
-        area,
-    ])
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .style(|_| container::Style {
-        background: Some(iced::Color::from_rgba(0., 0., 0., 0.5).into()),
-        ..Default::default()
-    });
-    let layered = opaque(stack![base, opaque(backdrop)]);
+    let layered = modal::top_overlay(
+        base,
+        content.into(),
+        theme::SEARCH_OVERLAY_WIDTH,
+        theme::SEARCH_OVERLAY_TOP_INSET,
+        Message::SearchEverywhere(Event::Cancel),
+    );
     context_menu::on_key(layered, |event| {
         key_event(event).map(Message::SearchEverywhere)
     })
@@ -262,7 +239,7 @@ fn row_button<'a>(
             .width(Length::Fill)
             .height(Length::Fixed(theme::SEARCH_ROW_HEIGHT))
             .padding([0, 10])
-            .style(move |theme, status| theme::search_result(index == selection)(theme, status))
+            .style(theme::search_result(index == selection))
             .on_press(Message::SearchEverywhere(Event::Activate(index))),
     )
     .id(format!("search-everywhere-row-{index}"))
@@ -274,16 +251,9 @@ fn scope_chip<'a>(app: &'a App, scope: Scope, active: Scope) -> Element<'a, Mess
         Scope::Files => Key::SearchScopeFiles,
         Scope::Projects => Key::SearchScopeProjects,
     };
-    button(text(app.i18n.text(key)).size(12))
+    theme::compact_button(app.i18n.text(key))
         .on_press(Message::SearchEverywhere(Event::ChangeScope(scope)))
-        .padding([4, 12])
-        .style(move |theme, status| {
-            if scope == active {
-                theme::primary(theme, status)
-            } else {
-                theme::action(false)(theme, status)
-            }
-        })
+        .style(theme::action(scope == active))
         .into()
 }
 

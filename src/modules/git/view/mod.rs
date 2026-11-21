@@ -2,7 +2,9 @@ use super::{
     GitPanel,
     selection::{Event as SelectionEvent, Target as SelectionTarget},
 };
-use crate::ui::presentation::{center_message, divider, error_key, icon_button, short};
+use crate::ui::presentation::{
+    IconButton, center_message, divider, error_key, icon_button, short, vertical_divider,
+};
 use Event as Message;
 
 use crate::ui::tooltip;
@@ -18,8 +20,7 @@ use crate::{
 use iced::{
     Alignment, Element, Font, Length, Size,
     widget::{
-        Column, Row, button, column, container, pane_grid, responsive, row, scrollable, space,
-        text, text_input,
+        Column, Row, button, column, container, pane_grid, responsive, row, scrollable, space, text,
     },
 };
 
@@ -98,10 +99,7 @@ pub(crate) fn view<'a>(app: View<'a>) -> Element<'a, Message> {
             branch_tools(app),
         ],
     );
-    let separator = container(space())
-        .width(1)
-        .height(Length::Fill)
-        .style(theme::separator);
+    let separator = vertical_divider();
     let content = row![tools, separator, content].height(Length::Fill);
     container(column![
         responsive(move |size| header(app, size.width)).height(Length::Shrink),
@@ -178,13 +176,10 @@ fn header<'a>(app: View<'a>, width: f32) -> Element<'a, Message> {
         .min(width - commits_x - reserved - 24.)
         .clamp(0., 560.);
     let search = container(
-        text_input(&app.i18n.text(Key::SearchCommits), &app.state.query)
+        theme::text_field(&app.i18n.text(Key::SearchCommits), &app.state.query)
             .id("git-search")
             .on_input(Message::Search)
-            .size(13)
-            .padding([8, 12])
-            .width(search_width)
-            .style(theme::input),
+            .width(search_width),
     )
     .padding([8, 12]);
     let mut header = row![title, search, space().width(Length::Fill)].align_y(Alignment::Center);
@@ -288,9 +283,8 @@ fn branches<'a>(app: View<'a>, width: f32) -> Element<'a, Message> {
         let multiple = repos.repositories.len() > 1;
         if multiple {
             items = items.push(
-                button(text(app.i18n.text(Key::AllRepositories)).size(12))
+                theme::compact_button(app.i18n.text(Key::AllRepositories))
                     .on_press(Message::AllRepositories)
-                    .padding([6, 8])
                     .width(Length::Fill)
                     .style(theme::action(app.state.branch.is_none())),
             );
@@ -925,17 +919,12 @@ fn history_footer<'a>(app: View<'a>) -> Element<'a, Message> {
         );
     }
     content = content.push(
-        button(
-            text(app.i18n.text(if app.state.history_error.is_some() {
-                Key::Retry
-            } else {
-                Key::LoadOlderCommits
-            }))
-            .size(12),
-        )
-        .on_press_maybe((!app.loading).then_some(Message::LoadMoreHistory))
-        .style(theme::secondary)
-        .padding([8, 16]),
+        theme::compact_button(app.i18n.text(if app.state.history_error.is_some() {
+            Key::Retry
+        } else {
+            Key::LoadOlderCommits
+        }))
+        .on_press_maybe((!app.loading).then_some(Message::LoadMoreHistory)),
     );
     container(content).padding(12).center_x(Length::Fill).into()
 }
@@ -961,12 +950,7 @@ fn changed_files_content<'a>(app: View<'a>, width: f32, height: f32) -> Element<
             .size(11)
             .style(theme::FAINT.text()),
         container(tooltip::view(
-            button(icon(Icon::Close, theme::MUTED))
-                .padding(4)
-                .width(28)
-                .height(28)
-                .style(theme::action(false))
-                .on_press(Message::CloseCommitFiles),
+            IconButton::Inline(28.).button(Icon::Close, Some(Message::CloseCommitFiles), false),
             text(app.i18n.text(Key::HidePanel)).size(12),
             tooltip::Position::Left,
         ))

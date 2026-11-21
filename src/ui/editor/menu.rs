@@ -11,7 +11,7 @@ use crate::{
 use iced::{
     Element, Length,
     keyboard::{self, key::Named},
-    widget::{button, column, container, row, scrollable, space, text, text_input},
+    widget::{column, container, scrollable, text},
 };
 
 fn section(action: Action) -> Option<Key> {
@@ -26,27 +26,26 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
     let tab = app.preview().id;
     if let Some(form) = app.editor.rename.as_ref().filter(|form| form.tab == tab) {
         let valid = !form.value.trim().is_empty() && form.value != form.symbol;
-        let content = column![
-            text(app.i18n.text(Key::EditorRenameLocal))
-                .size(18)
-                .font(theme::semibold()),
-            text(&form.symbol).size(13).style(theme::MUTED.text()),
-            text_input(&app.i18n.text(Key::EditorNewName), &form.value)
-                .id("editor-rename")
-                .on_input(|v| message(Event::RenameInput(v)))
-                .on_submit_maybe(valid.then(|| message(Event::RenameSubmit)))
-                .style(theme::input),
-            row![
-                button(text(app.i18n.text(Key::Cancel)))
-                    .on_press(message(Event::RenameCancel))
-                    .style(theme::action(false)),
-                space().width(Length::Fill),
-                button(text(app.i18n.text(Key::FileRename)))
-                    .on_press_maybe(valid.then(|| message(Event::RenameSubmit)))
-                    .style(theme::primary)
-            ]
-        ]
-        .spacing(12);
+        let content = modal::content(app.i18n.text(Key::EditorRenameLocal))
+            .push(text(&form.symbol).size(13).style(theme::MUTED.text()))
+            .push(
+                theme::text_field(&app.i18n.text(Key::EditorNewName), &form.value)
+                    .id("editor-rename")
+                    .on_input(|v| message(Event::RenameInput(v)))
+                    .on_submit_maybe(valid.then(|| message(Event::RenameSubmit))),
+            )
+            .push(
+                modal::actions()
+                    .push(
+                        theme::text_button(app.i18n.text(Key::Cancel))
+                            .on_press(message(Event::RenameCancel)),
+                    )
+                    .push(
+                        theme::text_button(app.i18n.text(Key::FileRename))
+                            .on_press_maybe(valid.then(|| message(Event::RenameSubmit)))
+                            .style(theme::primary),
+                    ),
+            );
         return modal::overlay(base, content.into(), 420., message(Event::RenameCancel));
     }
     let Some(menu) = app.editor.menu.as_ref().filter(|menu| menu.tab == tab) else {
@@ -102,9 +101,14 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                         .style(context_menu::action_style(key, index == menu.selected)),
                 );
             }
-            container(scrollable(rows).id(SCROLL_ID).height(Length::Shrink))
-                .max_height(height)
-                .into()
+            container(
+                scrollable(rows)
+                    .style(theme::scroll)
+                    .id(SCROLL_ID)
+                    .height(Length::Shrink),
+            )
+            .max_height(height)
+            .into()
         },
         message(Event::Close),
     );

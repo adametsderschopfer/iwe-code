@@ -7,13 +7,15 @@ use super::{
     Operation,
     state::{Event, State},
 };
+use crate::ui::presentation::IconButton;
 use crate::{
     domain::deployment::{Connections, Error, Profile},
     i18n::{I18n, Key},
     ui::{
         context_menu,
         icons::{Icon, icon},
-        theme, tooltip,
+        service_controls::action,
+        theme,
     },
 };
 use iced::{
@@ -21,14 +23,6 @@ use iced::{
     widget::{Column, button, column, container, mouse_area, row, scrollable, text},
 };
 use std::path::Path;
-
-fn action<'a>(i18n: &I18n, key: Key, event: Event) -> Element<'a, Event> {
-    button(text(i18n.text(key)).size(13))
-        .on_press(event)
-        .padding([8, 10])
-        .style(theme::action(false))
-        .into()
-}
 
 pub(crate) fn error_key(error: &Error) -> Key {
     match error {
@@ -101,7 +95,8 @@ pub(super) fn status<'a>(state: &State, i18n: &I18n) -> Element<'a, Event> {
             Error::Overwrite => {
                 content = content.push(
                     row![
-                        action(i18n, Key::DeploymentReplace, Event::ConfirmDownload),
+                        action(i18n, Key::DeploymentReplace, Event::ConfirmDownload)
+                            .style(theme::danger),
                         action(i18n, Key::DeploymentCancel, Event::Cancel)
                     ]
                     .spacing(6),
@@ -139,10 +134,8 @@ fn tree<'a>(state: &'a State, root: &str, depth: u16) -> Element<'a, Event> {
                 Icon::Changes
             };
             let arrow: Element<'_, Event> = if entry.directory && !entry.symlink {
-                button(icon(symbol, theme::MUTED))
-                    .padding(0)
-                    .on_press(Event::Folder(entry.path.clone()))
-                    .style(theme::action(false))
+                IconButton::Inline(20.)
+                    .button(symbol, Some(Event::Folder(entry.path.clone())), false)
                     .into()
             } else {
                 icon(symbol, theme::MUTED)
@@ -213,16 +206,7 @@ pub(crate) fn panel<'a>(
     {
         heading = heading.push(text(&connection.name).size(12).style(theme::MUTED.text()));
     }
-    let control = |symbol, key, event| {
-        tooltip::view(
-            button(icon(symbol, theme::MUTED))
-                .on_press(event)
-                .padding(7)
-                .style(theme::action(false)),
-            text(i18n.text(key)).size(12),
-            tooltip::Position::Bottom,
-        )
-    };
+    let control = |symbol, key, event| IconButton::Inline(34.).view(i18n, symbol, key, Some(event));
     heading = heading.push(
         row![
             control(Icon::Refresh, Key::DeploymentRefresh, Event::Refresh),
@@ -286,12 +270,7 @@ pub(crate) fn activity<'a>(state: &'a State, i18n: &'a I18n) -> Element<'a, Even
         controls = controls
             .push(text(format!("{bytes}")).size(12))
             .push(text(i18n.text(Key::DeploymentBytes)).size(12))
-            .push(
-                button(icon(Icon::Close, theme::MUTED))
-                    .on_press(Event::Cancel)
-                    .padding(4)
-                    .style(theme::action(false)),
-            );
+            .push(IconButton::Inline(28.).button(Icon::Close, Some(Event::Cancel), false));
     }
     container(controls)
         .id("background-activity")
@@ -306,10 +285,7 @@ pub(crate) fn activity_details<'a>(state: &'a State, i18n: &'a I18n) -> Element<
             text(i18n.text(Key::Deployment))
                 .size(14)
                 .width(Length::Fill),
-            button(icon(Icon::Close, theme::MUTED))
-                .on_press(Event::DismissActivity)
-                .padding(4)
-                .style(theme::action(false))
+            IconButton::Inline(28.).button(Icon::Close, Some(Event::DismissActivity), false)
         ]
         .align_y(Alignment::Center),
         status(state, i18n)
@@ -420,13 +396,7 @@ pub(crate) fn target_popup<'a, Message: Clone + 'a>(
                     .width(Length::Fill)
                     .height(36)
                     .padding(context_menu::ROW_PADDING)
-                    .style(move |theme, status| {
-                        if index == state.target_selection {
-                            style::primary(theme, status)
-                        } else {
-                            theme::action(false)(theme, status)
-                        }
-                    })
+                    .style(theme::tree_item(index == state.target_selection))
                     .on_press(Event::ChooseTarget(id.clone())),
                 )
                 .id(format!("deployment-target-{index}"))

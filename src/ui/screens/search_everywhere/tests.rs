@@ -97,3 +97,31 @@ fn escape_and_arrows_reach_the_popup_with_a_focused_input() {
         );
     }
 }
+
+#[test]
+fn only_a_press_outside_the_search_panel_dismisses_it() {
+    use iced::{Event as IcedEvent, mouse};
+    let app = app();
+    let view = overlay(
+        &app,
+        container(button("Background")).center(Length::Fill).into(),
+    );
+    let mut ui = iced_test::Simulator::with_size(iced::Settings::default(), (900., 700.), view);
+    let input = ui
+        .find(iced::widget::Id::new(INPUT_ID))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    for point in [input.center(), iced::Point::new(4., 4.)] {
+        ui.point_at(point);
+        ui.simulate([
+            IcedEvent::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+            IcedEvent::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+        ]);
+    }
+    let messages: Vec<_> = ui.into_messages().collect();
+    assert!(matches!(
+        messages.as_slice(),
+        [Message::SearchEverywhere(Event::Cancel)]
+    ));
+}

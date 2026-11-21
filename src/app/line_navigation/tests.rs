@@ -12,6 +12,64 @@ fn app() -> App {
 }
 
 #[test]
+fn pointer_hover_changes_only_the_enabled_dialog_button_in_both_themes() {
+    use iced::{Point, Rectangle, Theme, mouse};
+    use iced_test::Simulator;
+
+    let mut app = app();
+    let _ = app.update_line_navigation(Event::Open);
+    app.line_navigation.as_mut().unwrap().loading = true;
+    for theme in [Theme::Dark, Theme::Light] {
+        let mut ui = Simulator::with_size(iced::Settings::default(), (640., 400.), app.view());
+        let labels = [Key::Cancel, Key::Loading].map(|key| {
+            ui.find(app.i18n.text(key))
+                .unwrap()
+                .visible_bounds()
+                .unwrap()
+        });
+        let sample = |ui: &mut Simulator<'_, Message>, cursor: Point| {
+            ui.point_at(cursor);
+            ui.simulate([iced::Event::Mouse(mouse::Event::CursorMoved {
+                position: cursor,
+            })]);
+            let directory = tempfile::tempdir().unwrap();
+            ui.snapshot(&theme)
+                .unwrap()
+                .matches_image(directory.path().join("dialog"))
+                .unwrap();
+            let png = directory
+                .path()
+                .read_dir()
+                .unwrap()
+                .next()
+                .unwrap()
+                .unwrap()
+                .path();
+            let image = image::open(png).unwrap().into_rgba8();
+            let scale = image.width() as f32 / 640.;
+            // Sample the button padding beside each label to exclude glyphs and borders.
+            labels.map(|label: Rectangle| {
+                *image.get_pixel(
+                    ((label.x - 4.) * scale) as u32,
+                    (label.center_y() * scale) as u32,
+                )
+            })
+        };
+        let normal = sample(&mut ui, Point::ORIGIN);
+        let cancel_hover = sample(&mut ui, labels[0].center());
+        let disabled_hover = sample(&mut ui, labels[1].center());
+        assert!(
+            normal[0][0].abs_diff(cancel_hover[0][0]) >= 12,
+            "{theme:?} Cancel fill changed from {:?} to {:?}",
+            normal[0],
+            cancel_hover[0]
+        );
+        assert_eq!(normal[1], cancel_hover[1], "{theme:?} disabled neighbor");
+        assert_eq!(normal, disabled_hover, "{theme:?} disabled hover");
+    }
+}
+
+#[test]
 fn navigation_reveals_and_selects_an_existing_line_without_changing_source() {
     let mut app = app();
     let fingerprint = app.preview().document.as_ref().unwrap().fingerprint;

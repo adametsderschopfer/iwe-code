@@ -1,6 +1,6 @@
 //! Render synchronized comparison panes with shared folding and change connectors.
 
-use super::workspace::divider;
+use crate::ui::presentation::divider;
 use crate::{
     app::{App, Message},
     i18n::{FluentArgs, Key},

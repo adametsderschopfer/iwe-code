@@ -1,3 +1,4 @@
+use crate::ui::modal;
 use crate::{
     app::{
         App, Message,
@@ -10,17 +11,14 @@ use crate::{
 };
 use iced::{
     Alignment, Element, Font, Length,
-    widget::{button, column, row, space, text, text_input},
+    widget::{row, space, text},
 };
 
 pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
     let Some(dialog) = &app.auth_dialog else {
         return base;
     };
-    let mut content = column![
-        text(app.i18n.text(Key::SignIn))
-            .size(24)
-            .font(theme::semibold()),
+    let mut content = modal::content(app.i18n.text(Key::SignIn)).push(
         text(format!(
             "{} · {}",
             dialog.account.provider.name(),
@@ -28,8 +26,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         ))
         .size(14)
         .style(theme::MUTED.text()),
-    ]
-    .spacing(16);
+    );
     match dialog.stage {
         Stage::Starting | Stage::Connecting => {
             content = content.push(text(app.i18n.text(Key::Connecting)).size(14));
@@ -48,8 +45,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                             row![
                                 text(code).font(Font::MONOSPACE).size(28),
                                 space().width(Length::Fill),
-                                button(text(app.i18n.text(Key::CopyAuthCode)).size(12))
-                                    .padding([8, 12])
+                                theme::compact_button(app.i18n.text(Key::CopyAuthCode))
                                     .style(theme::action(false))
                                     .on_press(Message::Auth(AuthMessage::CopyCode)),
                             ]
@@ -57,8 +53,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                         );
                 }
                 content = content.push(
-                    button(text(app.i18n.text(Key::OpenBrowser)).size(14))
-                        .padding([12, 20])
+                    theme::text_button(app.i18n.text(Key::OpenBrowser))
                         .style(theme::primary)
                         .on_press(Message::OpenUrl(prompt.url.clone())),
                 );
@@ -80,11 +75,11 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 )
                 .push(text(app.i18n.text(Key::TokenLabel)).size(14))
                 .push(
-                    text_input(&app.i18n.text(Key::TokenPlaceholder), dialog.token.expose())
+                    theme::text_field(&app.i18n.text(Key::TokenPlaceholder), dialog.token.expose())
                         .secure(true)
-                        .padding([12, 16])
-                        .size(14)
-                        .style(theme::input)
+                        .style(theme::validated_input(
+                            dialog.error == Some(crate::domain::Failure::InvalidToken),
+                        ))
                         .on_input(|value| {
                             Message::Auth(AuthMessage::TokenChanged(Secret::new(value)))
                         })
@@ -97,9 +92,8 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                     "/settings/tokens"
                 };
             content = content.push(
-                button(text(app.i18n.text(Key::CreateToken)).size(12))
+                theme::compact_button(app.i18n.text(Key::CreateToken))
                     .style(theme::action(false))
-                    .padding([8, 0])
                     .on_press(Message::OpenUrl(format!(
                         "{}{token_path}",
                         dialog.account.base_url()
@@ -115,18 +109,13 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 .style(theme::RED.text()),
         );
     }
-    let mut actions = row![
-        space().width(Length::Fill),
-        button(text(app.i18n.text(Key::CancelSignIn)).size(14))
-            .padding([12, 20])
-            .style(theme::secondary)
-            .on_press(Message::Auth(AuthMessage::Cancel))
-    ]
-    .spacing(8);
+    let mut actions = modal::actions().push(
+        theme::text_button(app.i18n.text(Key::CancelSignIn))
+            .on_press(Message::Auth(AuthMessage::Cancel)),
+    );
     if dialog.stage == Stage::Token {
         actions = actions.push(
-            button(text(app.i18n.text(Key::SignIn)).size(14))
-                .padding([12, 20])
+            theme::text_button(app.i18n.text(Key::SignIn))
                 .style(theme::primary)
                 .on_press_maybe(
                     (!dialog.token.is_empty()).then_some(Message::Auth(AuthMessage::SubmitToken)),
@@ -134,8 +123,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
         );
     } else if dialog.stage == Stage::Failed {
         actions = actions.push(
-            button(text(app.i18n.text(Key::Retry)).size(14))
-                .padding([12, 20])
+            theme::text_button(app.i18n.text(Key::Retry))
                 .style(theme::primary)
                 .on_press(Message::SignIn),
         );

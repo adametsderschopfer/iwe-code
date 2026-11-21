@@ -43,7 +43,7 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                     .on_press(Message::Editor(Event::OpenDefinition(index))),
                 );
             }
-            container(scrollable(rows).height(Length::Shrink))
+            container(scrollable(rows).style(theme::scroll).height(Length::Shrink))
                 .max_height(320)
                 .into()
         },
