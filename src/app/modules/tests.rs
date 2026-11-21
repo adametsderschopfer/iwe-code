@@ -903,8 +903,7 @@ async fn publish_choose_roll_out_and_reopen_the_runtime_manifest() {
     let e = click(&app, ModuleId::Docker, "docker-kind-images", true);
     send(&mut app, e).await;
     send(&mut app, Event::Docker(D::Select(source))).await;
-    let e = click(&app, ModuleId::Docker, "Publish", false);
-    send(&mut app, e).await;
+    send(&mut app, Event::Docker(D::PublishImage)).await;
     for e in [
         R::RepoInput("iwe/demo".into()),
         R::VersionInput("candidate".into()),
@@ -938,13 +937,12 @@ async fn publish_choose_roll_out_and_reopen_the_runtime_manifest() {
     send(&mut app, Event::Kubernetes(K::Container("web".into()))).await;
     let e = click(&app, ModuleId::Kubernetes, "Change image", false);
     send(&mut app, e).await;
-    let e = click(
-        &app,
-        ModuleId::Kubernetes,
-        "Choose from Docker registry",
-        false,
-    );
-    send(&mut app, e).await;
+    let published_image = reg.image("iwe/demo", "candidate").unwrap();
+    send(
+        &mut app,
+        Event::Kubernetes(K::PickRegistry(Some(published_image))),
+    )
+    .await;
     assert!(app.modules.docker.registry.picking());
     let results = send(
         &mut app,
@@ -997,9 +995,11 @@ async fn publish_choose_roll_out_and_reopen_the_runtime_manifest() {
         break;
     }
     let runtime = runtime.expect("updated running Pod");
-    let e = click(&app, ModuleId::Kubernetes, "Open image in registry", false);
-    assert!(matches!(&e,Event::Kubernetes(K::OpenRegistry(i)) if i==&runtime));
-    let opened = send(&mut app, e).await;
+    let opened = send(
+        &mut app,
+        Event::Kubernetes(K::OpenRegistry(runtime.clone())),
+    )
+    .await;
     assert!(opened.iter().any(|m|matches!(m,Message::Module(Event::Docker(D::Registry(R::Inspected(_,Ok(m))))) if m.digest==runtime.version)));
     println!("Published {pin}; reopened {}", runtime.version);
 }

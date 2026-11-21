@@ -1231,6 +1231,7 @@ fn following_a_container_image_reveals_its_page_and_links_back_to_running_contai
         (1000., 460.),
         panel(&state, &i18n, true),
     );
+    assert!(ui.find(i18n.text(Key::RegistryPublish)).is_err());
     ui.click(i18n.text(Key::DockerContainers)).unwrap();
     for e in ui.into_messages() {
         let _ = state.update(e, root, true);

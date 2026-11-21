@@ -306,10 +306,10 @@ fn docker_navigation_contains_only_resource_sections() {
             "docker-kind-networks",
             "docker-kind-volumes",
             "docker-kind-compose",
-            "docker-registries",
         ] {
             assert!(ui.find(Id::new(id)).is_ok());
         }
+        assert!(ui.find(Id::new("docker-registries")).is_err());
         assert!(ui.find(Id::new("docker-graph-tab")).is_err());
         assert!(ui.find(i18n.text(Key::DockerGraph)).is_err());
         drop(ui);

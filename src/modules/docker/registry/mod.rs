@@ -12,6 +12,8 @@ use iced::Task;
 use std::path::Path;
 pub(super) use view::{edit_overlay, panel};
 
+pub(crate) const VISIBLE: bool = false;
+
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
     Open,

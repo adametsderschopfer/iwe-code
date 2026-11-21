@@ -137,13 +137,15 @@ fn navigation<'a>(state: &State, i18n: &I18n) -> Element<'a, Event> {
             (state.busy.is_none() || state.loading_inventory()).then_some(Event::Kind(kind)),
         ));
     }
-    links = links.push(tool_rail::item(
-        "docker-registries",
-        Icon::Tag,
-        i18n.text(Key::Registries),
-        state.registry_open,
-        Some(Event::Registry(super::registry::Event::Open)),
-    ));
+    if super::registry::VISIBLE {
+        links = links.push(tool_rail::item(
+            "docker-registries",
+            Icon::Tag,
+            i18n.text(Key::Registries),
+            state.registry_open,
+            Some(Event::Registry(super::registry::Event::Open)),
+        ));
+    }
     tool_rail::view("docker-navigation", "docker-navigation-scroll", links)
 }
 
@@ -485,7 +487,7 @@ fn properties<'a>(
         }
     }
     let mut buttons = row![].spacing(4);
-    if state.kind == Kind::Images {
+    if super::registry::VISIBLE && state.kind == Kind::Images {
         buttons = buttons.push(crate::ui::service_controls::action(
             i18n,
             Key::RegistryPublish,

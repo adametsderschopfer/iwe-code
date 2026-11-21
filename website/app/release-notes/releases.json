@@ -2926,9 +2926,9 @@
         "id": "docker-inventory-refresh-and-registry-dialog",
         "category": "changed",
         "text": {
-          "en": "Docker keeps previously loaded lists visible during refresh. Initial loading appears in the center. Add or edit a registry in a dialog.",
-          "ru": "Docker показывает предыдущий список во время обновления. При первой загрузке сообщение появляется в центре. Добавление и изменение реестра открываются в диалоге.",
-          "es": "Docker conserva las listas visibles al actualizarlas. La carga inicial se indica en el centro. Puedes añadir o editar un registro en un diálogo."
+          "en": "Docker keeps previously loaded lists visible during refresh. Initial loading appears in the center.",
+          "ru": "Docker показывает предыдущий список во время обновления. При первой загрузке сообщение появляется в центре.",
+          "es": "Docker conserva las listas visibles al actualizarlas. La carga inicial se indica en el centro."
         },
         "sources": [
           "src/modules/docker/view.rs",
@@ -2946,6 +2946,16 @@
         "sources": [
           "src/modules/catalog/mod.rs"
         ]
+      },
+      {
+        "id": "hide-docker-registry-browser",
+        "category": "changed",
+        "text": {
+          "en": "The Docker registry browser and the Publish action are temporarily hidden. Saved registry connections remain available for future use.",
+          "ru": "Раздел реестров Docker и действие публикации образа временно скрыты. IWE сохраняет подключения к реестрам.",
+          "es": "El explorador de registros de Docker y la acción Publicar están ocultos temporalmente. IWE conserva las conexiones guardadas."
+        },
+        "sources": ["src/modules/docker/view.rs"]
       }
     ]
   }
