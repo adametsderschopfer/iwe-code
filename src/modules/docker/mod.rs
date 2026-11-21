@@ -87,7 +87,7 @@ pub(crate) enum Event {
     Submit,
     Finished(u64, Action, Result<(), Error>),
     OutputLoaded(u64, Result<Arc<Output>, Error>),
-    Shell(u64, Vec<String>),
+    Shell(u64),
     Hide,
     OutputPage(bool),
 }
@@ -163,8 +163,20 @@ impl State {
             ..Default::default()
         };
     }
-    pub(crate) fn accepts_shell(&self, request: u64) -> bool {
-        self.open && self.request == request && self.busy.is_none()
+    pub(crate) fn take_shell(&mut self, request: u64) -> Option<(String, Vec<String>)> {
+        if !self.open || self.request != request || self.busy.is_some() {
+            return None;
+        }
+        let draft = self
+            .draft
+            .as_ref()
+            .filter(|d| d.action == Action::Terminal)?;
+        let container = self.find(draft.target.as_deref())?;
+        let name = container.name.clone();
+        let mut args = vec!["--context".into(), self.context.clone()?];
+        args.extend(draft.arguments(self.kind, Some(container))?);
+        self.draft = None;
+        Some((name, args))
     }
     pub(crate) fn needs_connection(&self) -> bool {
         self.context.is_none() && self.busy.is_none()
@@ -619,6 +631,9 @@ impl State {
                     return self.open_output(action, target.as_deref(), root);
                 }
                 self.error = None;
+                if action == Action::Terminal {
+                    self.request += 1;
+                }
                 self.draft = Some(Draft {
                     action,
                     value: if action == Action::Terminal {
@@ -688,6 +703,9 @@ impl State {
             return Task::none();
         };
         let action = draft.action;
+        if action == Action::Terminal {
+            return Task::none();
+        }
         let target = self.find(draft.target.as_deref());
         if draft.target.is_some() && target.is_none() {
             self.draft = None;
@@ -698,20 +716,6 @@ impl State {
             return Task::none();
         };
         let context = self.context.clone();
-        if action == Action::Terminal {
-            let Some(context) = context else {
-                return Task::none();
-            };
-            self.draft = None;
-            self.request += 1;
-            return Task::done(Event::Shell(
-                self.request,
-                ["--context".to_owned(), context]
-                    .into_iter()
-                    .chain(args)
-                    .collect(),
-            ));
-        }
         let root = root.to_owned();
         self.pending_form = self.draft.take();
         let id = self.begin(action.key());

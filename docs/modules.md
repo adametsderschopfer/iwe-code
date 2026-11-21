@@ -214,7 +214,12 @@ after shell exit while a separate reader drains the remaining output. This also 
 ConPTY sessions without waiting for the tab to close.
 
 Each tab groups its label and close control within one shared surface. The plus follows the last tab
-inside the same horizontal scrolling area.
+inside the same horizontal scrolling area. Each project numbers its local tabs **Terminal 1**,
+**Terminal 2**, and so on. Docker tabs show the container name. Kubernetes tabs show the Pod and
+container names. IWE adds a number to repeated container titles, such as `api (2)`.
+
+Right-click a tab and choose **Rename**. Press **Enter** to save or **Escape** to cancel. Clear the
+name and press **Enter** to restore the automatic name.
 
 On macOS, Command+C copies selected text and Command+V pastes text. With no selection, copying uses
 the visible screen. Windows and Linux use Ctrl+Shift+C and Ctrl+Shift+V. Ctrl+C remains available to

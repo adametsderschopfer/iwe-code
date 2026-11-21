@@ -403,6 +403,7 @@ message_keys! {
     TerminalStarting => "terminal-starting",
     TerminalExited => "terminal-exited",
     TerminalFailed => "terminal-failed",
+    TerminalRenameTab => "terminal-rename-tab",
     TerminalTab => "terminal-tab",
     TerminalNewTab => "terminal-new-tab",
     TerminalCloseTab => "terminal-close-tab",

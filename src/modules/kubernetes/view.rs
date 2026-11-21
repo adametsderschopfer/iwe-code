@@ -374,8 +374,11 @@ pub(crate) fn panel<'a>(
                         s.container().map(|_| Event::Logs),
                     ));
                     if terminal {
-                        actions =
-                            actions.push(action(i, Key::Terminal, s.shell().map(|_| Event::Shell)))
+                        actions = actions.push(action(
+                            i,
+                            Key::Terminal,
+                            s.container().map(|c| Event::Shell(s.epoch, c.name.clone())),
+                        ))
                     }
                 }
                 if matches!(s.kind, Kind::Pod | Kind::Service) {

@@ -2,6 +2,7 @@ terminal = Терминал
 terminal-starting = Запускаем терминал…
 terminal-exited = Сессия терминала завершена.
 terminal-failed = Не удалось продолжить сессию терминала. Создайте новую сессию, чтобы повторить попытку.
+terminal-rename-tab = Переименовать
 terminal-tab = Терминал { $number }
 terminal-new-tab = Новый терминал
 terminal-close-tab = Закрыть вкладку и завершить сессию

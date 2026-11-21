@@ -45,6 +45,47 @@ fn resource() -> Resource {
 }
 
 #[test]
+fn pod_terminal_uses_the_selected_pod_and_container_for_its_title_and_arguments() {
+    let mut state = State {
+        kind: Kind::Pod,
+        selected: Some(resource()),
+        details: Some(Arc::new(Details {
+            version: "8".into(),
+            containers: model::containers(
+                Kind::Pod,
+                &json!({
+                    "spec": { "containers": [{"name":"web","image":"web:v1"},{"name":"sidecar","image":"side:v1"}] }
+                }),
+            ),
+            replicas: 1,
+            yaml: String::new(),
+            ports: vec![],
+            events: Ok(vec![]),
+        })),
+        ..Default::default()
+    };
+    let _ = state.update(Event::Container("sidecar".into()));
+    let request = state.epoch;
+    assert!(state.shell(request, "web").is_none());
+    let (title, args) = state.shell(request, "sidecar").unwrap();
+    assert_eq!(title, "app/sidecar");
+    assert_eq!(
+        args,
+        [
+            "--namespace=qa",
+            "exec",
+            "-it",
+            "app",
+            "-c",
+            "sidecar",
+            "--",
+            "sh"
+        ]
+    );
+    state.reset();
+    assert!(state.shell(request, "sidecar").is_none());
+}
+#[test]
 fn selected_deployment_container_and_version_guard_the_patch() {
     let object = json!({"spec":{"template":{"spec":{"containers":[{"name":"worker","image":"worker:v1"},{"name":"web","image":"web:v1"}]}}}});
     let containers = model::containers(Kind::Deployment, &object);

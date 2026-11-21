@@ -160,7 +160,13 @@ pub(super) fn contents<'a, M: Clone + 'a>(
                 .push(
                     container(
                         theme::text_button(i18n.text(state.busy.unwrap_or(action.key())))
-                            .on_press_maybe((valid && ready).then(|| map(Event::Submit)))
+                            .on_press_maybe((valid && ready).then(|| {
+                                map(if action == Action::Terminal {
+                                    Event::Shell(state.request)
+                                } else {
+                                    Event::Submit
+                                })
+                            }))
                             .style(if action == Action::Remove {
                                 theme::danger
                             } else {

@@ -2793,6 +2793,16 @@
         "sources": ["src/modules/terminal/state/mod.rs"]
       },
       {
+        "id": "terminal-tab-names",
+        "category": "added",
+        "text": {
+          "en": "Local tabs use numbered names. Docker tabs show the container name, and Kubernetes tabs show the pod and container. Rename any tab from its menu.",
+          "ru": "Локальные вкладки получают номера. Вкладки Docker показывают имя контейнера, а вкладки Kubernetes — имена пода и контейнера. Любую вкладку можно переименовать через меню.",
+          "es": "Las pestañas locales se numeran. Las de Docker muestran el contenedor y las de Kubernetes muestran el pod y el contenedor. Cambia el nombre de cualquier pestaña desde su menú."
+        },
+        "sources": ["src/modules/terminal/state/title.rs"]
+      },
+      {
         "id": "skip-disabled-editor-focus",
         "category": "fixed",
         "text": {

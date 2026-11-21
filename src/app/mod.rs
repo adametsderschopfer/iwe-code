@@ -660,6 +660,7 @@ impl App {
                     | Message::Module(modules::Event::Toggle(_))
                     | Message::Module(modules::Event::Terminal(
                         crate::modules::terminal::Event::Start
+                            | crate::modules::terminal::Event::Title(..)
                             | crate::modules::terminal::Event::Close(_)
                             | crate::modules::terminal::Event::Select(_)
                             | crate::modules::terminal::Event::Hide

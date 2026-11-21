@@ -97,10 +97,26 @@ pub(crate) fn on_key<'a, Message: 'a>(
     content: impl Into<Element<'a, Message>>,
     handler: impl Fn(&keyboard::Event) -> Option<Message> + 'a,
 ) -> Element<'a, Message> {
+    key_handler(content.into(), false, Box::new(handler))
+}
+
+/// Intercept shortcuts only while a field inside the content owns keyboard focus.
+pub(crate) fn on_focused_key<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+    handler: impl Fn(&keyboard::Event) -> Option<Message> + 'a,
+) -> Element<'a, Message> {
+    key_handler(content.into(), true, Box::new(handler))
+}
+
+fn key_handler<'a, Message: 'a>(
+    content: Element<'a, Message>,
+    focused_only: bool,
+    handler: KeyHandler<'a, Message>,
+) -> Element<'a, Message> {
     Element::new(Trigger {
-        content: content.into(),
+        content,
         on_open: None,
-        on_key: Some(Box::new(handler)),
+        on_key: Some((focused_only, handler)),
         window_anchor: None,
         popup_position: None,
         anchored: false,
@@ -127,7 +143,7 @@ pub(crate) fn dismiss_on_escape<'a, Message: Clone + 'a>(
 struct Trigger<'a, Message> {
     content: Element<'a, Message>,
     on_open: Option<Box<dyn Fn(Point, Point) -> Message + 'a>>,
-    on_key: Option<KeyHandler<'a, Message>>,
+    on_key: Option<(bool, KeyHandler<'a, Message>)>,
     window_anchor: Option<fn(Message, Point) -> Message>,
     popup_position: Option<Placement>,
     anchored: bool,
@@ -184,11 +200,25 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
         viewport: &Rectangle,
     ) {
         if let Event::Keyboard(event) = event
-            && let Some(message) = self.on_key.as_ref().and_then(|handler| handler(event))
+            && let Some((focused_only, handler)) = &self.on_key
+            && let Some(message) = handler(event)
         {
-            shell.publish(message);
-            shell.capture_event();
-            return;
+            use iced::advanced::widget::operation::{self, Outcome, focusable};
+            let focused = !focused_only || {
+                let mut count = focusable::count();
+                self.operate(
+                    tree,
+                    layout,
+                    renderer,
+                    &mut operation::black_box(&mut count),
+                );
+                matches!(count.finish(), Outcome::Some(count) if count.focused.is_some())
+            };
+            if focused {
+                shell.publish(message);
+                shell.capture_event();
+                return;
+            }
         }
         let mut update_child = |shell: &mut Shell<'_, Message>| {
             self.content.as_widget_mut().update(

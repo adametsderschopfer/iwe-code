@@ -198,6 +198,7 @@ async fn update_handoff_keeps_terminal_completions_and_blocks_user_input() {
         program: Program::Docker,
         executable: executable.into(),
         args: args.into_iter().map(str::to_owned).collect(),
+        title: "fixture".into(),
     }));
     let request = app.modules.terminal.active.unwrap();
     let update = Arc::new(Prepared::fixture());

@@ -30,7 +30,8 @@ fn symbol(key: Key) -> Option<Icon> {
         FilePaste => Icon::Paste,
         FileNew | FileNewFile | AddProject => Icon::Plus,
         ProjectOpenFolder | FileNewFolder | FileReveal | DeploymentOpenLocal => Icon::Folder,
-        FileRename | EditSpace | EditorRenameLocal | GitRename | GitHistoryMessage => Icon::Rename,
+        FileRename | EditSpace | EditorRenameLocal | GitRename | GitHistoryMessage
+        | TerminalRenameTab => Icon::Rename,
         FindFile | FindFiles | EditorUsages | DockerInspect => Icon::Search,
         GoToDefinition | GitHistoryTip => Icon::Locate,
         PinProject | UnpinProject => Icon::Pin,

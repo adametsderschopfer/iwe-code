@@ -1,19 +1,20 @@
 //! Render the terminal screen and capture input only while its canvas has focus.
 
 mod input;
+mod tabs;
+pub(crate) use tabs::tab_menu;
 
 use super::{Event, State as TerminalState, Status, style};
 use crate::{
-    i18n::{FluentArgs, I18n, Key},
+    i18n::{I18n, Key},
     ui::{icons::Icon, theme},
 };
 use iced::{
     Alignment, Element, Font, Length, Point, Rectangle, Renderer, Size, Theme, font, keyboard,
     mouse,
     widget::{
-        button,
         canvas::{self, Action, Frame, Geometry},
-        column, container, row, scrollable, space, text,
+        column, container, row, text,
     },
     window,
 };
@@ -25,71 +26,11 @@ pub(crate) fn view<'a>(
     preferences: &crate::domain::workspace::Preferences,
     interactive: bool,
 ) -> Element<'a, Event> {
-    let mut tabs = row![
-        text(i18n.text(Key::Terminal))
-            .size(13)
-            .font(theme::semibold())
-    ]
-    .spacing(style::TAB_GAP)
-    .align_y(Alignment::Center);
-    for tab in &terminal.tabs {
-        let request = tab.request;
-        let mut args = FluentArgs::new();
-        args.set("number", tab.number);
-        tabs = tabs.push(
-            iced::widget::mouse_area(
-                container(
-                    column![
-                        button(
-                            row![
-                                text(i18n.format(Key::TerminalTab, &args))
-                                    .size(12)
-                                    .wrapping(text::Wrapping::None),
-                                icon_control(
-                                    i18n,
-                                    Icon::Close,
-                                    Key::TerminalCloseTab,
-                                    format!("terminal-close-tab-{request}"),
-                                    Event::Close(request),
-                                ),
-                            ]
-                            .spacing(style::TAB_CONTENT_GAP)
-                            .height(Length::Fill)
-                            .align_y(Alignment::Center),
-                        )
-                        .padding(iced::Padding {
-                            left: 10.,
-                            right: 4.,
-                            top: 2.,
-                            bottom: 2.,
-                        })
-                        .height(style::TAB_BAR_HEIGHT - 2.)
-                        .style(theme::action(false))
-                        .on_press(Event::Select(request)),
-                        container(space().height(2).width(Length::Fill))
-                            .style(theme::tab_indicator(terminal.active == Some(request))),
-                    ]
-                    .width(Length::Shrink),
-                )
-                .id(format!("terminal-tab-{request}")),
-            )
-            .on_middle_press(Event::Close(request)),
-        );
-    }
-    tabs = tabs.push(icon_control(
-        i18n,
-        Icon::Plus,
-        Key::TerminalNewTab,
-        "terminal-add-tab".into(),
-        Event::Start,
-    ));
-    let strip = scrollable(tabs)
-        .id("terminal-tabs")
-        .direction(scrollable::Direction::Horizontal(
-            scrollable::Scrollbar::new(),
-        ))
-        .style(theme::scroll)
-        .width(Length::Fill);
+    let strip = tabs::strip(terminal, i18n);
+    let active = terminal.active_tab();
+    let interactive = interactive
+        && tabs::menu(terminal).is_none()
+        && !active.is_some_and(|tab| tab.editing_title());
     let mut content = column![
         container(
             row![
@@ -111,7 +52,7 @@ pub(crate) fn view<'a>(
         crate::ui::presentation::divider(),
     ]
     .height(Length::Fill);
-    let Some(tab) = terminal.active_tab() else {
+    let Some(tab) = active else {
         return content.into();
     };
     let status = match tab.status {

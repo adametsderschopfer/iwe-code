@@ -304,6 +304,7 @@ fn module_messages_stay_in_module_catalogs_and_resolve_in_every_language() {
         let mut args = FluentArgs::new();
         args.set("number", 7);
         assert!(i18n.format(Key::TerminalTab, &args).contains('7'));
+        assert!(!i18n.text(Key::TerminalRenameTab).is_empty());
         assert!(!i18n.text(Key::TerminalHide).is_empty());
     }
 }

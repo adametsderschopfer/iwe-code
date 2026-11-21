@@ -51,7 +51,7 @@ pub(crate) enum Event {
     Container(String),
     Related,
     Logs,
-    Shell,
+    Shell(u64, String),
     Rollout,
     Begin(Operation),
     Input(String),
@@ -235,22 +235,17 @@ impl State {
             .iter()
             .find(|c| c.name == self.container)
     }
-    pub fn shell(&self) -> Option<Vec<String>> {
-        if self.kind != Kind::Pod {
+    pub fn shell(&self, request: u64, name: &str) -> Option<(String, Vec<String>)> {
+        if self.kind != Kind::Pod || self.epoch != request || self.container != name {
             return None;
         }
         let r = self.selected.as_ref()?;
+        let container = &self.container()?.name;
         let mut a = self.target.flags(&r.ns);
         a.extend(words(&[
-            "exec",
-            "-it",
-            &r.name,
-            "-c",
-            &self.container()?.name,
-            "--",
-            "sh",
+            "exec", "-it", &r.name, "-c", container, "--", "sh",
         ]));
-        Some(a)
+        Some((format!("{}/{}", r.name, container), a))
     }
     fn rollout(&mut self) -> Task<Event> {
         let Some(r) = self

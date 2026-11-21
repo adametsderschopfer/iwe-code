@@ -115,12 +115,13 @@ impl App {
                     {
                         self.open_registry(registry::Event::Pick(image))
                     }
-                    K::Shell if self.module_enabled(ModuleId::Terminal) => {
-                        if let Some(args) = self.modules.kubernetes.shell() {
+                    K::Shell(request, name) if self.module_enabled(ModuleId::Terminal) => {
+                        if let Some((title, args)) = self.modules.kubernetes.shell(request, &name) {
                             return self.update_terminal(terminal::Event::StartProgram {
                                 program: terminal::Program::Kubernetes,
                                 executable: crate::infrastructure::process::executable("kubectl"),
                                 args,
+                                title,
                             });
                         }
                         Task::none()
@@ -167,13 +168,15 @@ impl App {
                         self.sync_panels();
                         Task::none()
                     }
-                    Docker::Shell(id, args)
-                        if terminal && self.modules.docker.accepts_shell(id) =>
-                    {
+                    Docker::Shell(id) if terminal => {
+                        let Some((title, args)) = self.modules.docker.take_shell(id) else {
+                            return Task::none();
+                        };
                         self.update_terminal(terminal::Event::StartProgram {
                             program: terminal::Program::Docker,
                             executable: crate::infrastructure::process::executable("docker"),
                             args,
+                            title,
                         })
                     }
                     _ => {

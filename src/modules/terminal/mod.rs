@@ -6,4 +6,4 @@ mod style;
 mod view;
 
 pub(crate) use state::{Event, Program, State, Status};
-pub(crate) use view::view;
+pub(crate) use view::{tab_menu, view};

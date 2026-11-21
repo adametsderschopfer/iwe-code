@@ -1,5 +1,8 @@
 //! Coordinate project tabs and route events to their original terminal sessions.
 
+mod title;
+pub(crate) use title::{TabTitle, TitleAction, TitleControl};
+
 use super::session::{Lifetime, MAX_INPUT, Output, Session};
 use iced::{Subscription, Task};
 use std::{
@@ -25,7 +28,7 @@ pub(crate) struct State {
     background: BTreeMap<PathBuf, ProjectTabs>,
     pub lifetime: Lifetime,
     next_request: u64,
-    next_number: u64,
+    next_local_number: u64,
 }
 
 #[derive(Default)]
@@ -33,7 +36,7 @@ struct ProjectTabs {
     open: bool,
     tabs: Vec<Tab>,
     active: Option<u64>,
-    next_number: u64,
+    next_local_number: u64,
 }
 
 /// Preserve the selected neighbor when the active tab closes.
@@ -64,7 +67,7 @@ pub(crate) enum Program {
 
 pub(crate) struct Tab {
     pub request: u64,
-    pub number: u64,
+    pub title: TabTitle,
     pub program: Option<Program>,
     pub status: Status,
     pub parser: vt100::Parser<Replies>,
@@ -80,10 +83,10 @@ impl Drop for Tab {
 }
 
 impl Tab {
-    fn new(request: u64, number: u64, program: Option<Program>, lifetime: Lifetime) -> Self {
+    fn new(request: u64, title: TabTitle, program: Option<Program>, lifetime: Lifetime) -> Self {
         Self {
             request,
-            number,
+            title,
             program,
             status: Status::Starting,
             parser: vt100::Parser::new_with_callbacks(24, 80, 2000, Replies::default()),
@@ -125,6 +128,10 @@ impl Tab {
         self.session.is_some()
     }
 
+    pub(crate) fn editing_title(&self) -> bool {
+        matches!(self.title.control, TitleControl::Editing(_))
+    }
+
     fn fail(&mut self) {
         self.session = None;
         self.status = Status::Failed;
@@ -151,7 +158,9 @@ pub(crate) enum Event {
         program: Program,
         executable: std::path::PathBuf,
         args: Vec<String>,
+        title: String,
     },
+    Title(u64, TitleAction),
     Started(u64, Result<Arc<Session>, ()>),
     Close(u64),
     Select(u64),
@@ -185,13 +194,14 @@ impl State {
     }
 
     pub(crate) fn switch_project(&mut self, previous: Option<&Path>, next: Option<&Path>) {
+        self.dismiss_title_edit();
         let mut project = next
             .and_then(|path| self.background.remove(path))
             .unwrap_or_default();
         std::mem::swap(&mut self.open, &mut project.open);
         std::mem::swap(&mut self.tabs, &mut project.tabs);
         std::mem::swap(&mut self.active, &mut project.active);
-        std::mem::swap(&mut self.next_number, &mut project.next_number);
+        std::mem::swap(&mut self.next_local_number, &mut project.next_local_number);
         if let Some(previous) = previous
             && !project.tabs.is_empty()
         {
@@ -247,18 +257,22 @@ impl State {
                 };
                 self.next_request = self.next_request.wrapping_add(1);
                 let request = self.next_request;
-                self.next_number = self.next_number.wrapping_add(1);
-                let program = match &event {
-                    Event::StartProgram { program, .. } => Some(*program),
-                    _ => None,
+                if self.tabs.is_empty() {
+                    self.next_local_number = 0;
+                }
+                let (title, program) = match &event {
+                    Event::StartProgram { title, program, .. } => {
+                        (TabTitle::named(title, &self.tabs), Some(*program))
+                    }
+                    _ => {
+                        self.next_local_number += 1;
+                        (TabTitle::local(self.next_local_number), None)
+                    }
                 };
+                self.dismiss_title_edit();
                 let lifetime = self.lifetime.tab();
-                self.tabs.push(Tab::new(
-                    request,
-                    self.next_number,
-                    program,
-                    lifetime.clone(),
-                ));
+                self.tabs
+                    .push(Tab::new(request, title, program, lifetime.clone()));
                 self.active = Some(request);
                 self.open = true;
                 let start = Task::perform(
@@ -276,9 +290,14 @@ impl State {
                 );
                 return Task::batch([start, iced::widget::operation::snap_to_end("terminal-tabs")]);
             }
-            Event::Hide => self.open = false,
+            Event::Hide => {
+                self.dismiss_title_edit();
+                self.open = false;
+            }
+            Event::Title(request, action) => return self.update_title(request, action),
             Event::Select(request) => {
                 if self.tabs.iter().any(|tab| tab.request == request) {
+                    self.dismiss_title_edit();
                     self.active = Some(request);
                 }
             }

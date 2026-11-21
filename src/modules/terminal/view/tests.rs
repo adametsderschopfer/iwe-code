@@ -2,6 +2,72 @@ use super::*;
 use iced::keyboard::{Key, Modifiers, key::Named};
 
 #[test]
+fn tab_context_menu_and_rename_field_emit_actions_for_the_right_tab() {
+    use crate::{i18n::Language, modules::terminal::state::TitleAction};
+    use iced::widget::Id;
+
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        let i18n = I18n::new(language);
+        let preferences = Default::default();
+        let mut terminal = TerminalState::default();
+        let _ = terminal.update(Event::Start, Some(std::path::Path::new("one")));
+        let first = terminal.active.unwrap();
+        let _ = terminal.update(Event::Start, Some(std::path::Path::new("two")));
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            (900., 300.),
+            view(&terminal, &i18n, &preferences, true),
+        );
+        let point = ui
+            .find(Id::from(format!("terminal-tab-{first}")))
+            .unwrap()
+            .visible_bounds()
+            .unwrap()
+            .center();
+        ui.point_at(point);
+        ui.simulate([iced::Event::Mouse(mouse::Event::ButtonPressed(
+            mouse::Button::Right,
+        ))]);
+        let menu = ui
+            .into_messages()
+            .find(|e| {
+                matches!(e,
+            Event::Title(id, TitleAction::Menu(anchor)) if *id == first && *anchor == point)
+            })
+            .unwrap();
+        let _ = terminal.update(menu, None);
+        let base = view(&terminal, &i18n, &preferences, true);
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            (900., 300.),
+            tab_menu(&terminal, &i18n, base, |e| e),
+        );
+        ui.click(Id::new("terminal-rename-action")).unwrap();
+        let rename = ui
+            .into_messages()
+            .find(|e| matches!(e, Event::Title(id, TitleAction::Rename) if *id == first))
+            .unwrap();
+        let _ = terminal.update(rename, None);
+        assert_eq!(terminal.active, Some(first));
+        for key in [Named::Enter, Named::Escape] {
+            let mut ui = iced_test::Simulator::with_size(
+                iced::Settings::default(),
+                (900., 300.),
+                view(&terminal, &i18n, &preferences, true),
+            );
+            ui.click(Id::from(format!("terminal-rename-{first}")))
+                .unwrap();
+            ui.tap_key(Key::Named(key));
+            assert!(ui.into_messages().any(|e| match e {
+                Event::Title(id, TitleAction::Save) => id == first && key == Named::Enter,
+                Event::Title(id, TitleAction::Dismiss) => id == first && key == Named::Escape,
+                _ => false,
+            }));
+        }
+    }
+}
+
+#[test]
 fn terminal_input_supports_unicode_interrupts_and_cursor_modes() {
     assert_eq!(
         input::physical_control(keyboard::key::Physical::Code(keyboard::key::Code::KeyC)),

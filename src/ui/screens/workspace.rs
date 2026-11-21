@@ -176,6 +176,10 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
     );
     let base = super::header_repositories::overlay(app, base);
     let base = super::tab_menu::overlay(app, base);
+    let base =
+        crate::modules::terminal::tab_menu(&app.modules.terminal, &app.i18n, base, |event| {
+            Message::Module(crate::app::modules::Event::Terminal(event))
+        });
     let base = if let Some(point) = app.files.behavior_menu {
         use crate::app::files::Event;
         context_menu::overlay(

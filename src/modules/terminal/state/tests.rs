@@ -1,8 +1,43 @@
 use super::*;
+use crate::i18n::{I18n, Language};
 
 fn add(state: &mut State) -> u64 {
     let _ = state.update(Event::Start, Some(Path::new("project")));
     state.active.unwrap()
+}
+
+#[test]
+fn local_titles_retain_their_number_when_renamed_closed_or_restored() {
+    let ru = I18n::new(Language::Russian);
+    let mut state = State::default();
+    let dir = Some(Path::new("project/Тестовый каталог"));
+    let _ = state.update(Event::Start, dir);
+    let first = state.active.unwrap();
+    let _ = state.update(Event::Start, dir);
+    let second = state.active.unwrap();
+    assert_eq!(state.tabs[0].title.label(&ru), "Терминал 1");
+    assert_eq!(state.tabs[1].title.label(&ru), "Терминал 2");
+
+    let rename = |state: &mut State, id, text: &str, finish| {
+        for action in [
+            TitleAction::Menu(iced::Point::ORIGIN),
+            TitleAction::Rename,
+            TitleAction::Edit(text.into()),
+            finish,
+        ] {
+            let _ = state.update(Event::Title(id, action), None);
+        }
+    };
+    rename(&mut state, second, "workers", TitleAction::Save);
+    assert_eq!(state.tabs[1].title.label(&ru), "workers");
+    rename(&mut state, second, "discarded", TitleAction::Dismiss);
+    assert_eq!(state.tabs[1].title.label(&ru), "workers");
+    let _ = state.update(Event::Start, dir);
+    assert_eq!(state.tabs[2].title.label(&ru), "Терминал 3");
+    let _ = state.update(Event::Close(first), None);
+    rename(&mut state, second, "", TitleAction::Save);
+    assert_eq!(state.tabs[0].title.label(&ru), "Терминал 2");
+    assert_eq!(state.tabs[1].title.label(&ru), "Терминал 3");
 }
 
 #[test]
@@ -27,6 +62,48 @@ fn new_tabs_keep_independent_screens_sizes_and_active_selection() {
         state.active_tab().unwrap().parser.screen().contents(),
         "second-output"
     );
+}
+
+#[test]
+fn local_numbers_follow_their_project_and_remote_titles_keep_container_names() {
+    let en = I18n::new(Language::English);
+    let ru = I18n::new(Language::Russian);
+    let mut state = State::default();
+    let first = Some(Path::new("first"));
+    let second = Some(Path::new("second"));
+    let _ = state.update(Event::Start, first);
+    for (program, title) in [
+        (Program::Docker, "worker"),
+        (Program::Docker, "worker"),
+        (Program::Kubernetes, "pod/api"),
+    ] {
+        let _ = state.update(
+            Event::StartProgram {
+                program,
+                title: title.into(),
+                executable: "unused".into(),
+                args: vec![],
+            },
+            first,
+        );
+    }
+    state.switch_project(first, second);
+    let _ = state.update(Event::Start, second);
+    assert_eq!(state.tabs[0].title.label(&ru), "Терминал 1");
+    state.switch_project(second, first);
+    let _ = state.update(Event::Start, first);
+    let labels: Vec<_> = state.tabs.iter().map(|tab| tab.title.label(&en)).collect();
+    assert_eq!(
+        labels,
+        [
+            "Terminal 1",
+            "worker",
+            "worker (2)",
+            "pod/api",
+            "Terminal 2"
+        ]
+    );
+    assert_eq!(state.active_tab().unwrap().title.label(&ru), "Терминал 2");
 }
 
 #[test]
@@ -77,7 +154,14 @@ fn closed_tabs_and_reset_sessions_cannot_receive_late_results() {
     state.reset();
     let next = add(&mut state);
     assert!(next > current);
-    assert_eq!(state.active_tab().unwrap().number, 1);
+    assert_eq!(
+        state
+            .active_tab()
+            .unwrap()
+            .title
+            .label(&I18n::new(Language::English)),
+        "Terminal 1"
+    );
     let _ = state.update(Event::Started(current, Err(())), None);
     assert_eq!(state.active_tab().unwrap().status, Status::Starting);
 }

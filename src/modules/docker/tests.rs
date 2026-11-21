@@ -51,6 +51,41 @@ fn operations_validate_arguments_and_require_explicit_confirmation() {
 }
 
 #[test]
+fn container_terminal_uses_its_name_for_the_tab_and_its_id_for_execution() {
+    let rows = adapter::parse(
+        Kind::Containers,
+        r#"{"ID":"abc","Names":"worker","State":"running","Status":"Up"}"#,
+    )
+    .unwrap();
+    let mut state = State {
+        open: true,
+        items: Arc::new(rows),
+        context: Some("local".into()),
+        selected: Some("abc".into()),
+        ..Default::default()
+    };
+    let _ = state.update(Event::Act(Action::Terminal), Path::new("."), true);
+    let request = state.request;
+    assert!(state.take_shell(request + 1).is_none());
+    let (title, args) = state.take_shell(request).unwrap();
+    assert_eq!(title, "worker");
+    assert_eq!(
+        args,
+        [
+            "--context",
+            "local",
+            "exec",
+            "--interactive",
+            "--tty",
+            "--",
+            "abc",
+            "sh"
+        ]
+    );
+    assert!(state.take_shell(request).is_none());
+}
+
+#[test]
 fn obsolete_completions_cannot_repopulate_a_reset_panel() {
     let mut state = State::default();
     let _ = state.connections(Path::new("."));

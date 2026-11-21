@@ -418,6 +418,7 @@ fn cluster_scope_changes_close_current_shells_and_disabling_closes_background_sh
             program: terminal::Program::Kubernetes,
             executable: "kubectl".into(),
             args: vec![],
+            title: "pod/container".into(),
         })
     };
     let _ = app.update_module(shell());
@@ -839,6 +840,25 @@ fn cluster_and_registry_can_be_enabled_independently_and_share_only_the_image() 
     assert!(!app.module_open(ModuleId::Kubernetes));
 }
 
+async fn send(app: &mut App, event: Event) -> Vec<Message> {
+    use iced::futures::StreamExt;
+    use iced_test::runtime::{Action, task};
+
+    let mut queue = std::collections::VecDeque::from([app.update_module(event)]);
+    let mut replies = Vec::new();
+    while let Some(task) = queue.pop_front() {
+        if let Some(mut actions) = task::into_stream(task) {
+            while let Some(action) = actions.next().await {
+                if let Action::Output(m) = action {
+                    replies.push(m.clone());
+                    queue.push_back(app.update(m));
+                }
+            }
+        }
+    }
+    replies
+}
+
 /// Run only against a dedicated loopback registry and disposable cluster.
 /// The fixture supplies an existing Deployment named sample in iwe-acceptance.
 #[tokio::test]
@@ -848,24 +868,7 @@ async fn publish_choose_roll_out_and_reopen_the_runtime_manifest() {
         domain::images::Registry,
         modules::{docker::Event as D, kubernetes::Event as K},
     };
-    use iced::futures::StreamExt;
-    use iced_test::runtime::{Action, task};
     use registry::Event as R;
-    async fn send(app: &mut App, event: Event) -> Vec<Message> {
-        let mut queue = std::collections::VecDeque::from([app.update_module(event)]);
-        let mut replies = Vec::new();
-        while let Some(task) = queue.pop_front() {
-            if let Some(mut actions) = task::into_stream(task) {
-                while let Some(action) = actions.next().await {
-                    if let Action::Output(m) = action {
-                        replies.push(m.clone());
-                        queue.push_back(app.update(m));
-                    }
-                }
-            }
-        }
-        replies
-    }
     fn click(app: &App, id: ModuleId, label: &'static str, by_id: bool) -> Event {
         let mut ui = iced_test::Simulator::with_size(
             iced::Settings::default(),
@@ -1004,4 +1007,87 @@ async fn publish_choose_roll_out_and_reopen_the_runtime_manifest() {
     let opened = send(&mut app, e).await;
     assert!(opened.iter().any(|m|matches!(m,Message::Module(Event::Docker(D::Registry(R::Inspected(_,Ok(m))))) if m.digest==runtime.version)));
     println!("Published {pin}; reopened {}", runtime.version);
+}
+
+#[tokio::test]
+#[ignore = "requires a named disposable Docker container with sh and cat"]
+async fn live_docker_terminal_opens_the_named_container_and_reads_its_hostname() {
+    use crate::modules::docker::Event as Docker;
+    use iced::widget::Id;
+    let context = std::env::var("IWE_DOCKER_TEST_CONTEXT").unwrap();
+    let name = std::env::var("IWE_DOCKER_TEST_NAME").unwrap();
+    let id = std::env::var("IWE_DOCKER_TEST_ID").unwrap();
+    assert!(name.starts_with("iwe-test-"));
+    assert!(id.len() == 64 && id.bytes().all(|b| b.is_ascii_hexdigit()));
+
+    let temp = tempfile::tempdir().unwrap();
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.save_blocked = true;
+    app.workspace
+        .create_space("Docker".into(), vec![temp.path().into()]);
+    send(&mut app, Event::Toggle(ModuleId::Docker)).await;
+    send(&mut app, Event::Docker(Docker::Context(context))).await;
+    send(&mut app, Event::Docker(Docker::Select(id.clone()))).await;
+    let mut panel = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        (1000., 600.),
+        crate::ui::modules::panel(&app, ModuleId::Docker),
+    );
+    panel.click("Terminal").unwrap();
+    let action = panel
+        .into_messages()
+        .find_map(|msg| match msg {
+            Message::Module(event) => Some(event),
+            _ => None,
+        })
+        .unwrap();
+    send(&mut app, action).await;
+    let mut ui =
+        iced_test::Simulator::with_size(iced::Settings::default(), (1300., 850.), app.view());
+    ui.click(Id::new("docker-submit")).unwrap();
+    let submit = ui
+        .into_messages()
+        .find_map(|msg| match msg {
+            Message::Module(event @ Event::Docker(Docker::Shell(_))) => Some(event),
+            _ => None,
+        })
+        .unwrap();
+    let results = send(&mut app, submit).await;
+    let (request, session) = results
+        .into_iter()
+        .find_map(|msg| match msg {
+            Message::Module(Event::Terminal(TerminalEvent::Started(request, Ok(session)))) => {
+                Some((request, session))
+            }
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(
+        app.modules
+            .terminal
+            .active_tab()
+            .unwrap()
+            .title
+            .label(&app.i18n),
+        name
+    );
+    let _ = app.update_module(Event::Terminal(TerminalEvent::Input(
+        request,
+        b"cat /etc/hostname; exit\r".to_vec(),
+    )));
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        while app.modules.terminal.active_tab().unwrap().running() {
+            let output = session.next().await;
+            let _ = app.update_module(Event::Terminal(TerminalEvent::Output(request, output)));
+        }
+    })
+    .await
+    .unwrap();
+    let tab = app.modules.terminal.active_tab().unwrap();
+    assert_eq!(tab.status, Status::Exited);
+    let screen = tab.parser.screen().contents();
+    assert!(
+        screen.contains(&id[..12]),
+        "Container hostname missing from {screen:?}"
+    );
 }
