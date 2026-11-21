@@ -15,6 +15,13 @@ use iced::{
 };
 use std::{path::PathBuf, rc::Rc};
 
+// Pane focus is tracked independently from the pipeline action.
+fn pipeline_actions(messages: impl Iterator<Item = Message>) -> impl Iterator<Item = Message> {
+    messages
+        .map(crate::app::modules::host_message)
+        .filter(|message| !matches!(message, Message::PaneClicked(_)))
+}
+
 fn run(id: u64) -> Pipeline {
     Pipeline {
         id,
@@ -368,7 +375,7 @@ fn pipeline_rows_show_commits_and_open_the_provider_page() {
             }
             ui.click(Id::new("pipeline-500")).unwrap();
             assert!(matches!(
-                ui.into_messages().map(crate::app::modules::host_message).collect::<Vec<_>>().as_slice(),
+                pipeline_actions(ui.into_messages()).collect::<Vec<_>>().as_slice(),
                 [Message::OpenUrl(target)] if target == url
             ));
         }
@@ -395,7 +402,7 @@ fn pipeline_jobs_interface_supports_selection_stages_actions_and_three_languages
         }
         let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
         ui.click(Id::new("pipeline-popup-details")).unwrap();
-        for message in ui.into_messages().map(crate::app::modules::host_message) {
+        for message in pipeline_actions(ui.into_messages()) {
             assert!(matches!(message, Message::Jobs(Event::Select(500))));
             let _ = app.update(message);
         }
@@ -439,12 +446,7 @@ fn pipeline_jobs_interface_supports_selection_stages_actions_and_three_languages
         let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
         assert!(ui.find(app.i18n.text(Key::JobActionPending)).is_ok());
         ui.click(Id::new("job-action-3-Play")).unwrap();
-        assert!(
-            ui.into_messages()
-                .map(crate::app::modules::host_message)
-                .next()
-                .is_none()
-        );
+        assert!(pipeline_actions(ui.into_messages()).next().is_none());
         let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
         ui.click(Id::new("jobs-back")).unwrap();
         for message in ui.into_messages().map(crate::app::modules::host_message) {
@@ -480,12 +482,7 @@ fn github_retry_labels_include_dependents_and_errors_keep_job_rows_visible() {
     assert!(ui.find(app.i18n.text(Key::JobActionAccess)).is_ok());
     assert!(ui.find(Id::new("job-1")).is_ok());
     ui.click(Id::new("job-action-1-Retry")).unwrap();
-    assert!(
-        ui.into_messages()
-            .map(crate::app::modules::host_message)
-            .next()
-            .is_none()
-    );
+    assert!(pipeline_actions(ui.into_messages()).next().is_none());
 }
 
 #[test]

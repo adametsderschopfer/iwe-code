@@ -229,3 +229,27 @@ PowerShell users can set the corresponding `$env:IWE_PROFILE_COMPARISON` or
 `$env:IWE_PROFILE_BACKEND` value before Cargo. The preparation probe runs only when its profiling
 variable is present. Correctness regressions run independently during ordinary checks, without
 timing thresholds. Live server latency and Windows/Linux performance were not measured.
+
+### Editable source highlighting
+
+The editor displays text before parsing its syntax. The renderer requests blocks up to the last
+visible line. Scrolling extends the request. The worker resumes from a saved multiline parser state.
+Edits reuse completed blocks before the first change. The renderer applies cached color ranges and
+uses its default text color for unstyled regions. Debug builds optimize Syntect and its regular
+expression engines.
+
+The file reader prepares a native editor on a worker. It loads text with finite layout bounds and
+places the cursor at the start. The widget lays out visible lines when it receives its window size.
+
+The table measures the time from opening a file in a temporary tab to the first text draw. Both
+builds already used background syntax highlighting. Each value is the median of four macOS debug
+sessions. The runs varied the file order. Reopening replaced the previous temporary tab.
+
+| File      |  Bytes | First open before | First open after | Reopen before | Reopen after | First colored block after opening |
+| --------- | -----: | ----------------: | ---------------: | ------------: | -----------: | --------------------------------: |
+| Makefile  |    915 |             36 ms |            16 ms |         38 ms |        15 ms |                             98 ms |
+| README.md | 11,455 |            197 ms |            20 ms |        187 ms |        17 ms |                            269 ms |
+| base.css  | 22,120 |            598 ms |            22 ms |        590 ms |        18 ms |                            101 ms |
+
+An earlier baseline waited for full syntax highlighting. First text took 759 ms for Makefile and
+2,144 ms for README.md in that build. All measurements exclude application startup.

@@ -148,20 +148,43 @@ fn automatic_tab_closure_preserves_unsaved_edits() {
 }
 
 #[test]
-fn editable_file_waits_for_the_editor_during_preparation() {
+fn editable_file_opens_as_soon_as_plain_text_arrives() {
     let mut app = app();
     let id = open(&mut app, "file.rs");
-    let _ = app.continue_preview(
-        id,
-        Preparation::Text,
-        Ok(Document::new("text".into(), "rs")),
-    );
-    assert!(app.preview().awaiting_editor());
-    assert!(app.editor_buffer().is_none());
+    let _ = app.continue_preview(id, Preparation::Text, Ok(Document::plain("first".into())));
+    assert!(!app.preview().loading);
+    assert_eq!(app.editor_buffer().unwrap().content.text(), "first");
+    assert!(!app.preview().document.as_ref().unwrap().has_syntax());
+    let _ = app.continue_preview(id, Preparation::Syntax, Ok(Document::plain("late".into())));
+    assert_eq!(app.editor_buffer().unwrap().content.text(), "first");
+}
 
-    let _ = app.finish_preview(id, Ok(Document::new("text".into(), "rs")));
-    assert!(!app.preview().awaiting_editor());
-    assert!(app.editor_buffer().is_some());
+#[tokio::test]
+async fn a_file_can_finish_opening_while_another_tab_is_active() {
+    use iced::futures::StreamExt;
+    use iced_test::runtime::{Action, task};
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("base.css");
+    let text = ".item { color: blue; }\n".repeat(1180);
+    std::fs::write(&path, &text).unwrap();
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.loaded = true;
+    app.workspace
+        .create_space("Work".into(), vec![directory.path().to_owned()]);
+    let pending = app.open_file(path);
+    let first = app.preview().id;
+    let _ = app.open_file(directory.path().join("other.css"));
+    let second = app.preview().id;
+    let mut events = task::into_stream(pending).unwrap();
+    while let Some(action) = events.next().await {
+        if let Action::Output(message @ Message::EditorFileRead(..)) = action {
+            let _ = app.update(message);
+            break;
+        }
+    }
+    assert_eq!(app.preview().id, second);
+    let _ = app.select_tab(first);
+    assert_eq!(app.editor_buffer().unwrap().content.text(), text);
 }
 
 fn open(app: &mut App, path: &str) -> u64 {
@@ -754,7 +777,7 @@ async fn opening_changes_displays_text_before_highlighting_and_comparison() {
 #[test]
 fn closing_and_reopening_an_incomplete_preview_rejects_old_stages() {
     let mut app = app();
-    let original = open(&mut app, "small.rs");
+    let original = open_change(&mut app, "small.rs");
     let generation = app.generation;
     let _ = app.update(Message::FilePrepared(
         generation,

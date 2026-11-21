@@ -5,6 +5,31 @@ use crate::{
 };
 use std::rc::Rc;
 
+#[test]
+fn loading_keeps_line_endings_and_leaves_offscreen_lines_unshaped() {
+    let text = format!(
+        "{}{}",
+        "é中".repeat(1000),
+        "\r\nline\rnext\n\rfinal\n".repeat(500)
+    );
+    let content = loading::content(&text);
+    assert_eq!(content.text(), text);
+    assert_eq!(
+        content.cursor().position,
+        text_editor::Position { line: 0, column: 0 }
+    );
+    content.with_editor(|editor| {
+        assert!(
+            editor
+                .buffer()
+                .lines
+                .iter()
+                .skip(1)
+                .all(|line| line.layout_opt().is_none())
+        );
+    });
+}
+
 fn app() -> App {
     let mut app = App::new(Rc::new(I18n::new(Language::English)));
     app.workspace.create_space(

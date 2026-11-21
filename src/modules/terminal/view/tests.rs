@@ -359,7 +359,9 @@ fn search_floats_inside_the_screen_and_only_intercepts_clicks_on_its_panel() {
             view(&terminal, &i18n, &preferences, true),
         );
         assert_eq!(
-            ui.find(Id::new("terminal-screen")).unwrap().visible_bounds(),
+            ui.find(Id::new("terminal-screen"))
+                .unwrap()
+                .visible_bounds(),
             Some(screen)
         );
         let panel = ui

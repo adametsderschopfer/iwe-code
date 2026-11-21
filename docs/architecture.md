@@ -118,15 +118,16 @@ temporary-file replacement. Native directory selection uses `rfd`. Syntect highl
 bundled `two-face` grammars and the Gerry Darcula palette. `open` delegates approved links to the
 system browser.
 
-The local source reader opens each file once to prepare its initial view. It reuses the first
-buffer when the byte or line limit requires paging. Oversized source reads use bounded pages through `infrastructure/workspace/pages.rs`. Page
-boundaries preserve UTF-8 and CRLF, with limits of 512 KiB and 4,096 newline characters. Local pages
-seek directly and compare file metadata before and after reading. Changed snapshots restart at the
-first page. Git pages stream `cat-file` output, discard the preceding bytes, and stop the child
-after reading the requested range. Git page reads retain the 25-second process deadline. Tabs retain
-cursor history, and request identifiers reject obsolete page responses. Only the current page
-receives syntax preparation. Paged documents skip comparison and automatic content polling. Syntax
-state restarts on each page, and lines over 16 KiB remain plain text.
+The local source reader opens each file once to prepare its initial view. It reuses the first buffer
+when the byte or line limit requires paging. Oversized source reads use bounded pages through
+`infrastructure/workspace/pages.rs`. Page boundaries preserve UTF-8 and CRLF, with limits of 512 KiB
+and 4,096 newline characters. Local pages seek directly and compare file metadata before and after
+reading. Changed snapshots restart at the first page. Git pages stream `cat-file` output, discard
+the preceding bytes, and stop the child after reading the requested range. Git page reads retain the
+25-second process deadline. Tabs retain cursor history, and request identifiers reject obsolete page
+responses. Only the current page receives syntax preparation. Paged documents skip comparison and
+automatic content polling. Syntax state restarts on each page, and lines over 16 KiB remain plain
+text.
 
 `ui/code/frozen_gutter/` pins line numbers and change markers to the horizontal viewport edge. It
 clips scrolling source separately and redraws the gutter with its original row background. The
@@ -675,8 +676,10 @@ language requests. Each edit creates a new snapshot. Workers retain the revision
 decisions. Autosave timers carry unique revisions and ignore superseded or closed buffers.
 Completion tokens protect newer drafts. Navigation flushes pending snapshots before releasing
 buffers. Failed writes stop automatic retries. Remote saves wait for the deployment queue before
-submission. `ui/editor` renders Iced text editors with incremental syntax highlighting and
-synchronized line numbers. Its gutter reads visible layout runs through the local widget's read-only
+submission. `ui/editor` renders Iced text editors with synchronized line numbers. The renderer
+requests syntax colors through the last visible line. One background worker parses editable text in
+blocks and retains multiline parser checkpoints. Each buffer accepts colors only for its current
+snapshot and language. Its gutter reads visible layout runs through the local widget's read-only
 inspection API. Editable local documents use a separate bounded line comparison against the Git
 baseline. Each result carries the project generation, tab identifier, request number, and text
 snapshot. The gutter resolves visible layout runs to changed ranges and deletion anchors.

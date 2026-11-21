@@ -97,3 +97,16 @@ unsafe_code = "forbid"
 
 [lints.clippy]
 all = "warn"
+
+# Keep interactive grammar matching fast in debug runs.
+[profile.dev.package.syntect]
+opt-level = 2
+
+[profile.dev.package.fancy-regex]
+opt-level = 2
+
+[profile.dev.package.regex-automata]
+opt-level = 2
+
+[profile.dev.package.regex-syntax]
+opt-level = 2

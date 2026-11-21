@@ -2509,6 +2509,16 @@
     "source": null,
     "items": [
       {
+        "id": "responsive-source-file-opening",
+        "category": "changed",
+        "text": {
+          "en": "Open source files faster and continue using other tabs while the editor loads text and syntax colors.",
+          "ru": "Исходные файлы открываются быстрее. Во время загрузки текста и подсветки можно работать в других вкладках.",
+          "es": "Abre archivos de código más rápido y usa otras pestañas mientras el editor carga el texto y sus colores."
+        },
+        "sources": ["src/app/tabs.rs", "src/app/editor/loading.rs", "src/ui/editor/syntax/worker.rs"]
+      },
+      {
         "id": "local-platform-checks-before-commit",
         "category": "maintenance",
         "text": {

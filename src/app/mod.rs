@@ -106,6 +106,7 @@ fn application(
             } else {
                 Subscription::none()
             },
+            app.syntax_subscription(),
             app.diagnostics_subscription(),
             app.change_subscription(),
             app.project_change_subscription(),
@@ -376,6 +377,8 @@ pub(crate) enum Message {
     ToggleSvgSource(u64),
     SetMarkdownViewMode(u64, tabs::MarkdownViewMode),
     ImageLoaded(u64, u64, Result<iced::widget::image::Handle, Failure>),
+    EditorSyntax(u64, std::sync::Arc<crate::ui::editor::syntax::Prepared>),
+    EditorFileRead(u64, u64, Document, Box<editor::Buffer>),
     FilePrepared(u64, u64, tabs::Preparation, Result<Document, Failure>),
     SelectBranch(BranchKey),
     AllRepositories,
@@ -724,6 +727,16 @@ impl App {
             return Task::none();
         }
         match message {
+            Message::EditorSyntax(id, prepared) => {
+                if let Some(tab) = self.preview_for_request(id)
+                    && let Some(buffer) = &mut tab.editor
+                {
+                    buffer
+                        .syntax
+                        .accept(prepared, &buffer.document.text, tab.path.as_deref());
+                }
+                return Task::none();
+            }
             Message::Editor(event) => return self.update_editor(event),
             Message::OpenTabMenu(point)
                 if self.space_draft.is_none()
@@ -1495,6 +1508,22 @@ impl App {
                         }
                     }
                 }
+            }
+            Message::EditorFileRead(generation, request, document, buffer)
+                if generation == self.generation =>
+            {
+                if let Some(tab) = self.preview_for_request(request)
+                    && tab.loading
+                    && tab.preparation == tabs::Preparation::Text
+                    && tab.editor_target(&document).is_some()
+                    && tab.editor.as_ref().is_none_or(|current| {
+                        !current.protected() && current.document.text != buffer.document.text
+                    })
+                {
+                    tab.editor = Some(*buffer);
+                }
+                let task = self.continue_preview(request, tabs::Preparation::Text, Ok(document));
+                return Task::batch([task, self.reveal_definition()]);
             }
             Message::FilePrepared(generation, request, stage, result)
                 if generation == self.generation =>
@@ -2268,16 +2297,6 @@ impl App {
     fn view(&self) -> Element<'_, Message> {
         screens::workspace::view(self)
     }
-}
-
-async fn prepare_document(
-    result: Result<crate::domain::changes::Source, Failure>,
-    extension: String,
-) -> Result<Document, Failure> {
-    let source = result?;
-    tokio::task::spawn_blocking(move || Document::from_source(source, &extension))
-        .await
-        .map_err(|_| Failure::Read)
 }
 
 pub(crate) use crate::ui::presentation::error_key;

@@ -22,11 +22,14 @@ scrolling, and its visibility preference.
 Disabled text fields and multiline editors reject focus operations. Tab skips these controls. The
 dialog interaction tests cover both widget types.
 
-On macOS, both text widgets use Command combinations for shortcuts and suppress their text.
-The single-line field reads modifiers from each key press, including after focus changes.
+On macOS, both text widgets use Command combinations for shortcuts and suppress their text. The
+single-line field reads modifiers from each key press, including after focus changes.
 
-The Markdown parser preserves the contents of indented code blocks. Upstream only collects code
-from fenced blocks. IWE uses the parser without its HTML output and command-line dependencies.
+The Markdown parser preserves the contents of indented code blocks. Upstream only collects code from
+fenced blocks. IWE uses the parser without its HTML output and command-line dependencies.
+
+File editors can adopt an initialized native editor. IWE supplies finite layout bounds before
+loading source lines so glyph layout starts with the visible text.
 
 Keep other source files identical to the published crate. Remove each patch when upstream provides
 equivalent behavior.

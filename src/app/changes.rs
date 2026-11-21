@@ -282,9 +282,16 @@ impl App {
                 if Document::fingerprint(&source) == fingerprint {
                     return Ok(None);
                 }
-                super::prepare_document(Ok(source), extension)
-                    .await
-                    .map(Some)
+                tokio::task::spawn_blocking(move || {
+                    if !compare && source.text.len() <= crate::domain::editor::LIMIT {
+                        Document::plain(source.text)
+                    } else {
+                        Document::from_source(source, &extension)
+                    }
+                })
+                .await
+                .map(Some)
+                .map_err(|_| Failure::Read)
             },
             move |result| {
                 Message::Worktree(Event::PreviewLoaded(

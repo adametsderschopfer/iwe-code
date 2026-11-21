@@ -11,6 +11,7 @@ mod completion;
 mod definition;
 mod diagnostics;
 mod formatting;
+mod loading;
 pub(crate) mod marks;
 pub(crate) mod menu;
 
@@ -26,6 +27,7 @@ pub(crate) struct Buffer {
     pub content: text_editor::Content,
     pub target: Target,
     pub marks: marks::Marks,
+    pub syntax: crate::ui::editor::syntax::Cache,
     pub saving: bool,
     pub error: Option<Key>,
     autosave: u64,
@@ -36,10 +38,11 @@ pub(crate) struct Buffer {
 impl Buffer {
     pub(crate) fn new(text: String, target: Target) -> Self {
         Self {
-            content: text_editor::Content::with_text(&text),
+            content: loading::content(&text),
             document: Document::new(text),
             target,
             marks: Default::default(),
+            syntax: Default::default(),
             saving: false,
             error: None,
             autosave: 0,
@@ -180,6 +183,23 @@ impl App {
         tab.editor
             .as_ref()
             .filter(|_| !tab.local_svg() || tab.svg_source)
+    }
+
+    pub(super) fn syntax_subscription(&self) -> iced::Subscription<Message> {
+        let Some(buffer) = self.editor_buffer() else {
+            return iced::Subscription::none();
+        };
+        let tab = self.preview();
+        let language = tab
+            .path
+            .as_deref()
+            .map(crate::ui::code::syntax_for)
+            .unwrap_or_default();
+        buffer
+            .syntax
+            .settings(&buffer.document.text, language)
+            .subscription(tab.id)
+            .map(|(tab, colors)| Message::EditorSyntax(tab, colors))
     }
 
     pub(crate) fn editor_buffer(&self) -> Option<&Buffer> {

@@ -422,8 +422,13 @@ where
 
     /// Creates a [`Content`] with the given text.
     pub fn with_text(text: &str) -> Self {
+        Self::from_editor(R::Editor::with_text(text))
+    }
+
+    /// Uses an editor initialized with application-specific layout bounds.
+    pub fn from_editor(editor: R::Editor) -> Self {
         Self(RefCell::new(Internal {
-            editor: R::Editor::with_text(text),
+            editor,
             restore_scroll: None,
         }))
     }

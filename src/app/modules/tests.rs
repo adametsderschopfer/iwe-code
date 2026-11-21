@@ -203,7 +203,7 @@ fn bottom_toolbar_buttons_stay_in_place_when_opening_switching_and_closing_panel
                     .unwrap()
             });
             assert_eq!((files.x, files.width), (bottom.x, bottom.width));
-            let last = bounds[4];
+            let last = bounds.last().unwrap();
             assert!(
                 (bottom.y + bottom.height
                     - last.y

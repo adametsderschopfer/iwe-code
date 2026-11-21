@@ -1001,7 +1001,7 @@ fn registry_dialog_keeps_the_list_and_discards_unsaved_edits_on_cancel() {
         let _ = state.update(Event::Registry(registry::Event::Cancel), root, false);
         assert!(!state.has_dialog());
         assert_eq!(state.registry.selected.as_ref(), Some(&reg));
-        assert_eq!(state.profiles, [reg.clone()]);
+        assert_eq!(state.profiles.as_slice(), std::slice::from_ref(&reg));
     }
 }
 

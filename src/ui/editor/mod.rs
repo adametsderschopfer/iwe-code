@@ -7,7 +7,7 @@ mod gutter;
 mod menu;
 mod scrollbar;
 mod search;
-mod syntax;
+pub(crate) mod syntax;
 
 const TEXT_PADDING: f32 = 12.;
 
@@ -61,12 +61,13 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
         .padding(TEXT_PADDING)
         .wheel_scroll_scale(theme::CODE_WHEEL_SCROLL_SCALE)
         .wrapping(iced::widget::text::Wrapping::None)
-        .highlight_with::<syntax::Highlighter>(extension.to_owned(), |tone, theme| {
-            iced::advanced::text::highlighter::Format {
+        .highlight_with::<syntax::Highlighter>(
+            buffer.syntax.settings(&buffer.document.text, extension),
+            |tone, theme| iced::advanced::text::highlighter::Format {
                 color: Some(tone.resolve(theme)),
                 font: None,
-            }
-        })
+            },
+        )
         .key_binding(move |key| {
             use text_editor::{Binding, Status};
             if blocked || !matches!(key.status, Status::Focused { .. }) {

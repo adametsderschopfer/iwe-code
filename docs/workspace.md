@@ -767,13 +767,16 @@ profile. Saving local files does not upload them. Command+S on macOS, or Ctrl+S 
 Linux, saves immediately or retries a failed save. Shortcuts remain configurable and follow physical
 keys across keyboard layouts. Undo uses Command+Z or Ctrl+Z. Add Shift for redo.
 
-The editor supports selection, cut, copy, paste, multiline syntax highlighting, and line navigation.
-See [code assistance](language-servers.md) for completion, definitions, diagnostics, and local
-language server configuration. Tab inserts four spaces. Line numbers follow the editor's layout and
-scrolling, including cursor navigation. The line-number preference controls their visibility. The
-separate save and saved-version toolbar is removed. The tab marks unsaved changes and shows save
-errors in its tooltip. Errors also appear in notifications. Failed saves stop automatic retries,
-including after further edits.
+A background worker opens editable files while other tabs remain available. The editor lays out
+visible text when its viewport appears. A background worker colors lines through the visible region.
+It resumes from unchanged blocks when you edit or scroll. You can switch tabs or continue typing
+while it prepares colors. The editor supports selection, cut, copy, paste, multiline syntax
+highlighting, and line navigation. See [code assistance](language-servers.md) for completion,
+definitions, diagnostics, and local language server configuration. Tab inserts four spaces. Line
+numbers follow the editor's layout and scrolling, including cursor navigation. The line-number
+preference controls their visibility. The separate save and saved-version toolbar is removed. The
+tab marks unsaved changes and shows save errors in its tooltip. Errors also appear in notifications.
+Failed saves stop automatic retries, including after further edits.
 
 The editor compares changed lines against Git HEAD on a background worker. The uncommitted-files
 section opens separate comparison tabs for the same paths. Comparison controls appear in comparison

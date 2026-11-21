@@ -57,6 +57,28 @@ enum Source {
 }
 
 impl Source {
+    fn editable_target(&self) -> Option<super::editor::Target> {
+        use super::editor::Target;
+        match self {
+            Self::Working {
+                path,
+                compare: false,
+                ..
+            } => Some(Target::Local(path.clone())),
+            Self::Remote {
+                identity,
+                remote,
+                previous: None,
+                local_root: None,
+                ..
+            } => Some(Target::Remote {
+                profile: identity.clone(),
+                path: remote.clone(),
+            }),
+            _ => None,
+        }
+    }
+
     fn extension(&self) -> String {
         match self {
             Self::Remote { path, .. } => syntax_for(path),
@@ -274,30 +296,14 @@ impl Preview {
         }
     }
 
-    fn editor_target(&self, document: &Document) -> Option<super::editor::Target> {
-        use super::editor::Target;
-
-        if document.page.is_some() || document.text.len() > crate::domain::editor::LIMIT {
+    pub(super) fn editor_target(&self, document: &Document) -> Option<super::editor::Target> {
+        if document.page.is_some()
+            || document.text.len() > crate::domain::editor::LIMIT
+            || self.pending_comparison.is_some()
+        {
             return None;
         }
-        match &self.source {
-            Some(Source::Working {
-                path,
-                compare: false,
-                ..
-            }) => Some(Target::Local(path.clone())),
-            Some(Source::Remote {
-                identity,
-                remote,
-                previous: None,
-                local_root: None,
-                ..
-            }) if self.pending_comparison.is_none() => Some(Target::Remote {
-                profile: identity.clone(),
-                path: remote.clone(),
-            }),
-            _ => None,
-        }
+        self.source.as_ref()?.editable_target()
     }
 
     pub(crate) fn awaiting_editor(&self) -> bool {
@@ -459,6 +465,9 @@ fn trim_documents<'a>(
 ) -> usize {
     let mut retained = 0;
     for preview in previews.rev() {
+        if let Some(buffer) = &mut preview.editor {
+            buffer.syntax = Default::default();
+        }
         if keep_drafts
             && preview
                 .editor
@@ -946,9 +955,32 @@ impl App {
                 )
             });
         }
-        Task::perform(source.read(), move |result| {
-            Message::FilePrepared(generation, id, Preparation::Text, result)
-        })
+        Task::perform(
+            async move {
+                let target = source.editable_target();
+                let result = match (source.read().await, target) {
+                    (Ok(document), Some(target))
+                        if document.page.is_none()
+                            && document.text.len() <= crate::domain::editor::LIMIT =>
+                    {
+                        match tokio::task::spawn_blocking(move || {
+                            let buffer = super::editor::Buffer::new(document.text.clone(), target);
+                            (document, Box::new(buffer))
+                        })
+                        .await
+                        {
+                            Ok((document, buffer)) => {
+                                return Message::EditorFileRead(generation, id, document, buffer);
+                            }
+                            Err(_) => Err(Failure::Read),
+                        }
+                    }
+                    (result, _) => result,
+                };
+                Message::FilePrepared(generation, id, Preparation::Text, result)
+            },
+            std::convert::identity,
+        )
     }
 
     pub(super) fn reload_large_preview(&mut self, id: u64) -> Task<Message> {
@@ -1047,6 +1079,9 @@ impl App {
         let Some(source) = preview.source.clone() else {
             return Task::none();
         };
+        if stage == Preparation::Text && preview.editor_target(&document).is_some() {
+            return self.finish_preview(id, Ok(Arc::unwrap_or_clone(document)));
+        }
         preview.folding.refresh(&document);
         preview.document = Some(Arc::clone(&document));
         preview.error = None;
