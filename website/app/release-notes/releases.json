@@ -2721,6 +2721,16 @@
           "es": "Git y Docker comparten el ancho de la barra de herramientas, el tamaño de los iconos y los colores."
         },
         "sources": ["src/modules/git/view/mod.rs"]
+      },
+      {
+        "id": "docker-flat-dialogs",
+        "category": "changed",
+        "text": {
+          "en": "Docker dialogs place fields directly under the title and keep the actions visible while scrolling.",
+          "ru": "Диалоги Docker показывают поля под заголовком и сохраняют кнопки видимыми при прокрутке.",
+          "es": "Los diálogos de Docker muestran los campos bajo el título y mantienen visibles las acciones durante el desplazamiento."
+        },
+        "sources": ["src/modules/docker/view/form.rs"]
       }
     ]
   }

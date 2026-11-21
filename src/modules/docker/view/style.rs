@@ -2,7 +2,7 @@
 
 use crate::ui::theme;
 use iced::{
-    Border, Theme,
+    Theme,
     widget::{
         button::{Status as ButtonStatus, Style as ButtonStyle},
         container,
@@ -10,17 +10,6 @@ use iced::{
         pick_list, scrollable, text_input,
     },
 };
-
-pub(super) fn frame(theme: &Theme) -> container::Style {
-    container::Style {
-        border: Border {
-            color: theme::LINE.resolve(theme),
-            width: 1.,
-            ..Default::default()
-        },
-        ..theme::surface(theme)
-    }
-}
 
 pub(super) fn surface(
     style: fn(&Theme) -> container::Style,

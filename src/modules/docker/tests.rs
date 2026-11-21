@@ -990,3 +990,34 @@ fn scrolled_resource_popups_use_the_window_pointer_and_the_clicked_row() {
             .any(|event| matches!(event,Event::Menu(id,anchor) if id==expected && anchor==point))
     );
 }
+
+#[test]
+fn ssh_dialog_shows_two_labeled_fields_without_a_nested_connection_section() {
+    use crate::i18n::{I18n, Language};
+    for language in [Language::Russian, Language::Spanish, Language::English] {
+        let i18n = I18n::new(language);
+        let mut state = State {
+            open: true,
+            ..Default::default()
+        };
+        let _ = state.update(Event::Act(Action::AddContext), Path::new("."), true);
+        let mut ui = iced_test::Simulator::with_size(
+            iced::Settings::default(),
+            (620., 560.),
+            overlay(
+                &state,
+                &i18n,
+                true,
+                iced::widget::space()
+                    .width(iced::Length::Fill)
+                    .height(iced::Length::Fill)
+                    .into(),
+                |e| e,
+            ),
+        );
+        assert!(ui.find(i18n.text(Key::DockerConnection)).is_err());
+        for key in [Key::DockerName, Key::DockerEndpoint, Key::Cancel] {
+            assert!(ui.find(i18n.text(key)).unwrap().visible_bounds().is_some());
+        }
+    }
+}

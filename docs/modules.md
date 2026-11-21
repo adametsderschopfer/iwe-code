@@ -74,11 +74,11 @@ requests time out after thirty seconds. Changes time out after ten minutes. Refr
 to see what Docker completed. Disabling the module discards pending interface results. Docker can
 finish an operation already submitted to the daemon.
 
-The container form groups the image and container name under **Settings**. **Runtime options**
-contains port mappings, mounts, environment variables, and an optional command. Scroll through the
-fields in smaller windows. The form keeps the submit and cancel buttons visible. Separate multiple
-values with spaces. Quote a value when it contains spaces or backslashes. Docker receives each value
-as a separate argument.
+Docker forms display labeled fields directly below the title. The container form starts with its
+image and container name. **Runtime options** contains port mappings, mounts, environment variables,
+and an optional command. Scroll through the fields in smaller windows. The form keeps the submit and
+cancel buttons visible. Separate multiple values with spaces. Quote a value when it contains spaces
+or backslashes. Docker receives each value as a separate argument.
 
 Install Docker CLI and enable access to the selected daemon. Compose operations require the Docker
 Compose plugin. Existing contexts support the connection methods configured in Docker, including

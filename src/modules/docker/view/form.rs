@@ -5,7 +5,6 @@ use crate::{
     i18n::{I18n, Key},
     modules::docker::{Action, Draft, Event, Kind, State, container::Field},
     ui::{
-        context_menu,
         icons::{Icon, sized_icon},
         theme,
     },
@@ -30,18 +29,6 @@ fn field<'a, M: Clone + 'a>(
             .style(style::input)
     ]
     .spacing(3)
-    .into()
-}
-
-fn group<'a, M: 'a>(title: String, fields: Column<'a, M>) -> Element<'a, M> {
-    container(column![
-        container(caption(title)).padding([5, 9]),
-        context_menu::separator(),
-        fields.spacing(GUTTER).padding(9)
-    ])
-    .padding(1)
-    .width(Length::Fill)
-    .style(style::frame)
     .into()
 }
 
@@ -93,12 +80,7 @@ pub(super) fn contents<'a, M: Clone + 'a>(
                     .wrapping(text::Wrapping::WordOrGlyph),
             );
         }
-        body = body.push(
-            container(context)
-                .padding(GUTTER)
-                .width(Length::Fill)
-                .style(style::frame),
-        );
+        body = body.push(context);
     }
     if let Some(key) = input {
         let mut fields = column![field(i18n, key, &draft.value, move |v| map(Event::Value(
@@ -123,14 +105,7 @@ pub(super) fn contents<'a, M: Clone + 'a>(
                 map(Event::Extra(v))
             }));
         }
-        body = body.push(group(
-            i18n.text(if action == Action::AddContext {
-                Key::DockerConnection
-            } else {
-                Key::Settings
-            }),
-            fields,
-        ));
+        body = body.push(fields.spacing(GUTTER));
     }
     if action == Action::Create && state.kind == Kind::Containers {
         let fields = Column::with_children(Field::ALL.into_iter().map(|kind| {
@@ -138,7 +113,9 @@ pub(super) fn contents<'a, M: Clone + 'a>(
                 map(Event::ContainerField(kind, v))
             })
         }));
-        body = body.push(group(i18n.text(Key::DockerRuntime), fields));
+        body = body
+            .push(caption(i18n.text(Key::DockerRuntime)))
+            .push(fields.spacing(GUTTER));
     }
     if action.confirm() {
         body = body.push(
@@ -173,7 +150,6 @@ pub(super) fn contents<'a, M: Clone + 'a>(
         text(i18n.text(action.key()))
             .font(theme::semibold())
             .size(19),
-        context_menu::separator(),
         container(
             scrollable(body.padding(iced::Padding::default().right(7)))
                 .height(Length::Shrink)
@@ -181,7 +157,6 @@ pub(super) fn contents<'a, M: Clone + 'a>(
         )
         .max_height((height - 102.).max(1.))
         .width(Length::Fill),
-        context_menu::separator(),
         row![
             button(text(i18n.text(Key::Cancel)).size(13))
                 .on_press_maybe(ready.then(|| map(Event::Dismiss)))
