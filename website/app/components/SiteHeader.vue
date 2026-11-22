@@ -1,35 +1,21 @@
 <script setup lang="ts">
-import {
-  docsPath,
-  languages,
-  localizedPath,
-  repository,
-  roadmapPath,
-  type Locale,
-  type Messages,
-} from '~/i18n'
+import { docsPath, repository, roadmapPath, type Messages } from '~/i18n'
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     messages: Messages
-    locale: Locale
     section?: 'home' | 'docs' | 'license' | 'roadmap'
   }>(),
   { section: 'home' },
 )
-const route = useRoute()
 const base = useRuntimeConfig().app.baseURL
-const homeHref = computed(() => `${base}${props.locale === 'en' ? '' : `${props.locale}/`}`)
+const homeHref = base
 </script>
 
 <template>
   <a class="skip-link" href="#main">{{ messages.nav.skip }}</a>
   <header class="site-header shell">
-    <NuxtLink
-      class="brand"
-      :to="locale === 'en' ? '/' : `/${locale}/`"
-      :aria-label="messages.nav.home"
-    >
+    <NuxtLink class="brand" to="/" :aria-label="messages.nav.home">
       <img :src="`${base}icon.webp`" width="36" height="36" alt="" />
       <span>IWE <span class="brand-code">Code</span></span>
     </NuxtLink>
@@ -40,29 +26,15 @@ const homeHref = computed(() => `${base}${props.locale === 'en' ? '' : `${props.
       <a :href="section === 'home' ? '#workflow' : `${homeHref}#workflow`">{{
         messages.nav.workflow
       }}</a>
-      <NuxtLink
-        :to="roadmapPath(locale)"
-        :aria-current="section === 'roadmap' ? 'page' : undefined"
-      >
+      <NuxtLink :to="roadmapPath" :aria-current="section === 'roadmap' ? 'page' : undefined">
         {{ messages.roadmap.nav }}
       </NuxtLink>
-      <NuxtLink :to="docsPath(locale)" :aria-current="section === 'docs' ? 'page' : undefined">{{
+      <NuxtLink :to="docsPath()" :aria-current="section === 'docs' ? 'page' : undefined">{{
         messages.docs.label
       }}</NuxtLink>
       <a :href="repository">GitHub <SiteIcon name="arrow" /></a>
     </nav>
     <div class="header-actions">
-      <nav class="language-nav" :aria-label="messages.nav.language">
-        <NuxtLink
-          v-for="language in languages"
-          :key="language.code"
-          :to="localizedPath(route.path, language.code)"
-          :lang="language.code"
-          :aria-label="language.name"
-          :aria-current="locale === language.code ? 'page' : undefined"
-          >{{ language.label }}</NuxtLink
-        >
-      </nav>
       <a
         class="button button-small header-download"
         :href="section === 'home' ? '#download' : `${homeHref}#download`"
@@ -112,17 +84,6 @@ const homeHref = computed(() => `${base}${props.locale === 'en' ? '' : `${props.
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 26px;
-}
-.language-nav {
-  display: flex;
-  gap: 11px;
-  font-size: 11px;
-  font-weight: 550;
-  color: var(--muted);
-}
-.language-nav [aria-current] {
-  color: var(--text);
 }
 @media (max-width: 900px) {
   .main-nav {
@@ -133,14 +94,8 @@ const homeHref = computed(() => `${base}${props.locale === 'en' ? '' : `${props.
   }
 }
 @media (max-width: 480px) {
-  .header-download {
-    display: none;
-  }
   .site-header {
     gap: 16px;
-  }
-  .header-actions {
-    gap: 12px;
   }
 }
 </style>

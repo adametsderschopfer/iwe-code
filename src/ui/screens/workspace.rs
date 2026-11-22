@@ -274,7 +274,8 @@ pub(crate) fn view(app: &App) -> Element<'_, Message> {
     } else {
         base
     };
-    crate::ui::editor::overlay(app, super::file_menu::dialog(app, base))
+    let base = crate::ui::editor::overlay(app, super::file_menu::dialog(app, base));
+    crate::ui::updates::overlay(app, base)
 }
 
 fn header(app: &App) -> Element<'_, Message> {

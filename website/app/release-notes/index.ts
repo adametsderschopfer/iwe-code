@@ -1,11 +1,11 @@
 import data from './releases.json'
-import type { Locale } from '~/i18n'
 
 export type Category = 'added' | 'changed' | 'fixed' | 'maintenance'
 export interface ReleaseItem {
   id: string
   category: Category
-  text: Record<Locale, string>
+  platforms?: ('macos' | 'windows' | 'linux')[]
+  text: Record<'en' | 'ru' | 'es', string>
   sources: string[]
 }
 export interface ReleaseNote {
@@ -39,8 +39,8 @@ export function publicReleaseNotes(publications: Record<string, string>) {
 }
 
 export const categories: Category[] = ['added', 'changed', 'fixed', 'maintenance']
-export const releaseNotesPath = (locale: Locale, version?: string) =>
-  `${locale === 'en' ? '' : `/${locale}`}/docs/release-notes/${version ? `${version}/` : ''}`
+export const releaseNotesPath = (version?: string) =>
+  `/docs/release-notes/${version ? `${version}/` : ''}`
 export const isReleaseVersion = (version: unknown, publications: Record<string, string>) =>
   version === undefined ||
   version === '' ||

@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import { roadmapPath, type Locale, type Messages } from '~/i18n'
+import { roadmapPath, type Messages } from '~/i18n'
 import { publicReleaseNotes, releaseNotesPath } from '~/release-notes'
 
-const {
-  messages,
-  locale,
-  preview = false,
-} = defineProps<{
+const { messages, preview = false } = defineProps<{
   messages: Messages
-  locale: Locale
   preview?: boolean
 }>()
 
@@ -18,7 +13,7 @@ const plans = computed(() => {
   return preview ? tracks.slice(0, 2) : tracks
 })
 const releases = computed(() => {
-  const format = new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeZone: 'UTC' })
+  const format = new Intl.DateTimeFormat('en', { dateStyle: 'long', timeZone: 'UTC' })
   return publicReleaseNotes(publications)
     .filter((release) => release.status === 'released' && release.publishedAt)
     .sort((left, right) => right.publishedAt!.localeCompare(left.publishedAt!))
@@ -86,21 +81,21 @@ const releases = computed(() => {
               <component :is="preview ? 'h4' : 'h3'">
                 <NuxtLink
                   class="roadmap-tag roadmap-tag-release"
-                  :to="releaseNotesPath(locale, release.version)"
+                  :to="releaseNotesPath(release.version)"
                 >
                   {{ release.label }}
                 </NuxtLink>
               </component>
             </div>
             <ul class="roadmap-highlights">
-              <li v-for="item in release.highlights" :key="item.id">{{ item.text[locale] }}</li>
+              <li v-for="item in release.highlights" :key="item.id">{{ item.text.en }}</li>
             </ul>
           </li>
         </ol>
       </section>
     </div>
 
-    <NuxtLink v-if="preview" class="roadmap-link" :to="roadmapPath(locale)">
+    <NuxtLink v-if="preview" class="roadmap-link" :to="roadmapPath">
       {{ messages.roadmap.full }} <SiteIcon name="arrow" />
     </NuxtLink>
   </section>

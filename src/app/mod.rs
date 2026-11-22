@@ -62,6 +62,7 @@ fn application(
     iced::daemon(
         move || {
             let mut app = App::new(Rc::clone(&i18n));
+            app.whats_new = updates::restarted_after_update().then(updates::WhatsNew::current);
             let (id, open) = window::open(windows::main_settings());
             app.window_id = Some(id);
             (
@@ -248,6 +249,7 @@ pub(crate) struct App {
     pub disconnecting: bool,
     pub notifications: notifications::State,
     pub updates: updates::State,
+    pub whats_new: Option<updates::WhatsNew>,
     update_schedule: updates::Schedule,
     pub picking: bool,
     pub loaded: bool,
@@ -513,6 +515,7 @@ impl App {
             },
             picking: false,
             update_schedule: updates::Schedule::default(),
+            whats_new: None,
             loaded: false,
             window_id: None,
             windows: windows::State::default(),
@@ -545,6 +548,7 @@ impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         let task = self.handle_message(message);
         self.tabs.update_markdown(&mut self.markdown);
+        self.dismiss_stale_color_picker();
         task
     }
 

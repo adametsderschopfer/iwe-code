@@ -1,40 +1,23 @@
 <script setup lang="ts">
-import { catalogs, languages, repository, type Locale } from '~/i18n'
+import { messages, repository } from '~/i18n'
 
-definePageMeta({
-  validate: (route) => !route.params.lang || ['ru', 'es'].includes(String(route.params.lang)),
-})
-
-const route = useRoute()
-const locale = computed<Locale>(() =>
-  route.params.lang === 'ru' ? 'ru' : route.params.lang === 'es' ? 'es' : 'en',
-)
-const messages = computed(() => catalogs[locale.value])
 const base = useRuntimeConfig().app.baseURL
 const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
-const canonical = computed(() => `${siteURL}${locale.value === 'en' ? '' : `${locale.value}/`}`)
 
 useHead(() => ({
-  htmlAttrs: { lang: locale.value },
-  title: messages.value.meta.title,
+  htmlAttrs: { lang: 'en' },
+  title: messages.meta.title,
   link: [
     { rel: 'icon', href: `${base}icon.webp`, type: 'image/webp' },
-    { rel: 'canonical', href: canonical.value },
-    ...languages.map((language) => ({
-      rel: 'alternate' as const,
-      type: 'text/html',
-      hreflang: language.code,
-      href: `${siteURL}${language.code === 'en' ? '' : `${language.code}/`}`,
-    })),
-    { rel: 'alternate', hreflang: 'x-default', href: siteURL },
+    { rel: 'canonical', href: siteURL },
   ],
 }))
 useSeoMeta({
-  description: () => messages.value.meta.description,
-  ogTitle: () => messages.value.meta.title,
-  ogDescription: () => messages.value.meta.description,
+  description: () => messages.meta.description,
+  ogTitle: () => messages.meta.title,
+  ogDescription: () => messages.meta.description,
   ogType: 'website',
-  ogUrl: () => canonical.value,
+  ogUrl: siteURL,
   ogImage: `${siteURL}images/workspace-en.webp`,
   twitterCard: 'summary_large_image',
 })
@@ -42,7 +25,7 @@ useSeoMeta({
 
 <template>
   <div class="landing">
-    <SiteHeader :messages="messages" :locale="locale" />
+    <SiteHeader :messages="messages" />
     <main id="main" class="shell">
       <section class="hero" aria-labelledby="hero-title">
         <a class="intro-link" href="#download"
@@ -135,8 +118,8 @@ useSeoMeta({
         </ScrollReveal>
       </section>
 
-      <RoadmapSection :messages="messages" :locale="locale" preview />
-      <DownloadSection :messages="messages" :locale="locale" />
+      <RoadmapSection :messages="messages" preview />
+      <DownloadSection :messages="messages" />
 
       <section class="faq section-space" aria-labelledby="faq-title">
         <h2 id="faq-title">{{ messages.faq.title }}</h2>
@@ -148,7 +131,7 @@ useSeoMeta({
         </div>
       </section>
     </main>
-    <SiteFooter :messages="messages" :locale="locale" />
+    <SiteFooter :messages="messages" />
   </div>
 </template>
 

@@ -27,3 +27,17 @@ for (const width of [390, 1280]) {
     )
   })
 }
+
+test('old language URLs recover to their English pages', async ({ page, baseURL }) => {
+  for (const [oldPath, newPath] of [
+    ['ru/docs/editing/', 'docs/editing/'],
+    ['es/docs/release-notes/1.5.0/', 'docs/release-notes/1.5.0/'],
+    ['ru/', ''],
+    ['es/cli/', 'docs/cli/'],
+  ]) {
+    const response = await page.goto(`./${oldPath}`)
+    expect(response?.status()).toBe(404)
+    await expect(page).toHaveURL(new URL(newPath, baseURL).href)
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  }
+})

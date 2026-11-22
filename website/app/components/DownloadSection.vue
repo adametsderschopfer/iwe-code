@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Locale, Messages } from '~/i18n'
+import type { Messages } from '~/i18n'
 import { releaseNotesPath } from '~/release-notes'
 import {
   detectPlatform,
@@ -8,7 +8,7 @@ import {
   type DesktopArchitecture,
 } from '~/utils/platform'
 
-withDefaults(defineProps<{ messages: Messages; locale?: Locale }>(), { locale: 'en' })
+defineProps<{ messages: Messages }>()
 const release = useRuntimeConfig().public.downloadRelease
 const downloads = release.downloads as Record<string, string>
 const versions = release.versions as Partial<Record<DesktopSystem, string>>
@@ -157,9 +157,7 @@ onMounted(async () => {
         </p>
       </ScrollReveal>
     </div>
-    <NuxtLink
-      class="release-link"
-      :to="release.hasNotes ? releaseNotesPath(locale, version) : release.url"
+    <NuxtLink class="release-link" :to="release.hasNotes ? releaseNotesPath(version) : release.url"
       >{{ messages.download.release }} <SiteIcon name="arrow"
     /></NuxtLink>
   </section>

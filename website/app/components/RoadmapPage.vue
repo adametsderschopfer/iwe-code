@@ -1,42 +1,30 @@
 <script setup lang="ts">
-import { catalogs, languages, roadmapPath, type Locale } from '~/i18n'
+import { messages, roadmapPath } from '~/i18n'
 
-const route = useRoute()
-const locale = computed<Locale>(() =>
-  route.params.lang === 'ru' ? 'ru' : route.params.lang === 'es' ? 'es' : 'en',
-)
-const messages = computed(() => catalogs[locale.value])
 const base = useRuntimeConfig().app.baseURL
 const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
-const absolutePath = (language: Locale) => new URL(roadmapPath(language).slice(1), siteURL).href
+const canonical = new URL(roadmapPath.slice(1), siteURL).href
 
 useHead(() => ({
-  htmlAttrs: { lang: locale.value },
+  htmlAttrs: { lang: 'en' },
   link: [
     { rel: 'icon', href: `${base}icon.webp`, type: 'image/webp' },
-    { rel: 'canonical', href: absolutePath(locale.value) },
-    ...languages.map((language) => ({
-      rel: 'alternate' as const,
-      type: 'text/html',
-      hreflang: language.code,
-      href: absolutePath(language.code),
-    })),
-    { rel: 'alternate', hreflang: 'x-default', href: absolutePath('en') },
+    { rel: 'canonical', href: canonical },
   ],
 }))
 useSeoMeta({
-  title: () => `${messages.value.roadmap.nav} · IWE Code`,
-  description: () => messages.value.roadmap.description,
+  title: () => `${messages.roadmap.nav} · IWE Code`,
+  description: () => messages.roadmap.description,
 })
 </script>
 
 <template>
   <div>
-    <SiteHeader :messages="messages" :locale="locale" section="roadmap" />
+    <SiteHeader :messages="messages" section="roadmap" />
     <main id="main" class="shell roadmap-page section-space">
-      <RoadmapSection :messages="messages" :locale="locale" />
+      <RoadmapSection :messages="messages" />
     </main>
-    <SiteFooter :messages="messages" :locale="locale" />
+    <SiteFooter :messages="messages" />
   </div>
 </template>
 

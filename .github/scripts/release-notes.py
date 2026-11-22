@@ -10,6 +10,7 @@ import re
 ROOT = Path(__file__).resolve().parents[2]
 LEDGER = ROOT / "website/app/release-notes/releases.json"
 LANGUAGES = {"en", "ru", "es"}
+PLATFORMS = {"macos", "windows", "linux"}
 CATEGORIES = {"added": "New", "changed": "Improved", "fixed": "Fixed", "maintenance": "Maintenance"}
 VERSION = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 
@@ -55,6 +56,15 @@ def validate():
             identifiers.add(identifier)
             if item["category"] not in CATEGORIES:
                 raise ValueError(f"Unknown release-note category: {identifier}")
+            if "platforms" in item:
+                platforms = item["platforms"]
+                if (
+                    not isinstance(platforms, list)
+                    or not platforms
+                    or any(not isinstance(platform, str) or platform not in PLATFORMS for platform in platforms)
+                    or len(platforms) != len(set(platforms))
+                ):
+                    raise ValueError(f"Invalid release-note platforms: {identifier}")
             if set(item["text"]) != LANGUAGES or any(
                 not isinstance(value, str) or not value.strip()
                 for value in item["text"].values()
@@ -83,12 +93,8 @@ def render(record):
             lines.extend([f"## {title}", ""])
             lines.extend(f"- {item['text']['en']}" for item in items)
             lines.append("")
-    base = "https://adametsderschopfer.github.io/iwe-code/"
-    links = [
-        f"[{label}]({base}{prefix}docs/release-notes/{record['version']}/)"
-        for prefix, label in [("", "English"), ("ru/", "Русский"), ("es/", "Español")]
-    ]
-    lines.extend([" · ".join(links), ""])
+    url = f"https://iwe-code.ru/docs/release-notes/{record['version']}/"
+    lines.extend([f"[Release notes]({url})", ""])
     return "\n".join(lines)
 
 

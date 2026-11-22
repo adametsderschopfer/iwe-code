@@ -631,9 +631,10 @@ locally, including after suspension. Manual checks bypass cooldowns but retain i
 Automatic checks preserve available updates and never interrupt download, save, or installation
 states. `domain/update` carries verified release metadata without operating-system access.
 `infrastructure/updates` verifies signed manifests, stages packages, and installs updates after
-shutdown. `ui/updates` presents localized actions in the sidebar and About settings. The startup
-entry point handles installer and cleanup processes before starting the graphics launcher. See
-[application updates](updates.md) for trust boundaries, package limits, and recovery behavior.
+shutdown. `ui/updates` presents localized actions and shows embedded release notes after an update
+restart. The startup entry point handles installer and cleanup processes before starting the
+graphics launcher. See [application updates](updates.md) for trust boundaries, package limits, and
+recovery behavior.
 
 ## Accessibility
 
@@ -676,17 +677,19 @@ language requests. Each edit creates a new snapshot. Workers retain the revision
 decisions. Autosave timers carry unique revisions and ignore superseded or closed buffers.
 Completion tokens protect newer drafts. Navigation flushes pending snapshots before releasing
 buffers. Failed writes stop automatic retries. Remote saves wait for the deployment queue before
-submission. `ui/editor` renders Iced text editors with synchronized line numbers. The renderer
-requests syntax colors through the last visible line. One background worker parses editable text in
-blocks and retains multiline parser checkpoints. Each buffer accepts colors only for its current
-snapshot and language. Its gutter reads visible layout runs through the local widget's read-only
-inspection API. Editable local documents use a separate bounded line comparison against the Git
-baseline. Each result carries the project generation, tab identifier, request number, and text
-snapshot. The gutter resolves visible layout runs to changed ranges and deletion anchors.
-Uncommitted-file sources use separate tabs and retain the comparison viewer. `infrastructure/editor`
-replaces local files through temporary files after checking the saved baseline. Server saves use
-typed deployment operations and completion effects. The module does not import application state.
-Save completions carry operation tokens and never replace newer draft text.
+submission. `ui/editor` renders Iced text editors with synchronized line numbers. Color swatches use
+visible glyph positions. The color picker edits one literal through the existing document history.
+The renderer requests syntax colors through the last visible line. One background worker parses
+editable text in blocks and retains multiline parser checkpoints. Each buffer accepts colors only
+for its current snapshot and language. Its gutter reads visible layout runs through the local
+widget's read-only inspection API. Editable local documents use a separate bounded line comparison
+against the Git baseline. Each result carries the project generation, tab identifier, request
+number, and text snapshot. The gutter resolves visible layout runs to changed ranges and deletion
+anchors. Uncommitted-file sources use separate tabs and retain the comparison viewer.
+`infrastructure/editor` replaces local files through temporary files after checking the saved
+baseline. Server saves use typed deployment operations and completion effects. The module does not
+import application state. Save completions carry operation tokens and never replace newer draft
+text.
 
 Each open Markdown tab stores its view mode. The workspace parses the active editor snapshot for the
 formatted view. Read-only tabs use the loaded source text. The workspace reuses the parsed document

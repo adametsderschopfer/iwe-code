@@ -1,34 +1,19 @@
 <script setup lang="ts">
 import type { DocsSlug } from '~/docs'
-import { catalogs, docsPath, languages, type Locale } from '~/i18n'
+import { messages, docsPath } from '~/i18n'
 
 const props = defineProps<{ slug: DocsSlug }>()
 
-const route = useRoute()
-const locale = computed<Locale>(() =>
-  route.params.lang === 'ru' ? 'ru' : route.params.lang === 'es' ? 'es' : 'en',
-)
-const messages = computed(() => catalogs[locale.value])
-const page = computed(() => messages.value.docs.pages[props.slug])
+const page = computed(() => messages.docs.pages[props.slug])
 const base = useRuntimeConfig().app.baseURL
 const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
-const canonical = computed(() => new URL(docsPath(locale.value, props.slug).slice(1), siteURL).href)
+const canonical = computed(() => new URL(docsPath(props.slug).slice(1), siteURL).href)
 useHead(() => ({
-  htmlAttrs: { lang: locale.value },
+  htmlAttrs: { lang: 'en' },
   title: page.value.metaTitle,
   link: [
     { rel: 'icon', href: `${base}icon.webp`, type: 'image/webp' },
     { rel: 'canonical', href: canonical.value },
-    ...languages.map((language) => ({
-      rel: 'alternate' as const,
-      hreflang: language.code,
-      href: new URL(docsPath(language.code, props.slug).slice(1), siteURL).href,
-    })),
-    {
-      rel: 'alternate',
-      hreflang: 'x-default',
-      href: new URL(docsPath('en', props.slug).slice(1), siteURL).href,
-    },
   ],
 }))
 useSeoMeta({
@@ -41,7 +26,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <DocsLayout :messages="messages" :locale="locale" :slug="slug">
+  <DocsLayout :messages="messages" :slug="slug">
     <article class="docs-article">
       <h1>{{ page.title }}</h1>
       <p class="section-description">{{ page.description }}</p>
@@ -76,7 +61,7 @@ useSeoMeta({
         </template>
         <div v-if="section.links?.length" class="docs-links">
           <template v-for="(link, lIndex) in section.links" :key="lIndex">
-            <NuxtLink v-if="link.page" class="text-link" :to="docsPath(locale, link.page)"
+            <NuxtLink v-if="link.page" class="text-link" :to="docsPath(link.page)"
               >{{ link.text }} <SiteIcon name="arrow"
             /></NuxtLink>
             <a v-else class="text-link" :href="link.href"

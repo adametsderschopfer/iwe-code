@@ -778,6 +778,12 @@ preference controls their visibility. The separate save and saved-version toolba
 tab marks unsaved changes and shows save errors in its tooltip. Errors also appear in notifications.
 Failed saves stop automatic retries, including after further edits.
 
+Color swatches appear beside HEX, RGB, and HSL values in editable files. Click a swatch to open the
+color picker. You can also open the editor context menu on a color value and choose **Edit color**.
+Adjust hue, saturation, brightness, and opacity, or enter RGB and HEX values. The picker also shows
+colors from the file. **Apply** replaces the selected value. Undo restores its original text. The
+editor writes a HEX value when you change an RGB or HSL value.
+
 The editor compares changed lines against Git HEAD on a background worker. The uncommitted-files
 section opens separate comparison tabs for the same paths. Comparison controls appear in comparison
 tabs, including explicit server comparisons. Ordinary file tabs have no comparison controls. Git

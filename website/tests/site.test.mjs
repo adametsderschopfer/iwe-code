@@ -9,11 +9,7 @@ const outputDirectory = join(websiteDirectory, '.output', 'public')
 const baseURL = `${(process.env.NUXT_APP_BASE_URL || '/').replace(/\/$/, '')}/`
 const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
 const localOrigin = 'https://website.invalid'
-const locales = [
-  { language: 'en', route: '' },
-  { language: 'ru', route: 'ru/' },
-  { language: 'es', route: 'es/' },
-]
+const locales = [{ language: 'en', route: '' }]
 
 function decode(value) {
   return value.replace(/&(#x[\da-f]+|#\d+|amp|quot|apos|lt|gt);/gi, (_, entity) => {
@@ -78,19 +74,21 @@ function staticTarget(url) {
   return target
 }
 
-test('all catalogs contain the same nonempty translations and recovery text', () => {
-  const expected = catalogLeaves(readCatalog('en')).sort()
-  for (const { language } of locales) {
-    const catalog = readCatalog(language)
-    assert.deepEqual(catalogLeaves(catalog).sort(), expected, `${language} catalog differs`)
-    for (const key of ['title', 'description', 'back']) {
-      assert.equal(typeof catalog.error?.[key], 'string', `${language} lacks error.${key}`)
-      assert.ok(catalog.error[key].trim(), `${language} has empty error.${key}`)
-    }
+test('the website publishes only English routes and includes recovery text', () => {
+  catalogLeaves(readCatalog('en'))
+  for (const key of ['title', 'description', 'back']) {
+    assert.ok(readCatalog('en').error[key].trim())
+  }
+  for (const locale of ['ru', 'es']) {
+    assert.ok(!existsSync(join(outputDirectory, locale)), `Unexpected ${locale} routes`)
+    assert.doesNotMatch(
+      readFileSync(join(outputDirectory, 'sitemap.xml'), 'utf8'),
+      new RegExp(`/${locale}/`),
+    )
   }
 })
 
-test('published bitmap images use WebP throughout every language', () => {
+test('published bitmap images use WebP throughout the website', () => {
   assert.ok(existsSync(outputDirectory), 'Run npm run generate before checking published images')
   const files = readdirSync(outputDirectory, { recursive: true })
   assert.ok(
@@ -141,11 +139,7 @@ for (const { language, route } of locales) {
     const canonical = links.filter((entry) => entry.rel === 'canonical')
     assert.equal(canonical.length, 1, 'Each page needs one canonical URL')
     assert.equal(canonical[0].href, new URL(route, siteURL).href)
-    for (const locale of locales) {
-      const alternate = links.find((entry) => entry.hreflang === locale.language)
-      assert.equal(alternate?.rel, 'alternate')
-      assert.equal(alternate?.href, new URL(locale.route, siteURL).href)
-    }
+    assert.ok(links.every((link) => !link.hreflang))
     const developer = elements(html, 'a').find((entry) =>
       /^https:\/\/vamez\.ru\/?$/.test(entry.href ?? ''),
     )
@@ -260,18 +254,7 @@ for (const { language, route } of locales) {
         new URL(path, siteURL).href,
       )
       const links = elements(html, 'a')
-      for (const locale of locales) {
-        const alternate = `${locale.route}docs/release-notes/${release.version}/`
-        assert.equal(
-          metadata.find((link) => link.hreflang === locale.language)?.href,
-          new URL(alternate, siteURL).href,
-        )
-        assert.ok(
-          links.some(
-            (link) => link.href === `${baseURL}${alternate}` && link.lang === locale.language,
-          ),
-        )
-      }
+      assert.ok(metadata.every((link) => !link.hreflang))
       const tags = links.filter((link) => link.href?.includes('/releases/tag/'))
       const publishedTags = tags.map((link) =>
         decodeURIComponent(link.href.split('/releases/tag/')[1]),
@@ -309,17 +292,7 @@ for (const { language, route } of locales) {
       links.find((link) => link.rel === 'canonical')?.href,
       new URL(`${route}license/`, siteURL).href,
     )
-    const anchors = elements(html, 'a')
-    for (const locale of locales) {
-      const path = `${locale.route}license/`
-      assert.equal(
-        links.find((link) => link.hreflang === locale.language)?.href,
-        new URL(path, siteURL).href,
-      )
-      assert.ok(
-        anchors.some((link) => link.lang === locale.language && link.href === `${baseURL}${path}`),
-      )
-    }
+    assert.ok(links.every((link) => !link.hreflang))
     assert.ok(
       elements(readPage(route), 'a').some((link) => link.href === `${baseURL}${route}license/`),
     )
@@ -358,12 +331,7 @@ for (const { language, route } of locales) {
       links.find((link) => link.rel === 'canonical')?.href,
       new URL(`${route}docs/module-development/`, siteURL).href,
     )
-    for (const locale of locales) {
-      assert.equal(
-        links.find((link) => link.hreflang === locale.language)?.href,
-        new URL(`${locale.route}docs/module-development/`, siteURL).href,
-      )
-    }
+    assert.ok(links.every((link) => !link.hreflang))
     for (const anchor of elements(html, 'a')) {
       const url = new URL(
         anchor.href,

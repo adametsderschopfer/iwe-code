@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { docsGroups, type DocsNavItem } from '~/docs'
-import { docsPath, type Locale, type Messages } from '~/i18n'
+import { docsPath, type Messages } from '~/i18n'
 
 const props = withDefaults(
   defineProps<{
     messages: Messages
-    locale: Locale
     slug?: DocsNavItem
   }>(),
   { slug: undefined },
@@ -16,7 +15,7 @@ const nav = computed(() =>
     label: props.messages.docs.groups[group.key],
     items: group.items.map((item) => ({
       item,
-      path: item === 'overview' ? docsPath(props.locale) : docsPath(props.locale, item),
+      path: item === 'overview' ? docsPath() : docsPath(item),
       label:
         item === 'overview'
           ? props.messages.docs.overview.label
@@ -31,7 +30,7 @@ const nav = computed(() =>
 
 <template>
   <div>
-    <SiteHeader :messages="messages" :locale="locale" section="docs" />
+    <SiteHeader :messages="messages" section="docs" />
     <div class="shell docs-shell">
       <details class="docs-mobile">
         <summary>{{ messages.docs.label }}</summary>
@@ -66,7 +65,7 @@ const nav = computed(() =>
         <slot />
       </main>
     </div>
-    <SiteFooter :messages="messages" :locale="locale" />
+    <SiteFooter :messages="messages" />
   </div>
 </template>
 

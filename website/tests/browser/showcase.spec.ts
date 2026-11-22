@@ -49,73 +49,67 @@ test('download cards align on desktop and fit their content on mobile', async ({
   }
 })
 
-for (const language of ['', 'ru/', 'es/']) {
-  test(`roadmap preview, history, and release links work in ${language || 'en'}`, async ({
-    page,
-  }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.goto(`./${language}`)
-    const preview = page.locator('#roadmap')
-    await expect(preview.locator('.roadmap-tag-topic')).toHaveCount(2)
-    await expect(preview.locator('.roadmap-tag-release')).toHaveCount(1)
-    await preview.locator('.roadmap-link').click()
-    await expect(page).toHaveURL(/\/roadmap\/$/)
-    const roadmap = page.locator('#roadmap')
-    await expect(roadmap.locator('.roadmap-tag-topic')).toHaveCount(4)
-    const releases = roadmap.locator('.roadmap-tag-release')
-    await expect.poll(() => releases.count()).toBeGreaterThan(1)
-    await expect(roadmap.locator('a[href$="/release-notes/unreleased/"]')).toHaveCount(0)
-    const release = roadmap.getByRole('link', { name: 'macOS 1.5.0', exact: true })
-    await expect(release).toHaveAttribute(
-      'href',
-      new URL('../docs/release-notes/1.5.0/', page.url()).pathname,
-    )
-    await release.click()
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('1.5.0')
-  })
+test('roadmap preview, history, and release links work', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('./')
+  const preview = page.locator('#roadmap')
+  await expect(preview.locator('.roadmap-tag-topic')).toHaveCount(2)
+  await expect(preview.locator('.roadmap-tag-release')).toHaveCount(1)
+  await preview.locator('.roadmap-link').click()
+  await expect(page).toHaveURL(/\/roadmap\/$/)
+  const roadmap = page.locator('#roadmap')
+  await expect(roadmap.locator('.roadmap-tag-topic')).toHaveCount(4)
+  const releases = roadmap.locator('.roadmap-tag-release')
+  await expect.poll(() => releases.count()).toBeGreaterThan(1)
+  await expect(roadmap.locator('a[href$="/release-notes/unreleased/"]')).toHaveCount(0)
+  const release = roadmap.getByRole('link', { name: 'macOS 1.5.0', exact: true })
+  await expect(release).toHaveAttribute(
+    'href',
+    new URL('../docs/release-notes/1.5.0/', page.url()).pathname,
+  )
+  await release.click()
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('1.5.0')
+})
 
-  for (const width of [390, 1280]) {
-    test(`screenshot gallery stays complete and usable: ${language || 'en'} at ${width}px`, async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width, height: 900 })
-      await page.emulateMedia({ reducedMotion: 'reduce' })
-      await page.goto(`./${language}`)
-      const buttons = page.locator('.preview-options button')
-      const screenshots = ['workspace', 'search', 'history', 'comparison', 'settings']
-      await expect(buttons).toHaveCount(screenshots.length)
-      for (const [index, screenshot] of screenshots.entries()) {
-        const button = buttons.nth(index)
-        await button.click()
-        await expect(button).toHaveAttribute('aria-pressed', 'true')
-        const image = page.locator('#product-preview img:visible')
-        await expect(image).toHaveCount(1)
-        await expect(image).toHaveAttribute('src', new RegExp(`/images/${screenshot}-en\\.webp$`))
-        await expect(image).toHaveCSS('object-fit', 'contain')
-        await expect
-          .poll(() =>
-            image.evaluate((element) => {
-              const screenshot = element as HTMLImageElement
-              return screenshot.complete && screenshot.naturalWidth > 0
-            }),
-          )
-          .toBe(true)
-        const bounds = await image.boundingBox()
-        expect(bounds!.x).toBeGreaterThanOrEqual(0)
-        expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
-      }
-      await expect(page.locator('#features article')).toHaveCount(6)
-      await expect(page.locator('.deployment')).toHaveCount(0)
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
-        width,
-      )
-      // Keep local review captures with the test artifacts, outside published assets.
-      await page.locator('#features').screenshot({
-        path: test.info().outputPath('features.png'),
-      })
-      await page.locator('.hero').screenshot({
-        path: test.info().outputPath('editor-overview.png'),
-      })
+for (const width of [390, 1280]) {
+  test(`screenshot gallery stays complete and usable at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('./')
+    const buttons = page.locator('.preview-options button')
+    const screenshots = ['workspace', 'search', 'history', 'comparison', 'settings']
+    await expect(buttons).toHaveCount(screenshots.length)
+    for (const [index, screenshot] of screenshots.entries()) {
+      const button = buttons.nth(index)
+      await button.click()
+      await expect(button).toHaveAttribute('aria-pressed', 'true')
+      const image = page.locator('#product-preview img:visible')
+      await expect(image).toHaveCount(1)
+      await expect(image).toHaveAttribute('src', new RegExp(`/images/${screenshot}-en\\.webp$`))
+      await expect(image).toHaveCSS('object-fit', 'contain')
+      await expect
+        .poll(() =>
+          image.evaluate((element) => {
+            const screenshot = element as HTMLImageElement
+            return screenshot.complete && screenshot.naturalWidth > 0
+          }),
+        )
+        .toBe(true)
+      const bounds = await image.boundingBox()
+      expect(bounds!.x).toBeGreaterThanOrEqual(0)
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+    }
+    await expect(page.locator('#features article')).toHaveCount(6)
+    await expect(page.locator('.deployment')).toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    )
+    // Keep local review captures with the test artifacts, outside published assets.
+    await page.locator('#features').screenshot({
+      path: test.info().outputPath('features.png'),
     })
-  }
+    await page.locator('.hero').screenshot({
+      path: test.info().outputPath('editor-overview.png'),
+    })
+  })
 }

@@ -7,6 +7,7 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 
 const AUTOSAVE_DELAY: Duration = Duration::from_millis(800);
 
+pub(crate) mod color;
 mod completion;
 mod definition;
 mod diagnostics;
@@ -58,6 +59,7 @@ impl Buffer {
 #[derive(Default)]
 pub(crate) struct State {
     pub menu: Option<menu::Menu>,
+    color: Option<color::Picker>,
     pub rename: Option<menu::Rename>,
     pub server_checks: std::collections::BTreeMap<String, bool>,
     pub diagnostics: Option<diagnostics::Report>,
@@ -76,6 +78,7 @@ pub(crate) struct State {
 #[derive(Debug, Clone)]
 pub(crate) enum Event {
     Menu(menu::Event),
+    Color(color::Event),
     Marks(marks::Event),
     DuplicateLine,
     Format,
@@ -483,6 +486,7 @@ impl App {
             return Task::none();
         }
         match event {
+            Event::Color(event) => return self.update_editor_color(event),
             Event::Menu(event) => return self.update_editor_menu(event),
             Event::Marks(event) => return self.update_marks(event),
             Event::DuplicateLine => return self.duplicate_editor_line(),

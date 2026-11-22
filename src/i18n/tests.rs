@@ -101,7 +101,7 @@ fn all_catalogs_have_the_complete_key_set_and_resolve_without_errors() {
                 Key::ConfirmInstallTitle => {
                     args.set("name", "Sample");
                 }
-                Key::UpdateAvailable => {
+                Key::UpdateAvailable | Key::UpdateWhatsNew => {
                     args.set("version", "0.1.11");
                 }
                 Key::FileCount

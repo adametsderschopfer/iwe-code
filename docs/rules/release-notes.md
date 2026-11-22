@@ -12,8 +12,10 @@ body from the same items. Do not replace authored notes with generated commit-ti
 Keep each item factual, concise, and useful to application users. Maintain English, Russian, and
 Spanish text together. Use `added`, `changed`, `fixed`, or `maintenance` for its category. Give each
 item a stable, unique identifier. Record inspected commit identifiers or repository-relative source
-paths in `sources`. Never infer completed features, publication dates, package availability, or
-successful checks.
+paths in `sources`. Add a `platforms` list to items that apply to specific operating systems. Use
+`macos`, `windows`, or `linux`. Omit the list for shared changes. The update window filters items by
+the current operating system. Never infer completed features, publication dates, package
+availability, or successful checks.
 
 ## Every commit request
 
@@ -73,7 +75,7 @@ prove that descriptions match implementation or that runtime checks passed.
 CI validates the ledger during planning. The intended version requires a matching prepared or
 released record with items. A missing release note stops release jobs before builds begin. The
 publication script supplies the authored English body with `gh release create --notes-file`. Each
-body links to the version's English, Russian, and Spanish website pages.
+body links to the version's page on the website.
 
 Publish the release only after packages for all enabled targets are available. Follow
 [the CI guide](../ci.md#publish-a-version).

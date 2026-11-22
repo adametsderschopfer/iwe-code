@@ -1,62 +1,51 @@
 <script setup lang="ts">
 import { docsGroups } from '~/docs'
-import { catalogs, docsPath, languages, type Locale } from '~/i18n'
+import { messages, docsPath } from '~/i18n'
 
-const route = useRoute()
-const locale = computed<Locale>(() =>
-  route.params.lang === 'ru' ? 'ru' : route.params.lang === 'es' ? 'es' : 'en',
-)
-const messages = computed(() => catalogs[locale.value])
 const base = useRuntimeConfig().app.baseURL
 const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
-const canonical = computed(() => new URL(docsPath(locale.value).slice(1), siteURL).href)
+const canonical = computed(() => new URL(docsPath().slice(1), siteURL).href)
 useHead(() => ({
-  htmlAttrs: { lang: locale.value },
-  title: messages.value.docs.metaTitle,
+  htmlAttrs: { lang: 'en' },
+  title: messages.docs.metaTitle,
   link: [
     { rel: 'icon', href: `${base}icon.webp`, type: 'image/webp' },
     { rel: 'canonical', href: canonical.value },
-    ...languages.map((language) => ({
-      rel: 'alternate' as const,
-      hreflang: language.code,
-      href: new URL(docsPath(language.code).slice(1), siteURL).href,
-    })),
-    { rel: 'alternate', hreflang: 'x-default', href: new URL('docs/', siteURL).href },
   ],
 }))
 useSeoMeta({
-  description: () => messages.value.docs.overview.description,
-  ogTitle: () => messages.value.docs.metaTitle,
-  ogDescription: () => messages.value.docs.overview.description,
+  description: () => messages.docs.overview.description,
+  ogTitle: () => messages.docs.metaTitle,
+  ogDescription: () => messages.docs.overview.description,
   ogType: 'website',
   ogUrl: () => canonical.value,
 })
 
 const groups = computed(() =>
   docsGroups.map((group) => ({
-    label: messages.value.docs.groups[group.key],
+    label: messages.docs.groups[group.key],
     items: group.items.map((item) => ({
       item,
-      path: item === 'overview' ? docsPath(locale.value) : docsPath(locale.value, item),
+      path: item === 'overview' ? docsPath() : docsPath(item),
       label:
         item === 'overview'
-          ? messages.value.docs.overview.label
+          ? messages.docs.overview.label
           : item === 'release-notes'
-            ? messages.value.releaseNotes.label
-            : messages.value.docs.pages[item].label,
+            ? messages.releaseNotes.label
+            : messages.docs.pages[item].label,
       description:
         item === 'overview'
-          ? messages.value.docs.overview.description
+          ? messages.docs.overview.description
           : item === 'release-notes'
-            ? messages.value.releaseNotes.description
-            : messages.value.docs.pages[item].description,
+            ? messages.releaseNotes.description
+            : messages.docs.pages[item].description,
     })),
   })),
 )
 </script>
 
 <template>
-  <DocsLayout :messages="messages" :locale="locale">
+  <DocsLayout :messages="messages">
     <article class="docs-article">
       <h1>{{ messages.docs.overview.title }}</h1>
       <p class="section-description">{{ messages.docs.overview.description }}</p>

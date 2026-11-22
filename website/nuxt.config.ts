@@ -103,16 +103,12 @@ export default defineNuxtConfig({
     prerender: {
       routes: [
         '/',
-        '/ru/',
-        '/es/',
-        ...['', '/ru', '/es'].flatMap((locale) => [
-          `${locale}/docs/`,
-          ...docsSlugs.map((slug) => `${locale}/docs/${slug}/`),
-          `${locale}/docs/release-notes/`,
-          ...releaseNotes.map((release) => `${locale}/docs/release-notes/${release.version}/`),
-          `${locale}/license/`,
-          `${locale}/roadmap/`,
-        ]),
+        '/docs/',
+        ...docsSlugs.map((slug) => `/docs/${slug}/`),
+        '/docs/release-notes/',
+        ...releaseNotes.map((release) => `/docs/release-notes/${release.version}/`),
+        '/license/',
+        '/roadmap/',
       ],
       failOnError: true,
     },

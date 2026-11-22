@@ -62,11 +62,13 @@ pub(crate) enum Event {
     Downloaded(Result<Arc<Prepared>, Error>),
     Install,
     InstallFailed(Error),
+    DismissNotes,
 }
 
 impl App {
     pub(super) fn update_release(&mut self, event: Event) -> Task<Message> {
         match event {
+            Event::DismissNotes => self.whats_new = None,
             Event::Automatic(trigger) => {
                 if matches!(
                     self.updates,
@@ -159,6 +161,65 @@ impl App {
             },
             |error| Message::Update(Event::InstallFailed(error)),
         )
+    }
+}
+
+pub(super) fn restarted_after_update() -> bool {
+    std::env::args_os().nth(1).as_deref() == Some("--iwe-update-cleanup".as_ref())
+        && std::env::var_os("IWE_UPDATE_FAILED").as_deref() == Some("0".as_ref())
+}
+
+#[derive(serde::Deserialize)]
+pub(crate) struct WhatsNew {
+    pub version: String,
+    items: Vec<Note>,
+}
+
+#[derive(serde::Deserialize)]
+struct Note {
+    #[serde(default)]
+    platforms: Vec<String>,
+    text: std::collections::BTreeMap<String, String>,
+}
+
+impl WhatsNew {
+    pub(super) fn current() -> Self {
+        let version = env!("CARGO_PKG_VERSION");
+        let ledger = include_str!("../../../website/app/release-notes/releases.json");
+        Self::from_ledger(version, ledger)
+    }
+
+    fn from_ledger(version: &str, ledger: &str) -> Self {
+        serde_json::from_str::<Vec<Self>>(ledger)
+            .unwrap_or_default()
+            .into_iter()
+            .find(|entry| entry.version == version)
+            .unwrap_or_else(|| Self {
+                version: version.to_owned(),
+                items: Vec::new(),
+            })
+    }
+
+    pub(crate) fn url(&self) -> String {
+        format!("https://iwe-code.ru/docs/release-notes/{}/", self.version)
+    }
+
+    pub(crate) fn notes<'a>(
+        &'a self,
+        language: crate::i18n::Language,
+        platform: &'a str,
+    ) -> impl Iterator<Item = &'a str> {
+        self.items
+            .iter()
+            .filter(move |item| {
+                item.platforms.is_empty() || item.platforms.iter().any(|value| value == platform)
+            })
+            .filter_map(move |item| {
+                item.text
+                    .get(language.code())
+                    .or_else(|| item.text.get("en"))
+                    .map(String::as_str)
+            })
     }
 }
 

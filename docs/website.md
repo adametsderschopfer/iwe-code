@@ -50,24 +50,20 @@ Run root `make check` and `make build` before committing or pushing repository c
 
 ## Content and assets
 
-Keep English, Russian, and Spanish website text together in the website's translation catalogs.
-Update every translation when changing website text. Use product screenshots that show current
-application behavior. Exclude credentials and private project content from screenshots.
-
-Catalogs live in `website/app/i18n/`. The root route uses English. `/ru/` and `/es/` provide Russian
-and Spanish pages. Each page includes its language, canonical address, and alternate-language links.
+Keep English website text in `website/app/i18n/en.json`. Each public page has an English URL and
+canonical metadata. The error page redirects recognized former localized addresses to their English
+pages. Use current application screenshots without credentials or private project content.
 
 The screenshots come from existing Iced rendering tests with fictional fixture projects. They show
-the actual application interface in English. The website opens in English by default. Regenerate the
-screenshots when the illustrated interface changes.
+the actual application interface in English. Regenerate the screenshots when the illustrated
+interface changes.
 
 The landing page presents IWE Code as a native code editor and project workspace. The introduction
 and workflow cover local editing, autosave, project organization, and Git review. Six feature cards
 cover editing, spaces, Git, the terminal, pipelines, and deployment. Deployment has no separate
 promotional section. The gallery starts with the editor and follows with project search, Git
-history, file comparison, and editor settings. The workspace section explains optional modules. All
-text appears in English, Russian, and Spanish. The gallery shows the current interface with
-fictional sample data.
+history, file comparison, and editor settings. The workspace section explains optional modules. The
+gallery shows the current interface with fictional sample data.
 
 `app::tests::render_website_screenshots_when_requested` renders the five website views from
 fictional English fixtures. Set `IWE_RENDER_DIR` to a new temporary directory and run that exact
@@ -109,24 +105,24 @@ The gallery fades in and grows to full size as you scroll. On desktop, its frame
 into place. Browsers without CSS scroll timelines use a one-time entrance. The website honors
 reduced-motion preferences and immediately reveals keyboard-focused content. Content remains
 available without JavaScript or observer support. Browser tests cover scroll progress, section
-entrances, reduced motion, keyboard focus, and screenshot selection in all three languages.
+entrances, reduced motion, keyboard focus, and screenshot selection.
 
 ## Roadmap
 
 The landing page previews two planned features and one highlight from the latest published release.
-The full roadmap lives at `/roadmap/`, `/ru/roadmap/`, and `/es/roadmap/`. It lists all planned
-features and sorts published releases by date. Each release links to its full notes. The roadmap
-shows up to three highlights per release and prioritizes new features.
+The full roadmap lives at `/roadmap/`. It lists all planned features and sorts published releases by
+date. Each release links to its full notes. The roadmap shows up to three highlights per release and
+prioritizes new features.
 
-Update the planned features in the three translation catalogs. The roadmap assigns no release dates
-to planned features and excludes unpublished versions from the release history.
+Update the planned features in the English catalog. The roadmap assigns no release dates to planned
+features and excludes unpublished versions from the release history.
 
 ## Documentation section
 
-The website keeps every product guide in one documentation section. The overview lives at `/docs/`,
-`/ru/docs/`, and `/es/docs/`. Each page belongs to a sidebar group: Start, Workspace, Tools,
-Modules, Automation, and Releases. The sidebar lists every page and highlights the current one. A
-collapsible disclosure replaces the sidebar on small screens.
+The website keeps every product guide in one documentation section. The overview lives at `/docs/`.
+Each page belongs to a sidebar group: Start, Workspace, Tools, Modules, Automation, and Releases.
+The sidebar lists every page and highlights the current one. A collapsible disclosure replaces the
+sidebar on small screens.
 
 The Start group covers installation, settings, provider accounts, and updates. Workspace guides
 cover projects and editing. Tools covers Git, pipelines, the terminal, and deployment. The Modules
@@ -134,8 +130,7 @@ group covers installed modules and package development. Automation covers CLI, M
 Release notes stay in the same sidebar.
 
 Use the [documentation index](README.md) for repository references. Add a public page to
-`app/docs.ts`, the three catalogs, and the sitemap. Nuxt prerenders the listed routes for all three
-languages.
+`app/docs.ts`, the English catalog, and the sitemap. Nuxt prerenders the listed routes.
 
 The page structure and the sidebar live in `app/docs.ts`. All page texts live in the `docs` catalog
 block in `app/i18n/`. `DocsLayout.vue` renders the shell with the sidebar. `DocsPage.vue` renders a
@@ -143,25 +138,23 @@ generic article from catalog sections. Use the stacked layout for command lists.
 explanation below its command. `DocsOverviewPage.vue` renders the overview. `ReleaseNotesPage.vue`
 uses the same shell.
 
-The language switcher derives the target address from the current path, so it preserves the current
-documentation page. Old addresses that moved into the section (`/cli/`, `/mcp/`, `/modules/`,
-`/external/`, `/releases/`, and old release version pages) are unknown routes. The localized error
-page recognizes them and redirects the browser to the matching documentation page.
+Old addresses that moved into the section (`/cli/`, `/mcp/`, `/modules/`, `/external/`,
+`/releases/`, and old release version pages) are unknown routes. The error page recognizes them and
+redirects the browser to the matching documentation page.
 
 ## Release notes
 
-The header, footer, and documentation sidebar link to `/docs/release-notes/`,
-`/ru/docs/release-notes/`, or `/es/docs/release-notes/`. Each version has its own page beneath that
-route, such as `/ru/docs/release-notes/0.1.12/`. Language links preserve the selected version.
-Unknown versions return the localized error page. Nuxt explicitly prerenders every version and
-language for GitHub Pages.
+The footer and documentation sidebar link to `/docs/release-notes/`. Each version has its own page
+beneath that route. Unknown versions return the error page. Nuxt prerenders published versions for
+GitHub Pages.
 
 `app/release-notes/releases.json` contains authored changes, translations, and inspected source
-references. The index lists published versions. Historical development records stay in the ledger.
-The `unreleased` page marks current drafts as unpublished. Source references remain authoring
-metadata, outside the displayed change text. Numbered prepared notes appear only when GitHub lists a
-matching stable release. The build uses its publication date and release link. A tag alone does not
-create a public notes page. Historical platform releases share one version page.
+references. The website uses the English text. The application uses the same notes in its selected
+language. The index lists published versions. Historical development records stay in the ledger. The
+`unreleased` page marks current drafts as unpublished. Source references remain authoring metadata,
+outside the displayed change text. Numbered prepared notes appear only when GitHub lists a matching
+stable release. The build uses its publication date and release link. A tag alone does not create a
+public notes page. Historical platform releases share one version page.
 
 Follow [release-note rules](rules/release-notes.md) on every commit and version request. Commit
 preparation collects items under `unreleased`. Version preparation moves reviewed items into the
@@ -170,11 +163,8 @@ same authored notes instead of generated commit titles.
 
 ## License
 
-The footer links to `/license/`, `/ru/license/`, or `/es/license/`. Each page localizes its
-introduction and navigation while displaying the original English license. `LicensePage.vue` imports
-the root `LICENSE` as raw text. Do not maintain a separate copy or rewrite its legal text. Language
-links preserve the license page. Nuxt explicitly prerenders all three routes for GitHub Pages. Main
-pushes also check changes to the root `LICENSE`.
+The footer links to `/license/`. `LicensePage.vue` imports the root `LICENSE` as raw text. Nuxt
+prerenders the page for GitHub Pages. Main pushes also check changes to the root `LICENSE`.
 
 ## Dependency security
 

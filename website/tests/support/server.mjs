@@ -44,7 +44,13 @@ const server = createServer(async (request, response) => {
     })
     response.end(request.method === 'HEAD' ? undefined : body)
   } catch {
-    response.writeHead(404).end('Not found')
+    const errorPage = await readFile(resolve(output, '404.html')).catch(() => null)
+    if (errorPage) {
+      response.writeHead(404, { 'Content-Type': types['.html'] })
+      response.end(request.method === 'HEAD' ? undefined : errorPage)
+    } else {
+      response.writeHead(404).end('Not found')
+    }
   }
 })
 

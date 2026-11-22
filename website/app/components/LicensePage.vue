@@ -1,33 +1,22 @@
 <script setup lang="ts">
 import licenseText from '../../../LICENSE?raw'
-import { catalogs, languages, licensePath, repository, type Locale } from '~/i18n'
+import { messages, licensePath, repository } from '~/i18n'
 
-const route = useRoute()
-const locale = computed<Locale>(() =>
-  route.params.lang === 'ru' ? 'ru' : route.params.lang === 'es' ? 'es' : 'en',
-)
-const messages = computed(() => catalogs[locale.value])
 const base = useRuntimeConfig().app.baseURL
 const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
-const canonical = computed(() => new URL(licensePath(locale.value).slice(1), siteURL).href)
+const canonical = computed(() => new URL(licensePath.slice(1), siteURL).href)
 useHead(() => ({
-  htmlAttrs: { lang: locale.value },
-  title: messages.value.license.metaTitle,
+  htmlAttrs: { lang: 'en' },
+  title: messages.license.metaTitle,
   link: [
     { rel: 'icon', href: `${base}icon.webp`, type: 'image/webp' },
     { rel: 'canonical', href: canonical.value },
-    ...languages.map((language) => ({
-      rel: 'alternate' as const,
-      hreflang: language.code,
-      href: new URL(licensePath(language.code).slice(1), siteURL).href,
-    })),
-    { rel: 'alternate', hreflang: 'x-default', href: new URL('license/', siteURL).href },
   ],
 }))
 useSeoMeta({
-  description: () => messages.value.license.description,
-  ogTitle: () => messages.value.license.metaTitle,
-  ogDescription: () => messages.value.license.description,
+  description: () => messages.license.description,
+  ogTitle: () => messages.license.metaTitle,
+  ogDescription: () => messages.license.description,
   ogType: 'website',
   ogUrl: () => canonical.value,
 })
@@ -35,7 +24,7 @@ useSeoMeta({
 
 <template>
   <div>
-    <SiteHeader :messages="messages" :locale="locale" section="license" />
+    <SiteHeader :messages="messages" section="license" />
     <main id="main" class="shell license-page">
       <h1>{{ messages.license.title }}</h1>
       <p class="section-description">{{ messages.license.description }}</p>
@@ -46,7 +35,7 @@ useSeoMeta({
         licenseText
       }}</pre>
     </main>
-    <SiteFooter :messages="messages" :locale="locale" />
+    <SiteFooter :messages="messages" />
   </div>
 </template>
 

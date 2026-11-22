@@ -7,7 +7,6 @@
     "features": "Features",
     "workflow": "Workflow",
     "download": "Download",
-    "language": "Language",
     "skip": "Skip to content",
     "home": "IWE Code home",
     "docs": "Documentation"
@@ -165,7 +164,7 @@
       },
       {
         "question": "Which languages can I use?",
-        "answer": "The application and this website support English, Russian, and Spanish."
+        "answer": "The application supports English, Russian, and Spanish. This website uses English."
       },
       {
         "question": "How are my changes saved?",
@@ -359,6 +358,14 @@
               "Files autosave after a short pause in typing.",
               "Undo reverts your recent changes.",
               "If a save fails, the editor keeps your draft and shows an error."
+            ]
+          },
+          {
+            "heading": "Edit colors",
+            "bullets": [
+              "Select a swatch beside a HEX, RGB, or HSL value to open the color picker.",
+              "Use the gradient, color fields, or saved file colors to pick a new color.",
+              "Choose Apply to update the value in your file."
             ]
           },
           {
@@ -1441,7 +1448,8 @@
           {
             "heading": "Install an update",
             "paragraphs": [
-              "Choose Download update near the settings button. Choose Install and restart when the download finishes."
+              "Choose Download update near the settings button. Choose Install and restart when the download finishes.",
+              "After restarting, IWE Code shows changes for your operating system. Open the release page for the full notes."
             ]
           },
           {

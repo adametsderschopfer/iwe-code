@@ -1,5 +1,6 @@
 //! Render editable source buffers and unsaved-change decisions.
 
+mod color;
 mod completion;
 mod definition;
 mod diagnostics;
@@ -38,6 +39,7 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
             .rename
             .as_ref()
             .is_some_and(|rename| rename.tab == id)
+        || app.color_picker().is_some()
         || app.editor.pending.is_some()
         || app.auth_dialog.is_some()
         || app.line_navigation.is_some()
@@ -256,6 +258,15 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
     } else {
         iced::widget::stack![editor].into()
     };
+    let editor = iced::widget::stack![
+        editor,
+        iced::widget::canvas(color::Markers {
+            content: &buffer.content,
+            tab: id,
+        })
+        .width(Length::Fill)
+        .height(Length::Fill)
+    ];
     let editor = crate::ui::context_menu::positioned(editor, move |point, local| {
         let hit = buffer
             .content
@@ -336,6 +347,7 @@ pub(crate) fn view<'a>(app: &'a App, buffer: &'a Buffer) -> Element<'a, Message>
 
 pub(crate) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
     let base = menu::overlay(app, base);
+    let base = color::overlay(app, base);
     let base = if let Some(buffer) = app.editor_buffer()
         && app.module_enabled(crate::modules::ModuleId::Git)
         && buffer.document.text == buffer.marks.after

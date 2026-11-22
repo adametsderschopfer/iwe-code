@@ -1,5 +1,6 @@
 """Exercise release publication with local Git refs and a fake GitHub CLI."""
 
+import json
 import os
 from pathlib import Path
 import shutil
@@ -80,6 +81,26 @@ class PublishReleaseTests(unittest.TestCase):
         )
         self.assertNotIn("--verify-tag", args)
         self.assertEqual(self.git("ls-remote", "--tags", "origin"), "")
+
+    def test_release_body_links_to_the_english_version_page(self):
+        result = self.publish()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        notes = (self.repo / "dist/release-notes.md").read_text()
+        self.assertIn(f"[Release notes](https://iwe-code.ru/docs/release-notes/{VERSION}/)", notes)
+        self.assertNotIn("/ru/docs/", notes)
+        self.assertNotIn("/es/docs/", notes)
+
+    def test_unknown_release_note_platform_stops_publication(self):
+        ledger = self.repo / "website/app/release-notes/releases.json"
+        records = json.loads(ledger.read_text())
+        release = next(record for record in records if record["version"] == VERSION)
+        release["items"][0]["platforms"] = ["unknown"]
+        ledger.write_text(json.dumps(records))
+
+        result = self.publish()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Invalid release-note platforms", result.stderr)
+        self.assertFalse(self.calls.exists())
 
     def test_macos_release_publishes_only_macos_packages(self):
         result = self.publish(f"macos-{TAG}")

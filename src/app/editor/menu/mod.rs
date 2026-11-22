@@ -30,6 +30,7 @@ pub(crate) enum Action {
     Usages,
     Rename,
     Format,
+    EditColor,
 }
 
 impl Action {
@@ -49,6 +50,7 @@ impl Action {
             Self::Usages => Key::EditorUsages,
             Self::Rename => Key::EditorRenameLocal,
             Self::Format => Key::FormatCode,
+            Self::EditColor => Key::EditorColorTitle,
         }
     }
     pub(crate) fn shortcut(self, app: &App) -> String {
@@ -166,6 +168,9 @@ impl App {
         items.extend([Paste, All, Duplicate]);
         if has_project {
             items.extend([Find, FindProject]);
+        }
+        if super::color::literal_at_cursor(buffer).is_some() {
+            items.push(EditColor);
         }
         items.push(Line);
         if symbol {
@@ -339,6 +344,13 @@ impl App {
                     }
                     Definition | Usages => return self.request_locations(action == Usages),
                     Format => return self.request_formatting(),
+                    EditColor => {
+                        if let Some(at) = super::color::literal_at_cursor(buffer) {
+                            return self.update_editor(super::Event::Color(
+                                super::color::Event::Open(id, menu.point, at),
+                            ));
+                        }
+                    }
                     Rename => {
                         let Some(symbol) = menu.symbol else {
                             return Task::none();

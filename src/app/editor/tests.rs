@@ -1431,3 +1431,83 @@ fn clicking_git_gutter_shows_original_and_current_lines() {
     assert!(ui.find("− previous").unwrap().visible_bounds().is_some());
     assert!(ui.find("+ original").unwrap().visible_bounds().is_some());
 }
+
+#[test]
+fn inline_color_picker_edits_only_the_clicked_literal_and_supports_undo() {
+    use color::Event as ColorEvent;
+    use iced::widget::Id;
+
+    let mut app = app();
+    let id = app.preview().id;
+    let original = "value: #417690;\r\nother: #417690;";
+    edit(&mut app, original);
+    let mut ui =
+        iced_test::Simulator::with_size(iced::Settings::default(), (1140., 720.), app.view());
+    let editor = ui
+        .find(Id::from(format!("text-editor-{id}")))
+        .unwrap()
+        .bounds();
+    let marker = app.editor_buffer().unwrap().content.with_editor(|editor| {
+        let run = editor.buffer().layout_runs().next().unwrap();
+        let right = run
+            .glyphs
+            .iter()
+            .map(|glyph| glyph.x + glyph.w)
+            .fold(0., f32::max);
+        (right + 9., run.line_top + run.line_height / 2.)
+    });
+    ui.point_at((editor.x + 12. + marker.0, editor.y + 12. + marker.1));
+    ui.simulate(iced_test::simulator::click());
+    let opened: Vec<_> = ui.into_messages().collect();
+    assert!(
+        opened
+            .iter()
+            .any(|message| matches!(message, Message::Editor(Event::Color(ColorEvent::Open(..)))))
+    );
+    for message in opened {
+        let _ = app.update(message);
+    }
+
+    let mut ui =
+        iced_test::Simulator::with_size(iced::Settings::default(), (1140., 720.), app.view());
+    let field = Id::new("editor-color-4");
+    assert!(ui.find(field).unwrap().visible_bounds().is_some());
+    assert!(ui.find(app.i18n.text(Key::EditorColorTitle)).is_err());
+    drop(ui);
+    let _ = app.update_editor(Event::Color(ColorEvent::Field(4, "#ff".into())));
+    assert!(app.color_picker().unwrap().invalid.is_some());
+    let _ = app.update_editor(Event::Color(ColorEvent::Field(4, "#cc0011a0".into())));
+    let _ = app.update_editor(Event::Color(ColorEvent::Apply));
+    assert_eq!(
+        app.editor_buffer().unwrap().document.text.as_str(),
+        "value: #cc0011a0;\r\nother: #417690;"
+    );
+    assert!(app.color_picker().is_none());
+    let _ = app.update_editor(Event::Undo(id, false));
+    assert_eq!(
+        app.editor_buffer().unwrap().document.text.as_str(),
+        original
+    );
+}
+
+#[test]
+fn an_open_picker_cannot_replace_a_color_in_an_obsolete_snapshot() {
+    use color::Event as ColorEvent;
+    let mut app = app();
+    let id = app.preview().id;
+    edit(&mut app, "#527394");
+    let _ = app.update_editor(Event::Color(ColorEvent::Open(
+        id,
+        iced::Point::ORIGIN,
+        text_editor::Position { line: 0, column: 0 },
+    )));
+    assert!(app.color_picker().is_some());
+    edit(&mut app, "#abcdef");
+    let _ = app.update_editor(Event::Color(ColorEvent::Field(4, "#00ff00".into())));
+    let _ = app.update_editor(Event::Color(ColorEvent::Apply));
+    assert!(app.color_picker().is_none());
+    assert_eq!(
+        app.editor_buffer().unwrap().document.text.as_str(),
+        "#abcdef"
+    );
+}

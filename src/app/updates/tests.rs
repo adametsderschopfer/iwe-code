@@ -232,3 +232,82 @@ async fn update_handoff_keeps_terminal_completions_and_blocks_user_input() {
     assert_eq!(tab.status, Status::Exited);
     assert!(tab.parser.screen().contents().contains("RESULT-allowed"));
 }
+
+#[test]
+fn installed_version_notes_use_the_saved_language_and_open_the_exact_release_page() {
+    let ledger = r#"[
+        {"version":"1.0.0","items":[{"text":{"en":"Previous release"}}]},
+        {"version":"2.0.0","items":[{"text":{"en":"Edit colors","ru":"Правка цветов","es":"Editar colores"}}]},
+        {"version":"unreleased","items":[{"text":{"en":"Future release"}}]}
+    ]"#;
+    use crate::i18n::Key;
+
+    for (language, expected) in [
+        (Language::English, "Edit colors"),
+        (Language::Russian, "Правка цветов"),
+        (Language::Spanish, "Editar colores"),
+    ] {
+        let mut app = App::new(Rc::new(I18n::new(language)));
+        app.loaded = true;
+        app.whats_new = Some(WhatsNew::from_ledger("2.0.0", ledger));
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (900., 600.), app.view());
+        assert!(ui.find(expected).unwrap().visible_bounds().is_some());
+        assert!(ui.find("Previous release").is_err());
+        assert!(ui.find("Future release").is_err());
+        ui.click(app.i18n.text(Key::UpdateReleasePage)).unwrap();
+        ui.tap_key(iced::keyboard::Key::Named(
+            iced::keyboard::key::Named::Escape,
+        ));
+        let mut messages = ui.into_messages();
+        assert!(matches!(
+            messages.next(),
+            Some(Message::OpenUrl(url)) if url == "https://iwe-code.ru/docs/release-notes/2.0.0/"
+        ));
+        for message in messages {
+            let _ = app.update(message);
+        }
+        assert!(app.whats_new.is_none());
+    }
+    assert_eq!(
+        WhatsNew::from_ledger("3.0.0", ledger)
+            .notes(Language::English, std::env::consts::OS)
+            .count(),
+        0
+    );
+}
+
+#[test]
+fn current_package_contains_release_notes() {
+    let current = WhatsNew::current();
+    for language in [Language::English, Language::Russian, Language::Spanish] {
+        assert!(
+            ["macos", "windows", "linux"]
+                .into_iter()
+                .flat_map(|platform| current.notes(language, platform))
+                .any(|note| !note.trim().is_empty())
+        );
+    }
+}
+
+#[test]
+fn notes_include_shared_changes_and_only_matching_platforms() {
+    let ledger = r#"[{"version":"2.0.0","items":[
+        {"text":{"en":"Shared"}},
+        {"platforms":["macos"],"text":{"en":"Mac only"}},
+        {"platforms":["windows","linux"],"text":{"en":"Windows and Linux"}}
+    ]}]"#;
+    let release = WhatsNew::from_ledger("2.0.0", ledger);
+    for (platform, expected) in [
+        ("macos", ["Shared", "Mac only"]),
+        ("windows", ["Shared", "Windows and Linux"]),
+        ("linux", ["Shared", "Windows and Linux"]),
+    ] {
+        assert_eq!(
+            release
+                .notes(Language::English, platform)
+                .collect::<Vec<_>>(),
+            expected
+        );
+    }
+}

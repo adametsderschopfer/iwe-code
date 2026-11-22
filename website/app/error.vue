@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { catalogs, docsPath, type Locale } from '~/i18n'
+import { docsSlugs } from '~/docs'
+import { docsPath, messages } from '~/i18n'
 import { isReleaseVersion } from '~/release-notes'
 
 const props = defineProps<{ error: { url?: string; statusCode?: number } }>()
 
-const { releasePublications } = useRuntimeConfig().public
+const {
+  app,
+  public: { releasePublications },
+} = useRuntimeConfig()
+useHead({ htmlAttrs: { lang: 'en' } })
 const currentPath = ref<string>()
 onMounted(() => {
   currentPath.value = window.location.pathname
@@ -12,10 +17,26 @@ onMounted(() => {
 
 // Old section pages moved under /docs/. Send their known addresses to the new pages.
 const legacyTarget = computed(() => {
-  const url = currentPath.value ?? props.error?.url ?? ''
-  const match = url.match(/^\/(ru|es)?\/?(cli|mcp|modules|external|releases)(?:\/([^/]+))?\/?$/)
-  if (!match?.[2]) return null
-  const locale: Locale = match[1] === 'ru' ? 'ru' : match[1] === 'es' ? 'es' : 'en'
+  const path = (currentPath.value ?? props.error?.url ?? '').split(/[?#]/, 1)[0] ?? ''
+  const base = app.baseURL.replace(/\/$/, '')
+  const url = base && path.startsWith(`${base}/`) ? path.slice(base.length) : path
+  const formerLocale = /^\/(?:ru|es)(?=\/|$)/
+  const englishPath = url.replace(formerLocale, '')
+  const normalized = `${englishPath.replace(/\/$/, '')}/`
+  if (formerLocale.test(url)) {
+    const current = [
+      '/',
+      '/license/',
+      '/roadmap/',
+      '/docs/',
+      ...docsSlugs.map((slug) => docsPath(slug)),
+    ]
+    if (current.includes(normalized)) return normalized
+    const notes = normalized.match(/^\/docs\/release-notes\/(?:([^/]+)\/)?$/)
+    if (notes && isReleaseVersion(notes[1], releasePublications)) return normalized
+  }
+  const match = englishPath.match(/^\/(cli|mcp|modules|external|releases)(?:\/([^/]+))?\/?$/)
+  if (!match?.[1]) return null
   const slugs: Record<string, string> = {
     cli: 'cli',
     mcp: 'mcp',
@@ -23,23 +44,14 @@ const legacyTarget = computed(() => {
     external: 'deep-links',
     releases: 'release-notes',
   }
-  const rest = match[3]
-  if (rest && (match[2] !== 'releases' || !isReleaseVersion(rest, releasePublications))) return null
-  return docsPath(locale, slugs[match[2]], rest ? `${rest}/` : '')
+  const rest = match[2]
+  if (rest && (match[1] !== 'releases' || !isReleaseVersion(rest, releasePublications))) return null
+  return docsPath(slugs[match[1]]!, rest ? `${rest}/` : '')
 })
 
 onMounted(() => {
   if (legacyTarget.value) clearError({ redirect: legacyTarget.value })
 })
-
-const route = useRoute()
-const messages = computed(() =>
-  route.path.startsWith('/ru')
-    ? catalogs.ru
-    : route.path.startsWith('/es')
-      ? catalogs.es
-      : catalogs.en,
-)
 </script>
 
 <template>

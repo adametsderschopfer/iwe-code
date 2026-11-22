@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { catalogs, languages, repository, type Locale } from '~/i18n'
+import { messages, repository } from '~/i18n'
 import { categories, publicReleaseNotes, releaseNotesPath } from '~/release-notes'
 
 const route = useRoute()
 const config = useRuntimeConfig()
 const releaseNotes = publicReleaseNotes(config.public.releasePublications)
-const locale = computed<Locale>(() =>
-  route.params.lang === 'ru' ? 'ru' : route.params.lang === 'es' ? 'es' : 'en',
-)
 const version = computed(() =>
   typeof route.params.version === 'string' ? route.params.version : undefined,
 )
-const messages = computed(() => catalogs[locale.value])
 const notes = computed(() =>
   (version.value
     ? releaseNotes.filter((release) => release.version === version.value)
@@ -28,23 +24,21 @@ const notes = computed(() =>
 )
 const base = config.app.baseURL
 const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
-const canonical = computed(
-  () => new URL(releaseNotesPath(locale.value, version.value).slice(1), siteURL).href,
-)
+const canonical = computed(() => new URL(releaseNotesPath(version.value).slice(1), siteURL).href)
 const title = computed(() =>
   version.value
-    ? `${version.value === 'unreleased' ? messages.value.releaseNotes.upcoming : version.value} — ${messages.value.releaseNotes.metaTitle}`
-    : messages.value.releaseNotes.metaTitle,
+    ? `${version.value === 'unreleased' ? messages.releaseNotes.upcoming : version.value} — ${messages.releaseNotes.metaTitle}`
+    : messages.releaseNotes.metaTitle,
 )
 const heading = computed(() =>
   version.value
     ? version.value === 'unreleased'
-      ? messages.value.releaseNotes.upcoming
+      ? messages.releaseNotes.upcoming
       : `IWE Code ${version.value}`
-    : messages.value.releaseNotes.title,
+    : messages.releaseNotes.title,
 )
 function publishedDate(value: string) {
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'long', timeZone: 'UTC' }).format(
+  return new Intl.DateTimeFormat('en', { dateStyle: 'long', timeZone: 'UTC' }).format(
     new Date(value),
   )
 }
@@ -56,42 +50,30 @@ function tagLabel(tag: string) {
       : tag.startsWith('linux-')
         ? 'Linux'
         : undefined
-  return system
-    ? `${messages.value.releaseNotes.github} · ${system}`
-    : messages.value.releaseNotes.github
+  return system ? `${messages.releaseNotes.github} · ${system}` : messages.releaseNotes.github
 }
 useHead(() => ({
-  htmlAttrs: { lang: locale.value },
+  htmlAttrs: { lang: 'en' },
   title: title.value,
   link: [
     { rel: 'icon', href: `${base}icon.webp`, type: 'image/webp' },
     { rel: 'canonical', href: canonical.value },
-    ...languages.map((language) => ({
-      rel: 'alternate' as const,
-      hreflang: language.code,
-      href: new URL(releaseNotesPath(language.code, version.value).slice(1), siteURL).href,
-    })),
-    {
-      rel: 'alternate',
-      hreflang: 'x-default',
-      href: new URL(releaseNotesPath('en', version.value).slice(1), siteURL).href,
-    },
   ],
 }))
 useSeoMeta({
-  description: () => messages.value.releaseNotes.description,
+  description: () => messages.releaseNotes.description,
   ogTitle: () => title.value,
-  ogDescription: () => messages.value.releaseNotes.description,
+  ogDescription: () => messages.releaseNotes.description,
   ogType: 'website',
   ogUrl: () => canonical.value,
 })
 </script>
 
 <template>
-  <DocsLayout :messages="messages" :locale="locale" slug="release-notes">
+  <DocsLayout :messages="messages" slug="release-notes">
     <article class="release-article">
       <header class="release-heading">
-        <NuxtLink v-if="version" class="text-link" :to="releaseNotesPath(locale)">{{
+        <NuxtLink v-if="version" class="text-link" :to="releaseNotesPath()">{{
           messages.releaseNotes.allVersions
         }}</NuxtLink>
         <p v-else class="release-eyebrow">IWE Code</p>
@@ -102,7 +84,7 @@ useSeoMeta({
         <NuxtLink
           v-for="release in notes"
           :key="release.version"
-          :to="releaseNotesPath(locale, release.version)"
+          :to="releaseNotesPath(release.version)"
         >
           {{ release.version === 'unreleased' ? messages.releaseNotes.upcoming : release.version }}
         </NuxtLink>
@@ -116,7 +98,7 @@ useSeoMeta({
         >
           <header class="entry-heading">
             <h2 v-if="!version">
-              <NuxtLink :to="releaseNotesPath(locale, release.version)">{{
+              <NuxtLink :to="releaseNotesPath(release.version)">{{
                 release.version === 'unreleased'
                   ? messages.releaseNotes.upcoming
                   : `IWE Code ${release.version}`
@@ -140,7 +122,7 @@ useSeoMeta({
                 messages.releaseNotes.categories[section.category]
               }}</component>
               <ul>
-                <li v-for="item in section.items" :key="item.id">{{ item.text[locale] }}</li>
+                <li v-for="item in section.items" :key="item.id">{{ item.text.en }}</li>
               </ul>
             </section>
           </div>

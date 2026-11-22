@@ -129,7 +129,8 @@
           "ru": "Добавлена поддержка Command+W для закрытия приложения на macOS.",
           "es": "Compatibilidad con Command+W para cerrar la aplicación en macOS."
         },
-        "sources": ["2c50842"]
+        "sources": ["2c50842"],
+        "platforms": ["macos"]
       }
     ]
   },
@@ -322,7 +323,8 @@
           "ru": "Добавлены установщик Windows и элементы управления окном приложения.",
           "es": "Se añadieron un instalador de Windows y controles de ventana."
         },
-        "sources": ["0bedfbc"]
+        "sources": ["0bedfbc"],
+        "platforms": ["windows"]
       },
       {
         "id": "windows-scrollbars",
@@ -332,7 +334,8 @@
           "ru": "Исправлено перекрытие полос прокрутки кода элементами изменения размера окна в Windows.",
           "es": "Corregida la superposición de los controles de tamaño sobre las barras de desplazamiento en Windows."
         },
-        "sources": ["e51e946"]
+        "sources": ["e51e946"],
+        "platforms": ["windows"]
       }
     ]
   },
@@ -421,7 +424,8 @@
           "ru": "Меню приложения macOS включает настройки, пространства, создание пространства и проекты.",
           "es": "El menú de macOS incluye ajustes, espacios, creación de espacios y proyectos."
         },
-        "sources": ["src/infrastructure/native_menu.rs"]
+        "sources": ["src/infrastructure/native_menu.rs"],
+        "platforms": ["macos"]
       },
       {
         "id": "bulk-branch-actions",
@@ -848,7 +852,8 @@
           "ru": "macOS показывает «Пространства», «Проекты», «Настройки» и «Деплоймент» рядом с меню приложения. Пустое меню проектов сообщает об отсутствии проектов.",
           "es": "macOS muestra Espacios, Proyectos, Ajustes y Despliegue junto al menú de la aplicación. El menú informa cuando no hay proyectos."
         },
-        "sources": ["src/infrastructure/native_menu.rs", "src/app/native_menu.rs"]
+        "sources": ["src/infrastructure/native_menu.rs", "src/app/native_menu.rs"],
+        "platforms": ["macos"]
       },
       {
         "id": "nested-working-change-folders",
@@ -1014,7 +1019,8 @@
           "ru": "Windows поддерживает серверные и приватные ключи Ed25519 для подключений SFTP.",
           "es": "Windows admite claves de servidor y claves privadas Ed25519 para conexiones SFTP."
         },
-        "sources": ["Cargo.toml", "src/modules/deployment/transport/tests.rs"]
+        "sources": ["Cargo.toml", "src/modules/deployment/transport/tests.rs"],
+        "platforms": ["windows"]
       },
       {
         "id": "windows-terminal-exit",
@@ -1024,7 +1030,8 @@
           "ru": "Сеансы терминала Windows завершаются после выхода из оболочки и сохраняют последний вывод.",
           "es": "Las sesiones del terminal de Windows finalizan cuando termina el intérprete y conservan la salida final."
         },
-        "sources": ["src/modules/terminal/session/mod.rs", "src/modules/terminal/session/tests.rs"]
+        "sources": ["src/modules/terminal/session/mod.rs", "src/modules/terminal/session/tests.rs"],
+        "platforms": ["windows"]
       },
       {
         "id": "windows-terminal-startup",
@@ -1038,7 +1045,8 @@
           "Cargo.toml",
           "src/modules/terminal/session/mod.rs",
           "src/modules/terminal/session/tests.rs"
-        ]
+        ],
+        "platforms": ["windows"]
       }
     ]
   },
@@ -1057,7 +1065,8 @@
           "ru": "Тесты терминала проверяют фактическую рабочую папку, когда Windows использует короткие имена каталогов.",
           "es": "Las pruebas del terminal verifican el directorio real cuando Windows utiliza nombres de directorio cortos."
         },
-        "sources": ["src/modules/terminal/session/tests.rs"]
+        "sources": ["src/modules/terminal/session/tests.rs"],
+        "platforms": ["windows"]
       }
     ]
   },
@@ -1387,7 +1396,8 @@
           "ru": "На macOS настройки открываются из меню IWE Code.",
           "es": "En macOS, abre Ajustes desde el menú de IWE Code."
         },
-        "sources": ["src/infrastructure/native_menu.rs"]
+        "sources": ["src/infrastructure/native_menu.rs"],
+        "platforms": ["macos"]
       },
       {
         "id": "compact-git-dates",
@@ -1446,7 +1456,8 @@
           "ru": "Команды Git fetch, pull и push обходятся без Связки ключей на macOS.",
           "es": "Git fetch, pull y push prescinden del llavero de macOS para autenticarse."
         },
-        "sources": ["docs/git-actions.md", "src/modules/git/transport/mod.rs"]
+        "sources": ["docs/git-actions.md", "src/modules/git/transport/mod.rs"],
+        "platforms": ["macos"]
       },
       {
         "id": "vertical-bottom-toolbar",
@@ -1602,7 +1613,8 @@
           "ru": "В Windows в шапке рабочего пространства появилось меню «Файл», «Вид», «Деплоймент» и «Справка».",
           "es": "Windows muestra una barra de menú Archivo, Ver, Despliegue y Ayuda en la cabecera del espacio."
         },
-        "sources": ["src/app/menu_bar.rs", "src/ui/screens/menu_bar.rs"]
+        "sources": ["src/app/menu_bar.rs", "src/ui/screens/menu_bar.rs"],
+        "platforms": ["windows"]
       },
       {
         "id": "windows-secondary-window-frame",
@@ -1612,7 +1624,8 @@
           "ru": "Окна настроек в Windows получили видимую рамку.",
           "es": "Las ventanas de ajustes en Windows ahora muestran un borde visible."
         },
-        "sources": ["src/app/windows.rs", "src/ui/theme/mod.rs"]
+        "sources": ["src/app/windows.rs", "src/ui/theme/mod.rs"],
+        "platforms": ["windows"]
       },
       {
         "id": "install-external-modules",
@@ -1844,7 +1857,8 @@
           ".github/scripts/package-release.sh",
           "docs/ci.md",
           "website/app/components/DownloadSection.vue"
-        ]
+        ],
+        "platforms": ["linux"]
       },
       {
         "id": "accessibility-limitation-adr",
@@ -1868,7 +1882,8 @@
           ".github/scripts/package-release.sh",
           ".github/scripts/setup-appimage.sh",
           "assets/icon-256.png"
-        ]
+        ],
+        "platforms": ["linux"]
       }
     ]
   },
@@ -1897,7 +1912,8 @@
           "ru": "Восстановлена 32-битная сборка Windows. Перемещение сохраняет существующие файлы.",
           "es": "Se restaura la compilación de Windows de 32 bits y se protegen los archivos de destino al mover."
         },
-        "sources": ["src/infrastructure/file_operations/mod.rs"]
+        "sources": ["src/infrastructure/file_operations/mod.rs"],
+        "platforms": ["windows"]
       },
       {
         "id": "verify-exported-patch-content",
@@ -2281,7 +2297,8 @@
           "ru": "На macOS окно рабочей области плавно скрывается при выходе и обходит системный вызов, который может вызвать зависание.",
           "es": "En macOS, la ventana se desvanece al salir y evita una llamada del sistema que puede bloquear el escritorio."
         },
-        "sources": ["src/app/mod.rs", "src/infrastructure/window_effect/macos.rs"]
+        "sources": ["src/app/mod.rs", "src/infrastructure/window_effect/macos.rs"],
+        "platforms": ["macos"]
       },
       {
         "id": "publish-site-after-macos-release",
@@ -2430,7 +2447,8 @@
           "src/app/native_menu.rs",
           "src/infrastructure/native_menu.rs",
           "docs/performance-audit-2026-11-19.md"
-        ]
+        ],
+        "platforms": ["macos"]
       },
       {
         "id": "workspace-idle-refreshes",
@@ -2497,7 +2515,8 @@
           "src/infrastructure/language_server/discovery/tests.rs",
           "src/infrastructure/project_index/tests.rs",
           "src/modules/terminal/session/tests.rs"
-        ]
+        ],
+        "platforms": ["windows", "linux"]
       }
     ]
   },
@@ -2814,7 +2833,8 @@
           "ru": "В macOS повторное нажатие сочетания с Command больше не вставляет лишние символы в текстовые поля и терминал.",
           "es": "En macOS, repetir un atajo con Comando ya no inserta caracteres adicionales en los campos de texto ni en el terminal."
         },
-        "sources": ["vendor/iced_widget/src/text_input.rs", "src/modules/terminal/view/input.rs"]
+        "sources": ["vendor/iced_widget/src/text_input.rs", "src/modules/terminal/view/input.rs"],
+        "platforms": ["macos"]
       },
       {
         "id": "skip-disabled-editor-focus",
@@ -2991,6 +3011,37 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "inline-editor-color-picker",
+        "category": "added",
+        "text": {
+          "en": "Open the color picker from a swatch next to a HEX, RGB, or HSL value in an editable file.",
+          "ru": "Открывайте окно выбора цвета по образцу рядом со значением HEX, RGB или HSL в редакторе.",
+          "es": "Abre el selector desde una muestra junto a un valor HEX, RGB o HSL en un archivo editable."
+        },
+        "sources": ["src/ui/editor/color.rs", "src/domain/editor/colors/mod.rs"]
+      },
+      {
+        "id": "platform-notes-after-update",
+        "category": "added",
+        "text": {
+          "en": "After updating, see shared and platform-specific changes. Open the release page for the full notes.",
+          "ru": "После обновления приложение показывает общие изменения и изменения для вашей ОС. Полный список доступен на странице выпуска.",
+          "es": "Tras actualizar, consulta los cambios comunes y los de tu sistema operativo. La página de la versión contiene todas las notas."
+        },
+        "sources": ["src/ui/updates.rs", "src/app/updates/mod.rs"]
+      },
+      {
+        "id": "english-only-website",
+        "category": "changed",
+        "text": {
+          "en": "The website now uses English. Former Russian and Spanish links open their English pages.",
+          "ru": "Сайт теперь использует английский язык. Прежние русские и испанские ссылки ведут на английские страницы.",
+          "es": "El sitio web ahora usa inglés. Los enlaces anteriores en ruso y español abren sus páginas en inglés."
+        },
+        "sources": ["website/nuxt.config.ts", "website/app/error.vue"]
+      }
+    ]
   }
 ]

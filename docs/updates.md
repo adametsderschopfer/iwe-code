@@ -26,6 +26,10 @@ can receive future updates. Older versions do not acquire an updater automatical
 binaries cannot install updates. macOS development runs outside an application bundle also cannot
 install updates.
 
+After a successful in-app update, IWE Code shows the installed version and its release notes. The
+window uses your application language. Choose **Continue** or press Escape to dismiss it. The
+package includes these notes, so the window also works offline.
+
 ## Package verification
 
 The fixed update source is
