@@ -3104,6 +3104,17 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "website-domain-links",
+        "category": "maintenance",
+        "text": {
+          "en": "Website links and search metadata now use iwe-code.ru.",
+          "ru": "Ссылки сайта и метаданные для поисковых систем теперь используют iwe-code.ru.",
+          "es": "Los enlaces del sitio y los metadatos de búsqueda ahora usan iwe-code.ru."
+        },
+        "sources": ["README.md", "website/public/sitemap.xml", "website/public/robots.txt"]
+      }
+    ]
   }
 ]

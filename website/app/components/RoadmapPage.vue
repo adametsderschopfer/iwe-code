@@ -2,7 +2,7 @@
 import { messages, roadmapPath } from '~/i18n'
 
 const base = useRuntimeConfig().app.baseURL
-const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
+const siteURL = 'https://iwe-code.ru/'
 const canonical = new URL(roadmapPath.slice(1), siteURL).href
 
 useHead(() => ({

@@ -3,7 +3,7 @@ import licenseText from '../../../LICENSE?raw'
 import { messages, licensePath, repository } from '~/i18n'
 
 const base = useRuntimeConfig().app.baseURL
-const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
+const siteURL = 'https://iwe-code.ru/'
 const canonical = computed(() => new URL(licensePath.slice(1), siteURL).href)
 useHead(() => ({
   htmlAttrs: { lang: 'en' },

@@ -6,7 +6,7 @@ const props = defineProps<{ slug: DocsSlug }>()
 
 const page = computed(() => messages.docs.pages[props.slug])
 const base = useRuntimeConfig().app.baseURL
-const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
+const siteURL = 'https://iwe-code.ru/'
 const canonical = computed(() => new URL(docsPath(props.slug).slice(1), siteURL).href)
 useHead(() => ({
   htmlAttrs: { lang: 'en' },

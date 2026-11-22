@@ -4,9 +4,8 @@
 
 A native workspace for projects, source code, Git history, and pipelines. Built with Rust and Iced.
 
-Visit the [IWE Code website](https://adametsderschopfer.github.io/iwe-code/) for an overview and
-downloads. Use the [documentation index](docs/README.md) to find application, automation, and
-release references.
+Visit the [IWE Code website](https://iwe-code.ru/) for an overview and downloads. Use the
+[documentation index](docs/README.md) to find application, automation, and release references.
 
 Create named spaces and add local project folders. Browse files with syntax highlighting and inspect
 branches, commits, and historical file versions. Connect GitHub Actions or GitLab pipelines through
@@ -18,8 +17,7 @@ View bundled modules under **Settings → Modules**. The first system module pro
 terminal for the selected project. System modules are always enabled and cannot be removed. Install
 external modules from `.iwe-module` package files in the same place. See
 [modules and terminal sessions](docs/modules.md) for controls and limits, and the module development
-guide on [the website](https://adametsderschopfer.github.io/iwe-code/docs/module-development/) for
-building your own.
+guide on [the website](https://iwe-code.ru/docs/module-development/) for building your own.
 
 The Deployment module browses SFTP, FTP, and FTPS servers. Configure shared connections and
 deployment profiles within each space. Compare remote files, upload local files, and download files
@@ -43,7 +41,7 @@ Start the Model Context Protocol (MCP) server with `iwe --mcp`. Assistants can b
 search file names, read Git history, and edit existing text files with revision checks. They can
 also resolve deployment paths, read remote text files, and compare local and remote versions. See
 [the MCP reference](docs/mcp.md) for tools and limits and
-[the website guide](https://adametsderschopfer.github.io/iwe-code/docs/mcp/) for client setup.
+[the website guide](https://iwe-code.ru/docs/mcp/) for client setup.
 
 One version tag publishes a GitHub Release for macOS, Windows, and Linux. Packages cover macOS Apple
 Silicon and Intel, Windows x86 and x64, and Linux x86 and x64. Windows packages include a per-user

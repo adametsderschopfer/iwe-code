@@ -23,7 +23,7 @@ const notes = computed(() =>
   })),
 )
 const base = config.app.baseURL
-const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
+const siteURL = 'https://iwe-code.ru/'
 const canonical = computed(() => new URL(releaseNotesPath(version.value).slice(1), siteURL).href)
 const title = computed(() =>
   version.value

@@ -178,5 +178,4 @@ revision-checked writes. Unit tests verify the window projection, query authoriz
 requests. Tests never touch the user's data directory.
 
 Run `make check` to run formatting, lint, type checks, tests, and security checks. The website
-explains client setup for users on the
-[MCP page](https://adametsderschopfer.github.io/iwe-code/docs/mcp/).
+explains client setup for users on the [MCP page](https://iwe-code.ru/docs/mcp/).

@@ -7,10 +7,9 @@ Source files live in `website/`, independently from the Rust application. The we
 Vue and TypeScript. Nuxt generates static HTML for GitHub Pages. This website-specific toolchain
 does not change the native application toolchain.
 
-The default address is
-[adametsderschopfer.github.io/iwe-code](https://adametsderschopfer.github.io/iwe-code/). The
-deployment reads the base path from GitHub Pages. It verifies generated pages and assets before
-publishing to a repository path or a custom domain.
+The public address is [iwe-code.ru](https://iwe-code.ru/). The sitemap and canonical page links use
+this address. The robots file points search engines to the sitemap. The deployment reads the base
+path from GitHub Pages and verifies generated pages and assets before publishing.
 
 ## Local development
 
@@ -190,7 +189,7 @@ application publication. Configure GitHub Pages to use GitHub Actions as its dep
 
 A repository administrator must enable GitHub Pages before the first deployment. In repository
 settings, select **Pages**, then choose **GitHub Actions** under **Build and deployment**. The
-repository uses its default GitHub Pages address. No deployment secret or custom domain is required.
+repository uses `iwe-code.ru` as its GitHub Pages custom domain. No deployment secret is required.
 
 For API setup, an administrator can create the Pages configuration:
 

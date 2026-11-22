@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 const websiteDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const outputDirectory = join(websiteDirectory, '.output', 'public')
 const baseURL = `${(process.env.NUXT_APP_BASE_URL || '/').replace(/\/$/, '')}/`
-const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
+const siteURL = 'https://iwe-code.ru/'
 const localOrigin = 'https://website.invalid'
 const locales = [{ language: 'en', route: '' }]
 
@@ -85,6 +85,25 @@ test('the website publishes only English routes and includes recovery text', () 
       readFileSync(join(outputDirectory, 'sitemap.xml'), 'utf8'),
       new RegExp(`/${locale}/`),
     )
+  }
+})
+
+test('the sitemap lists generated pages at their canonical URLs', () => {
+  const sitemap = readFileSync(join(outputDirectory, 'sitemap.xml'), 'utf8')
+  const robots = readFileSync(join(outputDirectory, 'robots.txt'), 'utf8')
+  assert.deepEqual(
+    robots.split(/\r?\n/).filter((line) => line.startsWith('Sitemap:')),
+    [`Sitemap: ${new URL('sitemap.xml', siteURL).href}`],
+  )
+
+  const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1])
+  assert.ok(locations.includes(siteURL), 'The sitemap must list the home page')
+  for (const location of locations) {
+    const url = new URL(location)
+    assert.equal(url.origin, new URL(siteURL).origin)
+    const html = readPage(url.pathname.slice(1))
+    const canonical = elements(html, 'link').find((link) => link.rel === 'canonical')
+    assert.equal(canonical?.href, location)
   }
 })
 

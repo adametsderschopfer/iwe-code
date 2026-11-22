@@ -1,7 +1,6 @@
 # Documentation index
 
-Start with the [application guides](https://adametsderschopfer.github.io/iwe-code/docs/). The site
-provides guides in English, Russian, and Spanish.
+Start with the [application guides in English](https://iwe-code.ru/docs/).
 
 ## Use IWE Code
 

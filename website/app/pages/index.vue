@@ -2,7 +2,7 @@
 import { messages, repository } from '~/i18n'
 
 const base = useRuntimeConfig().app.baseURL
-const siteURL = 'https://adametsderschopfer.github.io/iwe-code/'
+const siteURL = 'https://iwe-code.ru/'
 
 useHead(() => ({
   htmlAttrs: { lang: 'en' },
