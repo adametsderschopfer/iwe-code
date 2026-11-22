@@ -37,7 +37,7 @@ trash = "=5.2.9"
 tokio = { version = "1", features = ["fs", "io-util", "io-std", "process", "rt", "time", "sync", "macros", "net"] }
 tokio-util = { version = "0.7", features = ["rt"] }
 two-face = { version = "0.4.5", default-features = false, features = ["syntect-default-fancy"] }
-url = "2"
+url = "2.5.9"
 unic-langid = { version = "0.9.6", features = ["macros"] }
 similar = { version = "3.2.1", default-features = false, features = ["text", "std"] }
 semver = { version = "1", features = ["serde"] }

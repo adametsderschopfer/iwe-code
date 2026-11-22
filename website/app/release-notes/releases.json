@@ -3085,6 +3085,16 @@
           "es": "El menú Crear sugiere tipos de archivo del proyecto. Cada tipo propone un nombre y añade la extensión cuando hace falta."
         },
         "sources": ["src/ui/screens/file_menu.rs", "src/app/files/operations.rs"]
+      },
+      {
+        "id": "update-url-parser-security",
+        "category": "maintenance",
+        "text": {
+          "en": "Updated the URL parser to prevent a crash on certain malformed links.",
+          "ru": "Обновили обработчик ссылок, чтобы некоторые некорректные ссылки не приводили к сбою.",
+          "es": "Actualizamos el analizador de enlaces para evitar un fallo con ciertos enlaces no válidos."
+        },
+        "sources": ["Cargo.toml", "Cargo.lock"]
       }
     ]
   }
