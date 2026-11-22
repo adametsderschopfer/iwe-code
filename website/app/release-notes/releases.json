@@ -2502,7 +2502,7 @@
     ]
   },
   {
-    "version": "unreleased",
+    "version": "1.6.0",
     "status": "prepared",
     "publishedAt": null,
     "tags": [],
@@ -2984,5 +2984,13 @@
         "sources": ["src/ui/screens/workspace.rs", "src/infrastructure/workspace.rs"]
       }
     ]
+  },
+  {
+    "version": "unreleased",
+    "status": "prepared",
+    "publishedAt": null,
+    "tags": [],
+    "source": null,
+    "items": []
   }
 ]
