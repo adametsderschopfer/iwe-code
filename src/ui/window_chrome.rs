@@ -48,16 +48,17 @@ fn compose<'a>(
         .height(Length::Fill)
         .style(theme::surface)
         .into();
-    let caption = container(controls(app, target, maximized))
-        .padding(iced::Padding {
-            top: 8.,
-            right: 24. + edge,
-            ..iced::Padding::ZERO
-        })
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .align_x(Horizontal::Right)
-        .align_y(Vertical::Top);
+    let caption =
+        container(container(controls(app, target, maximized)).id("windows-caption-controls"))
+            .padding(iced::Padding {
+                top: 8.,
+                right: theme::WINDOW_CAPTION_INSET + edge,
+                ..iced::Padding::ZERO
+            })
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(Horizontal::Right)
+            .align_y(Vertical::Top);
     resize_edges(
         Stack::with_children(vec![content, caption.into()])
             .width(Length::Fill)

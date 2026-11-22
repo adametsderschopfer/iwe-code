@@ -310,14 +310,15 @@ fn header(app: &App) -> Element<'_, Message> {
         .clip(true)
         .width(Length::Fill),
     );
-    let mut heading = row![title].spacing(12).align_y(Alignment::Center);
     #[cfg(target_os = "windows")]
-    {
-        heading = Row::with_children([super::menu_bar::header_prefix(app)])
+    let title = container(
+        row![super::menu_bar::header_prefix(app), title]
             .spacing(12)
-            .align_y(Alignment::Center)
-            .push(heading);
-    }
+            .align_y(Alignment::Center),
+    )
+    .clip(true)
+    .width(Length::Fill);
+    let mut heading = row![title].spacing(12).align_y(Alignment::Center);
     if !is_settings && app.repository.is_some() {
         heading = heading.push(super::header_repositories::controls(app));
     }
@@ -362,17 +363,13 @@ fn header(app: &App) -> Element<'_, Message> {
         }
     }
     #[cfg(target_os = "windows")]
-    {
-        heading = heading.push(space().width(3. * theme::WINDOW_CONTROL_WIDTH));
-    }
-
-    let right_inset =
-        if !cfg!(target_os = "windows") && !is_settings && app.module_enabled(ModuleId::Deployment)
-        {
-            theme::FILE_PANEL_TOOL_INSET
-        } else {
-            24.
-        };
+    let right_inset = theme::WINDOW_CAPTION_INSET + theme::WINDOW_CAPTION_WIDTH + 12.;
+    #[cfg(not(target_os = "windows"))]
+    let right_inset = if !is_settings && app.module_enabled(ModuleId::Deployment) {
+        theme::FILE_PANEL_TOOL_INSET
+    } else {
+        24.
+    };
     mouse_area(
         container(heading)
             .center_y(theme::WORKSPACE_HEADER_HEIGHT)

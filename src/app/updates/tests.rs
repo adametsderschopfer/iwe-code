@@ -151,8 +151,22 @@ fn update_dialog_and_header_actions_fit_in_all_languages() {
             .unwrap();
         assert!(update.x >= settings.x + settings.width);
         assert!(update.y + update.height <= crate::ui::theme::WORKSPACE_HEADER_HEIGHT);
+        #[cfg(target_os = "windows")]
+        {
+            let caption = ui
+                .find(Id::new("windows-caption-controls"))
+                .unwrap()
+                .visible_bounds()
+                .unwrap();
+            assert!(update.x + update.width <= caption.x);
+        }
         ui.click(Id::new("header-update")).unwrap();
-        for message in ui.into_messages() {
+        let messages: Vec<_> = ui.into_messages().collect();
+        assert!(
+            matches!(messages.as_slice(), [Message::Update(Event::OpenDialog)]),
+            "{language:?}: {messages:?}"
+        );
+        for message in messages {
             let _ = app.update(message);
         }
         assert!(app.update_dialog.open);

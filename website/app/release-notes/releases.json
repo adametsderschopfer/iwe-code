@@ -3059,7 +3059,12 @@
           "ru": "Смотрите обе версии и примечания перед обновлением. Открывайте диалог из заголовка или устанавливайте обновление после скачивания.",
           "es": "Consulta ambas versiones y las notas antes de actualizar. Abre el diálogo desde la cabecera o instala tras la descarga."
         },
-        "sources": ["src/ui/updates.rs", "src/app/updates/mod.rs", "src/ui/screens/workspace.rs"]
+        "sources": [
+          "src/ui/updates.rs",
+          "src/app/updates/mod.rs",
+          "src/ui/screens/workspace.rs",
+          "src/ui/window_chrome.rs"
+        ]
       },
       {
         "id": "context-menu-entrance-and-submenu-overlap",

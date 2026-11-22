@@ -92,7 +92,8 @@ selects another available project or returns to the empty workspace.
 On Windows, the application header replaces the system title bar. Its right-hand buttons minimize,
 maximize or restore, and close the window. Drag empty header space to move the window. Double-click
 empty header space to maximize or restore it. Drag any edge or corner to resize a restored window.
-Window controls remain available while a dialog is open.
+The update button appears to the left of the window controls. Window controls remain available while
+a dialog is open.
 
 Drag a space heading to change the space order. A line marks the drop position. Sidebar changes save
 immediately. The open project and collapsed spaces keep their state. Dragging project rows still
