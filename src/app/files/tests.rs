@@ -484,6 +484,40 @@ fn root_and_file_menus_expose_only_applicable_commands() {
 }
 
 #[tokio::test]
+async fn typed_creation_suggests_project_types_and_adds_the_default_extension() {
+    use iced::futures::StreamExt;
+    use iced_test::runtime::task;
+    use operations::{Command, Event as FileEvent, FileKind};
+
+    let project = tempfile::tempdir().unwrap();
+    let root = project.path();
+    let marker = root.join("pyproject.toml");
+    std::fs::write(&marker, "").unwrap();
+    let mut app = App::new(Rc::new(I18n::new(Language::English)));
+    app.loaded = true;
+    app.workspace.create_space("Work".into(), vec![root.into()]);
+    let _ = app.load_file_tree();
+    assert!(app.new_file_kinds(root).contains(&FileKind::Html));
+    directory(
+        &mut app,
+        root.to_str().unwrap(),
+        vec![entry(marker.to_str().unwrap(), false)],
+    );
+    assert_eq!(app.new_file_kinds(root), [FileKind::Python]);
+
+    let _ = app.update_files(Event::OpenMenu(root.into(), iced::Point::ORIGIN));
+    let _ = app.update_files(Event::Operation(FileEvent::Command(
+        Command::CreateTypedFile(FileKind::Python),
+    )));
+    assert_eq!(app.files.operations.draft.as_ref().unwrap().name, "main.py");
+    let _ = app.update_files(Event::Operation(FileEvent::Name("report".into())));
+    let confirm = app.update_files(Event::Operation(FileEvent::Confirm));
+    let mut actions = task::into_stream(confirm).unwrap();
+    while actions.next().await.is_some() {}
+    assert!(root.join("report.py").is_file());
+}
+
+#[tokio::test]
 async fn tree_terminals_start_shells_in_the_chosen_directory_and_plus_uses_the_root() {
     use crate::{app::modules, modules::terminal};
     use iced::futures::StreamExt;

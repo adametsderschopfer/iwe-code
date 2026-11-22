@@ -9,17 +9,22 @@ starts again.
 
 Checks never use repository accounts or tokens. The updater selects stable releases for the current
 operating system, with shared releases as a compatibility fallback. Only newer versions qualify.
-Automatic checks stop while an update is available, downloading, downloaded, or installing. This
-keeps a discovered update visible until the user acts. Open **Settings → About** to check manually
-without the automatic cooldown. Duplicate checks cannot overlap, including during startup and focus
-events. Downloading and installation still require explicit actions.
+Automatic checks continue while a version is available to download. Checks pause during download and
+while a downloaded package is ready or installing. Open **Settings → About** to check manually
+without the automatic cooldown. Duplicate checks cannot overlap.
 
-A download row with a dark blue icon appears near the sidebar settings button when an update becomes
-available. Choose **Download update** to download the package for the current operating system and
-processor. Choose **Install and restart** after the download finishes. IWE Code saves workspace
-settings before starting installation. A failed save keeps the window open and stops installation.
-Installation never requests administrator access. The installation directory must be writable by the
-current user.
+When IWE Code finds an update, it shows a dialog with the current version, new version, and release
+notes. The dialog shows the English notes published on GitHub. Choose **Later** to dismiss the
+dialog for that version until the next launch. Select the update icon to the right of **Settings**
+to reopen it.
+
+Choose **Download update** to download the package for the current operating system and processor.
+Select **Install and restart after download** to start installation when the download finishes.
+Choosing **Later** during download cancels automatic installation and lets the download finish.
+Choose **Install and restart** when the package is ready. IWE Code saves workspace settings before
+starting installation. A failed save keeps the window open and stops installation. Installation
+never requests administrator access. The installation directory must be writable by the current
+user.
 
 The first installation of version 0.1.10 still requires a downloaded release package. That version
 can receive future updates. Older versions do not acquire an updater automatically. Development

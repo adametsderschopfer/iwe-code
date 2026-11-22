@@ -3,15 +3,17 @@
 mod item;
 pub(crate) use item::{ICON_COLUMN_WIDTH, action, action_style, icon_label, label};
 
+use iced::advanced::Renderer as _;
 use iced::{
-    Element, Event, Length, Point, Rectangle, Renderer, Size, Theme, Vector,
+    Element, Event, Length, Point, Rectangle, Renderer, Size, Theme, Transformation, Vector,
     advanced::{
         Clipboard, Layout, Shell, Widget, layout, mouse, overlay, renderer,
-        widget::{Operation, Tree},
+        widget::{Operation, Tree, tree},
     },
     keyboard,
     widget::{container, mouse_area, opaque, responsive, stack},
 };
+use std::time::{Duration, Instant};
 
 pub(crate) fn trigger<'a, Message: 'a>(
     content: impl Into<Element<'a, Message>>,
@@ -162,11 +164,57 @@ struct Trigger<'a, Message> {
     fallback: bool,
 }
 
+struct Entrance {
+    placement: Placement,
+    start: Option<Instant>,
+}
+
+impl Entrance {
+    fn new(placement: Placement) -> Self {
+        #[cfg(target_os = "macos")]
+        let animate =
+            !objc2_app_kit::NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceMotion();
+        #[cfg(not(target_os = "macos"))]
+        let animate = true;
+        Self {
+            placement,
+            start: animate.then(Instant::now),
+        }
+    }
+
+    fn scale(&self, now: Instant) -> f32 {
+        let Some(start) = self.start else {
+            return 1.;
+        };
+        let duration = super::theme::CONTEXT_MENU_ENTRANCE.as_secs_f32();
+        let progress = (now.saturating_duration_since(start).as_secs_f32() / duration).min(1.);
+        1. - 0.04 * (1. - progress).powi(3)
+    }
+}
+
 impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
+    fn tag(&self) -> tree::Tag {
+        if self.popup_position.is_some() {
+            tree::Tag::of::<Entrance>()
+        } else {
+            tree::Tag::stateless()
+        }
+    }
+    fn state(&self) -> tree::State {
+        self.popup_position.map_or(tree::State::None, |placement| {
+            tree::State::new(Entrance::new(placement))
+        })
+    }
     fn children(&self) -> Vec<Tree> {
         vec![Tree::new(&self.content)]
     }
     fn diff(&self, tree: &mut Tree) {
+        if let Some(placement) = self.popup_position {
+            let entrance = tree.state.downcast_mut::<Entrance>();
+            if entrance.placement != placement {
+                *entrance = Entrance::new(placement);
+            }
+        }
         tree.diff_children(std::slice::from_ref(&self.content));
     }
     fn size(&self) -> Size<Length> {
@@ -211,6 +259,17 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
+        if self.popup_position.is_some()
+            && let Event::Window(iced::window::Event::RedrawRequested(now)) = event
+        {
+            let entrance = tree.state.downcast_ref::<Entrance>();
+            if let Some(start) = entrance.start {
+                let end = start + super::theme::CONTEXT_MENU_ENTRANCE;
+                if *now < end {
+                    shell.request_redraw_at((*now + Duration::from_millis(16)).min(end));
+                }
+            }
+        }
         if let Some(Placement::Beside { anchor, .. }) = self.popup_position
             && let Some(exit) = &self.leave_submenu
         {
@@ -353,15 +412,29 @@ impl<Message> Widget<Message, Theme, Renderer> for Trigger<'_, Message> {
         cursor: mouse::Cursor,
         viewport: &Rectangle,
     ) {
-        self.content.as_widget().draw(
-            &tree.children[0],
-            renderer,
-            theme,
-            style,
-            layout,
-            cursor,
-            viewport,
-        );
+        let draw = |renderer: &mut Renderer| {
+            self.content.as_widget().draw(
+                &tree.children[0],
+                renderer,
+                theme,
+                style,
+                layout,
+                cursor,
+                viewport,
+            );
+        };
+        if let Some(placement) = self.popup_position {
+            let scale = tree.state.downcast_ref::<Entrance>().scale(Instant::now());
+            if scale < 1. {
+                let pivot = placement.pivot(layout.bounds());
+                let transform = Transformation::translate(pivot.x, pivot.y)
+                    * Transformation::scale(scale)
+                    * Transformation::translate(-pivot.x, -pivot.y);
+                renderer.with_transformation(transform, draw);
+                return;
+            }
+        }
+        draw(renderer);
     }
     fn overlay<'b>(
         &'b mut self,
@@ -430,7 +503,7 @@ pub(crate) fn surface<'a, Message: 'a>(
     content: Element<'a, Message>,
     width: f32,
 ) -> Element<'a, Message> {
-    styled_surface(content, width, super::theme::tooltip)
+    styled_surface(content, width, super::theme::context_menu)
 }
 
 fn styled_surface<'a, Message: 'a>(
@@ -457,13 +530,24 @@ fn popup_origin(anchor: f32, extent: f32, available: f32) -> f32 {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum Placement {
     Cursor(Point),
     Beside { anchor: Rectangle, x: f32 },
 }
 
 impl Placement {
+    fn pivot(self, bounds: Rectangle) -> Point {
+        let point = match self {
+            Self::Cursor(point) => point,
+            Self::Beside { anchor, .. } => anchor.center(),
+        };
+        Point::new(
+            point.x.clamp(bounds.x, bounds.x + bounds.width),
+            point.y.clamp(bounds.y, bounds.y + bounds.height),
+        )
+    }
+
     fn origin(self, panel: Size, available: Size) -> Point {
         match self {
             Self::Cursor(point) => Point::new(
@@ -480,38 +564,20 @@ impl Placement {
     }
 }
 
-#[derive(Clone, Copy)]
-enum Side {
-    Left,
-    Right,
-}
-
-impl Side {
-    fn place(anchor: Rectangle, width: f32, available: f32) -> (Self, Placement) {
-        let right = anchor.x + anchor.width;
-        let left = anchor.x - width;
+impl Placement {
+    fn beside(anchor: Rectangle, width: f32, available: f32, overlap: f32) -> Self {
+        let right = anchor.x + anchor.width - overlap;
+        let left = anchor.x - width + overlap;
         let max_x = (available - width).max(0.);
-        let (side, x) = if right <= max_x || (left < 0. && right - max_x <= -left) {
-            (Self::Right, right)
+        let x = if right <= max_x || (left < 0. && right - max_x <= -left) {
+            right
         } else {
-            (Self::Left, left)
+            left
         };
-        (
-            side,
-            Placement::Beside {
-                anchor,
-                x: x.clamp(0., max_x),
-            },
-        )
-    }
-
-    fn style(self, theme: &Theme) -> container::Style {
-        let mut style = super::theme::tooltip(theme);
-        style.border.radius = match self {
-            Self::Right => style.border.radius.left(0.),
-            Self::Left => style.border.radius.right(0.),
-        };
-        style
+        Self::Beside {
+            anchor,
+            x: x.clamp(0., max_x),
+        }
     }
 }
 
@@ -574,10 +640,15 @@ pub(crate) fn beside<'a, Message: Clone + 'a>(
         layers = layers.push(panel(
             move |available| {
                 let width = width.min(available);
-                let (side, placement) = Side::place(anchor, width, available);
+                let overlap = if has_parent {
+                    super::theme::CONTEXT_SUBMENU_OVERLAP
+                } else {
+                    0.
+                };
+                let placement = Placement::beside(anchor, width, available, overlap);
                 (
                     placement,
-                    styled_surface(content(), width, move |theme| side.style(theme)),
+                    styled_surface(content(), width, super::theme::context_submenu),
                 )
             },
             Some((!has_parent, dismiss.clone())),

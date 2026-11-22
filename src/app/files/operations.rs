@@ -13,6 +13,7 @@ pub(crate) const NAME_INPUT: &str = "project-file-name";
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Command {
     CreateFile,
+    CreateTypedFile(FileKind),
     CreateFolder,
     Copy,
     Cut,
@@ -23,6 +24,63 @@ pub(crate) enum Command {
     Trash,
     Reveal,
     OpenTerminal,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FileKind {
+    Html,
+    Css,
+    JavaScript,
+    TypeScript,
+    Python,
+    Php,
+}
+
+impl FileKind {
+    const WEB: [Self; 4] = [Self::Html, Self::Css, Self::JavaScript, Self::TypeScript];
+
+    pub(crate) fn preset(self) -> (Key, &'static str) {
+        match self {
+            Self::Html => (Key::FileNewHtml, "index.html"),
+            Self::Css => (Key::FileNewCss, "style.css"),
+            Self::JavaScript => (Key::FileNewJavaScript, "script.js"),
+            Self::TypeScript => (Key::FileNewTypeScript, "script.ts"),
+            Self::Python => (Key::FileNewPython, "main.py"),
+            Self::Php => (Key::FileNewPhp, "index.php"),
+        }
+    }
+}
+
+fn project_file_kinds<'a>(names: impl Iterator<Item = &'a str>) -> Vec<FileKind> {
+    let (mut web, mut python, mut php) = (false, false, false);
+    for name in names {
+        match name {
+            "package.json" | "tsconfig.json" => web = true,
+            "pyproject.toml" | "requirements.txt" | "Pipfile" | "setup.py" => python = true,
+            "composer.json" => php = true,
+            _ => match Path::new(name)
+                .extension()
+                .and_then(|extension| extension.to_str())
+            {
+                Some("html" | "css" | "js" | "jsx" | "ts" | "tsx" | "vue" | "svelte") => web = true,
+                Some("py" | "pyi") => python = true,
+                Some("php") => php = true,
+                _ => {}
+            },
+        }
+    }
+    let fallback = !(web || python || php);
+    let mut kinds = Vec::new();
+    if web || php || fallback {
+        kinds.extend(FileKind::WEB);
+    }
+    if python || fallback {
+        kinds.push(FileKind::Python);
+    }
+    if php || fallback {
+        kinds.push(FileKind::Php);
+    }
+    kinds
 }
 
 #[derive(Debug, Clone)]
@@ -45,6 +103,7 @@ pub(crate) struct Draft {
     pub parent: Option<PathBuf>,
     source: Option<PathBuf>,
     operation: Operation,
+    extension: Option<&'static str>,
 }
 
 #[derive(Default)]
@@ -68,6 +127,22 @@ pub(crate) fn request(message: &Message) -> Option<&Request> {
 }
 
 impl App {
+    pub(crate) fn new_file_kinds(&self, path: &Path) -> Vec<FileKind> {
+        let root = self
+            .path_repository_root(path)
+            .or_else(|| self.workspace.directory().map(PathBuf::as_path));
+        let names = root
+            .into_iter()
+            .chain(std::iter::once(path))
+            .chain(path.parent())
+            .filter(|directory| root.is_none_or(|root| directory.starts_with(root)))
+            .filter_map(|directory| self.tree.get(directory))
+            .flatten()
+            .filter(|entry| !entry.directory)
+            .map(|entry| entry.name.as_str());
+        project_file_kinds(names)
+    }
+
     pub(crate) fn file_source_protected(&self, path: &Path) -> bool {
         self.workspace.directory().is_some_and(|root| path == root)
             || self
@@ -112,7 +187,12 @@ impl App {
                         draft.error = Some(error_key(error));
                         return Task::none();
                     }
-                    let destination = parent.join(&draft.name);
+                    let mut destination = parent.join(&draft.name);
+                    if destination.extension().is_none()
+                        && let Some(extension) = draft.extension
+                    {
+                        destination.set_extension(extension);
+                    }
                     if draft.operation == Operation::Move
                         && draft.source.as_ref() == Some(&destination)
                     {
@@ -238,6 +318,20 @@ impl App {
                 Some(parent),
                 String::new(),
             ),
+            Command::CreateTypedFile(kind) => {
+                let (title, name) = kind.preset();
+                let task = self.file_draft(
+                    title,
+                    Operation::CreateFile,
+                    None,
+                    Some(parent),
+                    name.into(),
+                );
+                if let Some(draft) = &mut self.files.operations.draft {
+                    draft.extension = Path::new(name).extension().and_then(|value| value.to_str());
+                }
+                task
+            }
             Command::CreateFolder => self.file_draft(
                 Key::FileNewFolder,
                 Operation::CreateFolder,
@@ -331,14 +425,15 @@ impl App {
         name: String,
     ) -> Task<Message> {
         let input = parent.is_some();
-        let selected_text = if title == Key::FileRename
-            && source.as_ref().is_some_and(|path| {
-                self.tree
-                    .get(path.parent().unwrap_or(path))
-                    .into_iter()
-                    .flatten()
-                    .any(|entry| entry.path == *path && !entry.directory)
-            }) {
+        let selected_text = if operation == Operation::CreateFile
+            || (title == Key::FileRename
+                && source.as_ref().is_some_and(|path| {
+                    self.tree
+                        .get(path.parent().unwrap_or(path))
+                        .into_iter()
+                        .flatten()
+                        .any(|entry| entry.path == *path && !entry.directory)
+                })) {
             Path::new(&name)
                 .file_stem()
                 .and_then(|stem| stem.to_str())
@@ -353,6 +448,7 @@ impl App {
             parent,
             source,
             operation,
+            extension: None,
             error: None,
         });
         if input {

@@ -52,8 +52,13 @@ Green marks show additions. Blue marks show replacements. Red marks anchor delet
 remaining line.
 
 Right-click a file or folder in the project tree to open its context menu. Right-click empty space
-to work in the project root. Use **New** to create a file or folder. A new file opens in the editor.
-A new folder becomes selected.
+to work in the project root. Menus grow slightly as they open. Submenus overlap the parent menu. On
+macOS, Reduce Motion skips the animation.
+
+Use **New** to create a file or folder. The menu also suggests HTML, CSS, JavaScript, TypeScript,
+Python, or PHP files. Suggestions use the project files that IWE Code has already listed. When it
+recognizes no file types, it offers all six. A type suggests a filename and supplies its extension
+if you omit it. A new file opens in the editor. A new folder becomes selected.
 
 Choose **Open terminal here** to run a shell in the selected folder or a file's parent folder. See
 [Terminal](modules.md#terminal) for tab names, search, and project switching.

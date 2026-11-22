@@ -22,8 +22,23 @@ fn automatic_checks_throttle_focus_and_retry_failures_after_fifteen_minutes() {
     assert!(schedule.due(Trigger::Periodic, now - Duration::from_secs(1)));
 }
 
+fn offer(version: &str) -> Offer {
+    Offer {
+        release: Release {
+            version: version.into(),
+            tag: format!("v{version}"),
+            asset: "test".into(),
+            size: 1,
+            sha256: String::new(),
+            manifest: vec![],
+            signature: vec![],
+        },
+        notes: vec!["Fixture release note".into()],
+    }
+}
+
 #[test]
-fn manual_checks_bypass_cooldown_and_automatic_checks_preserve_available_updates() {
+fn automatic_checks_respect_cooldown_and_offer_each_version_once() {
     let mut app = app();
     assert!(app.update_release(Event::Check).units() > 0);
     let _ = app.update_release(Event::Checked(Ok(None)));
@@ -33,25 +48,26 @@ fn manual_checks_bypass_cooldown_and_automatic_checks_preserve_available_updates
         0
     );
     assert!(app.update_release(Event::Check).units() > 0);
-    let _ = app.update_release(Event::Checked(Ok(Some(release()))));
-    app.update_schedule.last_attempt = None;
-    assert_eq!(
-        app.update_release(Event::Automatic(Trigger::Periodic))
-            .units(),
-        0
-    );
-    assert!(matches!(app.updates, State::Available(_)));
-}
-fn release() -> Release {
-    Release {
-        version: "0.1.11".into(),
-        tag: "0.1.11".into(),
-        asset: "test".into(),
-        size: 1,
-        sha256: String::new(),
-        manifest: vec![],
-        signature: vec![],
+    let _ = app.update_release(Event::Checked(Ok(Some(offer("2.0.0")))));
+    assert!(app.update_dialog.open);
+    let _ = app.update_release(Event::DismissDialog);
+
+    for result in [Err(Error::Network), Ok(Some(offer("2.0.0")))] {
+        app.update_schedule.last_attempt = None;
+        assert!(
+            app.update_release(Event::Automatic(Trigger::Focused))
+                .units()
+                > 0
+        );
+        let _ = app.update_release(Event::Checked(result));
+        assert_eq!(app.updates.version(), Some("2.0.0"));
+        assert!(!app.update_dialog.open);
     }
+
+    assert!(app.update_release(Event::Check).units() > 0);
+    let _ = app.update_release(Event::Checked(Ok(Some(offer("2.1.0")))));
+    assert!(app.update_dialog.open);
+    assert_eq!(app.updates.version(), Some("2.1.0"));
 }
 
 #[test]
@@ -59,40 +75,72 @@ fn checks_ignore_duplicate_requests_and_obsolete_completions() {
     let mut app = app();
     assert!(app.update_release(Event::Check).units() > 0);
     assert_eq!(app.update_release(Event::Check).units(), 0);
-    let _ = app.update_release(Event::Checked(Ok(Some(release()))));
-    assert!(matches!(app.updates, State::Available(_)));
+    let _ = app.update_release(Event::Checked(Ok(Some(offer("2.0.0")))));
     let _ = app.update_release(Event::Checked(Ok(None)));
-    assert!(matches!(app.updates, State::Available(_)));
+    assert_eq!(app.updates.version(), Some("2.0.0"));
+    assert!(app.update_release(Event::Check).units() > 0);
     assert!(app.update_release(Event::Download).units() > 0);
     assert_eq!(app.update_release(Event::Download).units(), 0);
+    let _ = app.update_release(Event::Checked(Ok(Some(offer("2.1.0")))));
+    assert!(matches!(app.updates, State::Downloading(_)));
+    assert_eq!(app.updates.version(), Some("2.0.0"));
     let _ = app.update_release(Event::Downloaded(Err(Error::Invalid)));
-    assert!(matches!(app.updates, State::Failed(Error::Invalid)));
+    assert!(matches!(app.updates, State::Available(_)));
+    assert!(app.update_dialog.download_error.is_some());
+    assert!(app.update_release(Event::Download).units() > 0);
+    assert!(app.update_dialog.download_error.is_none());
 }
 
 #[test]
-fn update_actions_are_visible_in_all_languages_and_do_not_close_the_window_when_downloading() {
+fn download_schedules_install_only_when_the_user_keeps_it_selected() {
+    for (selected, dismissed) in [(false, false), (true, false), (true, true)] {
+        let mut app = app();
+        app.updates = State::Available(offer("2.0.0").release);
+        let _ = app.update_release(Event::OpenDialog);
+        let _ = app.update_release(Event::InstallAfterDownload(selected));
+        assert!(app.update_release(Event::Download).units() > 0);
+        if dismissed {
+            let _ = app.update_release(Event::DismissDialog);
+        }
+        let task = app.update_release(Event::Downloaded(Ok(Arc::new(Prepared::fixture()))));
+        assert!(matches!(app.updates, State::Ready(_)));
+        assert_eq!(task.units() > 0, selected && !dismissed);
+        assert!(!app.update_dialog.install_after_download);
+    }
+}
+
+#[test]
+fn update_dialog_and_header_actions_fit_in_all_languages() {
+    use crate::i18n::Key;
     use iced::widget::Id;
+
     for language in [Language::English, Language::Russian, Language::Spanish] {
         let mut app = App::new(Rc::new(I18n::new(language)));
         app.loaded = true;
-        app.updates = State::Available(release());
+        let _ = app.update_release(Event::Check);
+        let _ = app.update_release(Event::Checked(Ok(Some(offer("2.0.0")))));
         let mut ui =
-            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
-        if let Some(output) = std::env::var_os("IWE_RENDER_DIR").map(std::path::PathBuf::from) {
-            for (theme, suffix) in [(iced::Theme::Dark, "dark"), (iced::Theme::Light, "light")] {
-                ui.snapshot(&theme)
-                    .unwrap()
-                    .matches_image(output.join(format!("update-sidebar-{language:?}-{suffix}")))
-                    .unwrap();
-            }
+            iced_test::Simulator::with_size(iced::Settings::default(), (860., 520.), app.view());
+        for label in [
+            app.i18n.text(Key::UpdatePrompt),
+            app.i18n.text(Key::UpdateInstallAfterDownload),
+            app.i18n.text(Key::DownloadUpdate),
+            env!("CARGO_PKG_VERSION").into(),
+            "2.0.0".into(),
+            "Fixture release note".into(),
+        ] {
+            assert!(ui.find(label).unwrap().visible_bounds().is_some());
         }
+        ui.click(app.i18n.text(Key::UpdateLater)).unwrap();
+        for message in ui.into_messages() {
+            let _ = app.update(message);
+        }
+        assert!(!app.update_dialog.open);
+
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (860., 520.), app.view());
         let update = ui
-            .find(app.i18n.text(crate::i18n::Key::DownloadUpdate))
-            .unwrap()
-            .visible_bounds()
-            .unwrap();
-        let update_row = ui
-            .find(Id::new("sidebar-update"))
+            .find(Id::new("header-update"))
             .unwrap()
             .visible_bounds()
             .unwrap();
@@ -101,26 +149,30 @@ fn update_actions_are_visible_in_all_languages_and_do_not_close_the_window_when_
             .unwrap()
             .visible_bounds()
             .unwrap();
-        assert!(
-            update.x >= update_row.x && update.x + update.width <= update_row.x + update_row.width
-        );
-        assert!(update_row.x + update_row.width <= app.workspace.preferences.spaces_sidebar_width);
-        assert!(settings.y + settings.height <= crate::ui::theme::WORKSPACE_HEADER_HEIGHT);
-        ui.click(Id::new("sidebar-update")).unwrap();
-        let messages: Vec<_> = ui.into_messages().collect();
-        assert!(matches!(
-            messages.as_slice(),
-            [Message::Update(Event::Download)]
-        ));
-        for message in messages {
+        assert!(update.x >= settings.x + settings.width);
+        assert!(update.y + update.height <= crate::ui::theme::WORKSPACE_HEADER_HEIGHT);
+        ui.click(Id::new("header-update")).unwrap();
+        for message in ui.into_messages() {
             let _ = app.update(message);
         }
-        assert!(matches!(app.updates, State::Downloading));
-        app.navigation = super::super::Navigation::Settings;
-        app.settings_tab = super::super::SettingsTab::About;
+        assert!(app.update_dialog.open);
+
         let mut ui =
-            iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view());
-        assert!(ui.find(app.i18n.text(crate::i18n::Key::Updates)).is_ok());
+            iced_test::Simulator::with_size(iced::Settings::default(), (860., 520.), app.view());
+        ui.click(app.i18n.text(Key::DownloadUpdate)).unwrap();
+        for message in ui.into_messages() {
+            let _ = app.update(message);
+        }
+        assert!(matches!(app.updates, State::Downloading(_)));
+        let _ = app.update_release(Event::Downloaded(Ok(Arc::new(Prepared::fixture()))));
+        let mut ui =
+            iced_test::Simulator::with_size(iced::Settings::default(), (860., 520.), app.view());
+        assert!(
+            ui.find(app.i18n.text(Key::InstallUpdate))
+                .unwrap()
+                .visible_bounds()
+                .is_some()
+        );
     }
 }
 

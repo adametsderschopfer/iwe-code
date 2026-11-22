@@ -10,3 +10,9 @@ pub(crate) struct Release {
     pub manifest: Vec<u8>,
     pub signature: Vec<u8>,
 }
+
+#[derive(Debug, Clone)]
+pub(crate) struct Offer {
+    pub release: Release,
+    pub notes: Vec<String>,
+}

@@ -10,12 +10,13 @@ use crate::{
         },
     },
     i18n::Key,
-    ui::{context_menu, theme},
+    ui::{context_menu, ellipsis, file_icons, theme},
 };
 use iced::{
-    Element, Length,
-    widget::{column, scrollable, text},
+    Alignment, Element, Length,
+    widget::{column, row, scrollable, text},
 };
+use std::path::Path;
 
 pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Message> {
     let Some(menu) = &app.files.menu else {
@@ -134,10 +135,24 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                     .on_press(Message::Files(Event::CopyPath(format)))
             };
             let children = if matches!(menu.submenu, Some((Submenu::New, _))) {
-                column![
+                let mut create = column![
                     action(Key::FileNewFile, Command::CreateFile),
                     action(Key::FileNewFolder, Command::CreateFolder),
-                ]
+                    context_menu::separator(),
+                ];
+                for kind in app.new_file_kinds(&menu.path) {
+                    let (key, name) = kind.preset();
+                    let label = row![
+                        file_icons::file(Path::new(name)),
+                        ellipsis::text(app.i18n.text(key), context_menu::TEXT_SIZE),
+                    ]
+                    .spacing(8)
+                    .align_y(Alignment::Center);
+                    create = create.push(context_menu::row(label).on_press(operations::message(
+                        operations::Event::Command(Command::CreateTypedFile(kind)),
+                    )));
+                }
+                create
             } else {
                 column![
                     option(Key::CopyAbsolutePath, PathFormat::Absolute),
@@ -145,7 +160,10 @@ pub(super) fn overlay<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'
                 ]
             }
             .spacing(4);
-            children.into()
+            scrollable(children)
+                .style(theme::scroll)
+                .height(Length::Shrink)
+                .into()
         },
         true,
     )

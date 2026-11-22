@@ -357,6 +357,9 @@ fn header(app: &App) -> Element<'_, Message> {
             ))
             .id("nav-settings"),
         );
+        if let Some(update) = crate::ui::updates::header_button(app) {
+            heading = heading.push(update);
+        }
     }
     #[cfg(target_os = "windows")]
     {
@@ -758,7 +761,7 @@ fn sidebar(app: &App) -> Element<'_, Message> {
             );
         }
     }
-    let mut sidebar = column![
+    let sidebar = column![
         navigation,
         space().height(8),
         scrollable(body)
@@ -767,11 +770,6 @@ fn sidebar(app: &App) -> Element<'_, Message> {
             .style(theme::scroll)
             .height(Length::Fill),
     ];
-    if let Some(update) = crate::ui::updates::sidebar(app) {
-        sidebar = sidebar
-            .push(space().height(16))
-            .push(container(update).padding(1));
-    }
     container(sidebar)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -1391,31 +1389,6 @@ fn space_menu<'a>(app: &'a App, base: Element<'a, Message>) -> Element<'a, Messa
             parent.is_some(),
         ))
         .into()
-}
-
-pub(crate) fn navigation_button<'a>(
-    app: &'a App,
-    symbol: Icon,
-    label: Key,
-    message: Option<Message>,
-    selected: bool,
-    id: &'static str,
-) -> Element<'a, Message> {
-    let content = row![
-        icon(symbol, if selected { theme::TEXT } else { theme::MUTED }),
-        text(app.i18n.text(label)).size(14).width(Length::Fill),
-    ]
-    .spacing(12)
-    .align_y(Alignment::Center);
-    container(
-        button(content)
-            .padding([10, 12])
-            .width(Length::Fill)
-            .on_press_maybe(message)
-            .style(theme::action(selected)),
-    )
-    .id(id)
-    .into()
 }
 
 fn tree_width(app: &App, path: &Path, depth: usize) -> f32 {

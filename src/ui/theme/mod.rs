@@ -20,6 +20,9 @@ use iced::{
     },
 };
 
+pub(crate) const CONTEXT_MENU_ENTRANCE: std::time::Duration = std::time::Duration::from_millis(100);
+pub(crate) const CONTEXT_SUBMENU_OVERLAP: f32 = 8.;
+
 pub(crate) fn file_status(status: crate::domain::changes::FileStatus) -> Tone {
     use crate::domain::changes::FileStatus;
     match status {
@@ -491,6 +494,21 @@ pub(crate) fn tooltip(theme: &Theme) -> container::Style {
             radius: CONTROL_RADIUS.into(),
         },
         ..Default::default()
+    }
+}
+
+pub(crate) fn context_menu(theme: &Theme) -> container::Style {
+    notification(theme)
+}
+
+pub(crate) fn context_submenu(theme: &Theme) -> container::Style {
+    container::Style {
+        shadow: iced::Shadow {
+            color: Color::BLACK.scale_alpha(0.32),
+            offset: iced::Vector::new(0., 4.),
+            blur_radius: 16.,
+        },
+        ..tooltip(theme)
     }
 }
 

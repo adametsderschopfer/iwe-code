@@ -1,6 +1,13 @@
 use super::*;
 use ed25519_dalek::{Signer, SigningKey};
 
+#[test]
+fn release_notes_extract_bullets_from_the_published_body() {
+    let body = "# IWE Code 1.6.1\r\n\r\n## Added\r\n\r\n- Update dialog\r\n- Restart option\r\n\r\n[Release notes](https://iwe-code.ru/)\r\n";
+    assert_eq!(release_notes(body), ["Update dialog", "Restart option"]);
+    assert!(release_notes("").is_empty());
+}
+
 fn signed(version: &str) -> (Vec<u8>, Vec<u8>, [u8; 32]) {
     let key = SigningKey::from_bytes(&[42; 32]);
     let assets: Vec<_> = ["macos-arm64", "macos-x64", "windows-x64", "windows-x86", "linux-x64", "linux-x86"].into_iter().map(|platform| serde_json::json!({
@@ -39,6 +46,7 @@ fn platform_selection_ignores_other_systems_and_prefers_specific_tags() {
         tag_name: tag.into(),
         draft: false,
         prerelease: false,
+        body: None,
     })
     .collect();
     assert_eq!(

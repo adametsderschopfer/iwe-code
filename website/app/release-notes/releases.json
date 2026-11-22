@@ -3050,6 +3050,37 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "update-dialog-and-header-control",
+        "category": "added",
+        "text": {
+          "en": "See both versions and release notes before updating. Reopen the dialog from the header or install after downloading.",
+          "ru": "Смотрите обе версии и примечания перед обновлением. Открывайте диалог из заголовка или устанавливайте обновление после скачивания.",
+          "es": "Consulta ambas versiones y las notas antes de actualizar. Abre el diálogo desde la cabecera o instala tras la descarga."
+        },
+        "sources": ["src/ui/updates.rs", "src/app/updates/mod.rs", "src/ui/screens/workspace.rs"]
+      },
+      {
+        "id": "context-menu-entrance-and-submenu-overlap",
+        "category": "changed",
+        "text": {
+          "en": "Context menus grow slightly as they open. Submenus overlap their parent and have a shadow.",
+          "ru": "Контекстные меню слегка увеличиваются при открытии. Подменю перекрывают край родительского меню и отбрасывают тень.",
+          "es": "Los menús contextuales crecen ligeramente al abrirse. Los submenús se superponen al menú principal y tienen sombra."
+        },
+        "sources": ["src/ui/context_menu/mod.rs", "src/ui/theme/mod.rs"]
+      },
+      {
+        "id": "project-aware-file-types",
+        "category": "added",
+        "text": {
+          "en": "The New menu suggests file types from your project. Each type suggests a name and adds the extension if needed.",
+          "ru": "Меню «Создать» предлагает типы файлов проекта. Каждый тип подставляет имя и добавляет расширение при необходимости.",
+          "es": "El menú Crear sugiere tipos de archivo del proyecto. Cada tipo propone un nombre y añade la extensión cuando hace falta."
+        },
+        "sources": ["src/ui/screens/file_menu.rs", "src/app/files/operations.rs"]
+      }
+    ]
   }
 ]

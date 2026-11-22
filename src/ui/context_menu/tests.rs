@@ -80,28 +80,31 @@ fn a_short_menu_stays_next_to_its_anchor_near_the_window_bottom() {
 fn side_menu_fits_at_the_right_and_bottom_window_edges() {
     let available = Size::new(640., 320.);
     let panel = Size::new(220., 78.);
-    for (anchor, expected, opens_right) in [
-        (Point::new(100., 90.), Point::new(200., 90.), true),
-        (Point::new(520., 284.), Point::new(300., 242.), false),
+    for (anchor, expected) in [
+        (Point::new(100., 90.), Point::new(192., 90.)),
+        (Point::new(520., 284.), Point::new(308., 242.)),
     ] {
-        let (side, placement) = Side::place(
+        let placement = Placement::beside(
             Rectangle::new(anchor, Size::new(100., 26.)),
             panel.width,
             available.width,
+            super::super::theme::CONTEXT_SUBMENU_OVERLAP,
         );
-        for theme in [Theme::Light, Theme::Dark] {
-            let radius = super::super::theme::tooltip(&theme).border.radius;
-            assert_eq!(
-                side.style(&theme).border.radius,
-                if opens_right {
-                    radius.left(0.)
-                } else {
-                    radius.right(0.)
-                }
-            );
-        }
         assert_eq!(placement.origin(panel, available), expected);
     }
+}
+
+#[test]
+fn entrance_grows_quickly_and_finishes_at_full_size() {
+    let start = Instant::now();
+    let motion = Entrance {
+        placement: Placement::Cursor(Point::ORIGIN),
+        start: Some(start),
+    };
+    let half = motion.scale(start + Duration::from_millis(50));
+    assert!(motion.scale(start) < half);
+    assert!(half < 1.);
+    assert_eq!(motion.scale(start + Duration::from_millis(100)), 1.);
 }
 
 #[test]

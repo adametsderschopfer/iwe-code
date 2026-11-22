@@ -4,7 +4,7 @@ mod install;
 #[cfg(test)]
 mod tests;
 
-use crate::domain::update::Release;
+use crate::domain::update::{Offer, Release};
 use ed25519_dalek::{Signature, VerifyingKey};
 use reqwest::{Client, redirect};
 use semver::Version;
@@ -32,6 +32,7 @@ struct Latest {
     tag_name: String,
     draft: bool,
     prerelease: bool,
+    body: Option<String>,
 }
 #[derive(Deserialize)]
 struct Manifest {
@@ -109,7 +110,7 @@ async fn small(client: &Client, url: &str, limit: usize) -> Result<Vec<u8>, Erro
     Ok(bytes)
 }
 
-pub(crate) async fn check() -> Result<Option<Release>, Error> {
+pub(crate) async fn check() -> Result<Option<Offer>, Error> {
     tokio::time::timeout(Duration::from_secs(45), async {
         let client = client()?;
         let mut releases = Vec::new();
@@ -138,17 +139,28 @@ pub(crate) async fn check() -> Result<Option<Release>, Error> {
         )
         .await?;
         let signature = small(&client, &asset_url(&latest.tag_name, "updates.sig"), 64).await?;
-        verified_release(
+        let release = verified_release(
             &manifest,
             &signature,
             &latest.tag_name,
             platform,
             PUBLIC_KEY,
-        )
-        .map(Some)
+        )?;
+        let notes = release_notes(latest.body.as_deref().unwrap_or_default());
+        Ok(Some(Offer { release, notes }))
     })
     .await
     .map_err(|_| Error::Network)?
+}
+
+fn release_notes(body: &str) -> Vec<String> {
+    body.lines()
+        .filter_map(|line| line.trim().strip_prefix("- "))
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .take(100)
+        .map(|line| line.chars().take(1000).collect())
+        .collect()
 }
 
 fn newer(tag: &str, current: &str) -> Result<bool, Error> {

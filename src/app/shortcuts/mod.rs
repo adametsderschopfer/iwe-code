@@ -160,6 +160,7 @@ impl App {
                 }
                 if self.window_id == Some(id)
                     && (self.modules.docker.has_dialog()
+                        || self.update_prompt_visible()
                         || self
                             .editor
                             .rename
