@@ -3119,10 +3119,10 @@
   },
   {
     "version": "1.6.4",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
+    "status": "released",
+    "publishedAt": "2026-11-25T22:21:56Z",
+    "tags": ["v1.6.4"],
+    "source": "5f6159f1d92a96017d34036d147b408d358c5f03",
     "items": [
       {
         "id": "website-domain-links",
