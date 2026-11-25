@@ -106,8 +106,13 @@ fn markdown_renders_a_typed_link_before_saving_and_returns_to_the_editor() {
         if read_only {
             assert!((pane.width - header.width).abs() <= 1.);
         }
-        // Click the first link on the first line of the formatted document.
-        ui.point_at((pane.x + 28., pane.y + 25.));
+        let document = ui
+            .find(Id::new("markdown-document"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap();
+        // The draft contains one link at the start of the document.
+        ui.point_at((document.x + 12., document.center_y()));
         ui.simulate(iced_test::simulator::click());
         if read_only {
             ui.typewrite("x");

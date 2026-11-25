@@ -3100,6 +3100,25 @@
   },
   {
     "version": "1.6.3",
+    "status": "development",
+    "publishedAt": null,
+    "tags": [],
+    "source": "197c55cb2fb12006ecaf3ec5d66b9020b71013b2",
+    "items": [
+      {
+        "id": "cancelled-publication-1-6-3",
+        "category": "maintenance",
+        "text": {
+          "en": "Publication of this version was canceled.",
+          "ru": "Публикация этой версии была отменена.",
+          "es": "Se canceló la publicación de esta versión."
+        },
+        "sources": ["197c55c"]
+      }
+    ]
+  },
+  {
+    "version": "unreleased",
     "status": "prepared",
     "publishedAt": null,
     "tags": [],
@@ -3135,15 +3154,17 @@
         },
         "sources": ["src/app/mod.rs", "src/infrastructure/external/windows.rs"],
         "platforms": ["windows"]
+      },
+      {
+        "id": "markdown-reading-layout",
+        "category": "changed",
+        "text": {
+          "en": "Markdown previews use a centered column, with clearer headings, quotes, and code blocks.",
+          "ru": "Предпросмотр Markdown размещает текст по центру и выделяет заголовки, цитаты и блоки кода.",
+          "es": "La vista previa de Markdown centra el texto y distingue los títulos, las citas y los bloques de código."
+        },
+        "sources": ["src/ui/markdown/mod.rs", "src/ui/theme/palette.rs"]
       }
     ]
-  },
-  {
-    "version": "unreleased",
-    "status": "prepared",
-    "publishedAt": null,
-    "tags": [],
-    "source": null,
-    "items": []
   }
 ]

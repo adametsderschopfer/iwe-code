@@ -57,6 +57,8 @@ pub(super) const THUMB: Tone = Tone::new(0x404040, 0xb8b8b8);
 pub(super) const THUMB_HOVER: Tone = Tone::new(0x646464, 0x929292);
 
 pub(crate) const TEXT: Tone = Tone::new(0xececec, 0x242424);
+pub(crate) const MARKDOWN_TEXT: Tone = Tone::new(0xdadada, 0x373a3e);
+pub(crate) const MARKDOWN_INLINE_CODE: Tone = Tone::new(0x2c2e31, 0xebedf0);
 pub(crate) const MUTED: Tone = Tone::new(0xb4b4b4, 0x55585e);
 pub(crate) const FAINT: Tone = Tone::new(0x949494, 0x666666);
 pub(crate) const LINE: Tone = Tone::new(0x373737, 0xd4d4d4);

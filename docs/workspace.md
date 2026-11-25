@@ -805,13 +805,14 @@ to see its name.
 - **Source** shows the source across the available width.
 - **Side by side** gives the source and formatted document equal space. The preview updates as you
   type, before autosave.
-- **Preview** shows the formatted document across the available width for reading.
+- **Preview** uses the full pane for the formatted document.
 
-The preview displays headings, paragraphs, lists, quotes, links, emphasis, and code blocks using the
-current theme. Web links open in the browser. Relative file links in local documents open their
-targets in IWE. Switching views keeps each tab's draft, cursor, selection, and undo history. The
-source view stays read-only for revisions and large files. Large files display one page at a time.
-Comparison tabs keep their comparison controls.
+The formatted document centers a reading column in both views. Text wraps as the pane narrows.
+Headings, quotes, and code use distinct styles from the current theme. Long code lines scroll
+horizontally inside their blocks. Web links open in the browser. Relative file links in local
+documents open their targets in IWE. Switching views keeps each tab's draft, cursor, selection, and
+undo history. The source view stays read-only for revisions and large files. Large files display one
+page at a time. Comparison tabs keep their comparison controls.
 
 ### File tab limits and saving
 
