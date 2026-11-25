@@ -3124,6 +3124,17 @@
           "es": "Elige una vista para todos los archivos Markdown. IWE Code recuerda tu elección tras reiniciar."
         },
         "sources": ["src/app/tabs/markdown.rs", "src/domain/workspace.rs"]
+      },
+      {
+        "id": "windows-startup",
+        "category": "fixed",
+        "text": {
+          "en": "IWE Code opens its window again on Windows.",
+          "ru": "IWE Code снова открывает окно в Windows.",
+          "es": "IWE Code vuelve a abrir su ventana en Windows."
+        },
+        "sources": ["src/app/mod.rs", "src/infrastructure/external/windows.rs"],
+        "platforms": ["windows"]
       }
     ]
   },

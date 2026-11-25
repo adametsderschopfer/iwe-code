@@ -19,8 +19,5 @@ fn main() -> std::process::ExitCode {
         return code;
     }
     let i18n = std::rc::Rc::new(i18n::I18n::new(i18n::Language::English));
-    infrastructure::graphics::run(&i18n, || match infrastructure::external::startup() {
-        infrastructure::external::Startup::Forwarded => Ok(()),
-        infrastructure::external::Startup::Primary => app::run(std::rc::Rc::clone(&i18n)),
-    })
+    infrastructure::graphics::run(&i18n, || app::run(std::rc::Rc::clone(&i18n)))
 }

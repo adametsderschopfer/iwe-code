@@ -1,7 +1,7 @@
 //! Named pipe endpoint for request forwarding on Windows.
 
 use super::{Key, serve_connection};
-use std::{fs::File, io::Write, time::Duration};
+use std::{fs::OpenOptions, io::Write, time::Duration};
 use tokio::net::windows::named_pipe::{
     ClientOptions, NamedPipeClient, NamedPipeServer, ServerOptions,
 };
@@ -29,7 +29,7 @@ pub(super) fn bind() -> Option<Listener> {
 /// Send the payload to the running instance.
 pub(super) fn write_payload(payload: &[u8]) -> bool {
     for _ in 0..CONNECT_ATTEMPTS {
-        match File::create(PIPE_NAME) {
+        match OpenOptions::new().write(true).open(PIPE_NAME) {
             // The handle must close so the running instance sees the payload.
             Ok(mut stream) => return stream.write_all(payload).is_ok(),
             // The running instance may still be recreating its pipe instance.

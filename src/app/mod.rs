@@ -40,6 +40,7 @@ use crate::domain::{
     workspace::{Appearance, FileEntry, FilePanel, MarkdownViewMode, Workspace},
 };
 use crate::i18n::{I18n, Key, Language};
+use crate::infrastructure::external::{self as external_opening, Startup};
 use crate::infrastructure::{pipelines, workspace};
 use crate::ui::{code::Document, screens, theme};
 use iced::{Element, Program, Subscription, Task, Theme, keyboard, widget::pane_grid, window};
@@ -53,15 +54,30 @@ use tokio_util::sync::CancellationToken;
 const COPY_FEEDBACK_DURATION: std::time::Duration = std::time::Duration::from_secs(2);
 
 pub(crate) fn run(i18n: Rc<I18n>) -> iced::Result {
-    application(i18n).run()
+    #[cfg(not(windows))]
+    if matches!(external_opening::startup(), Startup::Forwarded) {
+        return Ok(());
+    }
+
+    // Iced enters its Tokio runtime before it calls the boot function.
+    #[cfg(windows)]
+    let startup = external_opening::startup;
+    #[cfg(not(windows))]
+    let startup = || Startup::Primary;
+
+    application(i18n, startup).run()
 }
 
 fn application(
     i18n: Rc<I18n>,
+    startup: impl Fn() -> Startup,
 ) -> iced::Daemon<impl Program<State = App, Message = Message, Theme = Theme>> {
     iced::daemon(
         move || {
             let mut app = App::new(Rc::clone(&i18n));
+            if matches!(startup(), Startup::Forwarded) {
+                return (app, iced::exit());
+            }
             app.whats_new = updates::restarted_after_update().then(updates::WhatsNew::current);
             let (id, open) = window::open(windows::main_settings());
             app.window_id = Some(id);

@@ -48,6 +48,9 @@ systems remain an open limitation: the pipe's access control cannot be narrowed 
 security-descriptor access outside the supported safe APIs. Payloads are size-capped on every
 platform.
 
+On Windows, Iced starts its Tokio runtime before the application creates the named pipe. The
+application opens a window only if it starts the primary instance.
+
 ## Window inspection
 
 The MCP window tool sends an authenticated request through the same endpoint. The window process

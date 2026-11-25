@@ -104,7 +104,8 @@ runtime and Apple notarization of the disk image activate when an owner configur
 and dark pages. They support English, Russian, and Spanish. Installation uses the current user's
 Programs directory without administrator access. The installer creates a Start menu shortcut and
 offers a desktop shortcut. Uninstalling preserves workspace data. CI checks silent installation,
-registration, and removal on both Windows architectures.
+registration, first window startup, second launch forwarding, and removal on both Windows
+architectures. The startup check uses the CPU renderer and an isolated data directory.
 
 Windows packaging uses PowerShell and the system's `tar.exe` for update archives.
 

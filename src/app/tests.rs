@@ -2270,7 +2270,7 @@ fn commit_titles_follow_the_graph_in_each_row() {
 #[test]
 fn workspace_navigation_fits_and_routes_in_every_screen_and_language() {
     for language in [Language::English, Language::Russian, Language::Spanish] {
-        let app = application(Rc::new(I18n::new(language)));
+        let app = application(Rc::new(I18n::new(language)), || Startup::Primary);
         let (mut state, _) = app.boot();
         state.loaded = true;
         assert!(Program::window(&app).is_none());
@@ -2325,7 +2325,7 @@ fn workspace_navigation_fits_and_routes_in_every_screen_and_language() {
 #[test]
 fn welcome_and_settings_fit_supported_window_sizes_in_every_language() {
     for language in [Language::English, Language::Russian, Language::Spanish] {
-        let app = application(Rc::new(I18n::new(language)));
+        let app = application(Rc::new(I18n::new(language)), || Startup::Primary);
         let (mut state, _) = app.boot();
         assert!(Program::window(&app).is_none());
         let settings = windows::main_settings();
@@ -2361,7 +2361,7 @@ fn welcome_and_settings_fit_supported_window_sizes_in_every_language() {
 #[test]
 fn header_moves_the_window_without_capturing_action_buttons() {
     for language in [Language::English, Language::Russian, Language::Spanish] {
-        let app = application(Rc::new(I18n::new(language)));
+        let app = application(Rc::new(I18n::new(language)), || Startup::Primary);
         let (mut state, _) = app.boot();
         assert!(Program::window(&app).is_none());
         let settings = windows::main_settings();
@@ -2418,7 +2418,7 @@ fn application_windows_use_opaque_theme_backgrounds() {
     assert!(!super::windows::main_settings().transparent);
     assert!(!super::windows::settings_settings().transparent);
 
-    let app = application(Rc::new(I18n::new(Language::English)));
+    let app = application(Rc::new(I18n::new(Language::English)), || Startup::Primary);
     let (mut state, _) = app.boot();
     for appearance in [Appearance::Dark, Appearance::Light] {
         let _ = state.update(Message::SetAppearance(appearance));
