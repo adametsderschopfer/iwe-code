@@ -3118,7 +3118,7 @@
     ]
   },
   {
-    "version": "unreleased",
+    "version": "1.6.4",
     "status": "prepared",
     "publishedAt": null,
     "tags": [],
@@ -3166,5 +3166,13 @@
         "sources": ["src/ui/markdown/mod.rs", "src/ui/theme/palette.rs"]
       }
     ]
+  },
+  {
+    "version": "unreleased",
+    "status": "prepared",
+    "publishedAt": null,
+    "tags": [],
+    "source": null,
+    "items": []
   }
 ]
