@@ -797,9 +797,10 @@ revisions, comparison snapshots, and paged files retain the source viewer.
 
 ### Markdown views
 
-Each `.md` or `.markdown` tab opens in **Source** mode. Use the three buttons at the right end of
-the tab bar to switch views. The buttons remain visible when the tabs scroll. Hover over a button to
-see its name.
+Markdown files open in **Source** mode by default. Use the three buttons at the right end of the tab
+bar to switch views. IWE Code applies your choice to all `.md` and `.markdown` files across projects
+and remembers it after restart. The buttons remain visible when the tabs scroll. Hover over a button
+to see its name.
 
 - **Source** shows the source across the available width.
 - **Side by side** gives the source and formatted document equal space. The preview updates as you
@@ -808,9 +809,9 @@ see its name.
 
 The preview displays headings, paragraphs, lists, quotes, links, emphasis, and code blocks using the
 current theme. Web links open in the browser. Relative file links in local documents open their
-targets in IWE. Each open tab remembers its view. Switching views keeps the draft, cursor,
-selection, and undo history. Read-only revisions and large files keep their source viewer. Large
-files display one page at a time. Comparison tabs keep their comparison controls.
+targets in IWE. Switching views keeps each tab's draft, cursor, selection, and undo history. The
+source view stays read-only for revisions and large files. Large files display one page at a time.
+Comparison tabs keep their comparison controls.
 
 ### File tab limits and saving
 

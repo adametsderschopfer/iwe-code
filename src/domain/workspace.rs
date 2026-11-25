@@ -116,6 +116,7 @@ pub(crate) struct Preferences {
     pub show_pipelines: bool,
     pub line_numbers: bool,
     pub preview_tab: bool,
+    pub markdown_view_mode: MarkdownViewMode,
     pub restore_project_tabs: bool,
     pub show_spaces_sidebar: bool,
     pub spaces_sidebar_width: f32,
@@ -178,6 +179,14 @@ pub(crate) enum DiffView {
     SideBySide,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum MarkdownViewMode {
+    #[default]
+    Source,
+    Split,
+    Preview,
+}
+
 impl Default for Preferences {
     fn default() -> Self {
         Self {
@@ -196,6 +205,7 @@ impl Default for Preferences {
             show_pipelines: false,
             line_numbers: true,
             preview_tab: false,
+            markdown_view_mode: MarkdownViewMode::default(),
             restore_project_tabs: true,
             show_spaces_sidebar: true,
             spaces_sidebar_width: Self::DEFAULT_SPACES_SIDEBAR_WIDTH,

@@ -1,9 +1,9 @@
 use super::{auth, diff, git, git_actions, pipelines, settings, unified};
 use crate::ui::tooltip;
 use crate::{
-    app::{App, Message, Navigation, Panel, error_key, spaces, tabs::MarkdownViewMode},
+    app::{App, Message, Navigation, Panel, error_key, spaces},
     domain::modules::Placement,
-    domain::workspace::{DiffView, Preferences},
+    domain::workspace::{DiffView, MarkdownViewMode, Preferences},
     i18n::{FluentArgs, Key},
     modules::ModuleId,
     ui::{
@@ -1588,7 +1588,7 @@ fn file_tabs_bar(app: &App, available_width: f32) -> Element<'_, Message> {
         ),
     ];
     let tab = app.preview();
-    let markdown_mode = tab.markdown_view_mode();
+    let markdown_mode = app.markdown_view_mode();
     let ready =
         app.preview().error.is_none() && !app.preview().loading && app.preview().editor.is_none();
     let comparison = ready
@@ -2270,7 +2270,7 @@ fn source_pane(app: &App) -> Element<'_, Message> {
 
 fn file_panes(app: &App) -> Element<'_, Message> {
     let Some(mode @ (MarkdownViewMode::Split | MarkdownViewMode::Preview)) =
-        app.preview().markdown_view_mode()
+        app.markdown_view_mode()
     else {
         return source_pane(app);
     };

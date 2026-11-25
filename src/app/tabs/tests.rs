@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    domain::repository::GraphRow,
+    domain::{repository::GraphRow, workspace::MarkdownViewMode},
     i18n::{I18n, Language},
 };
 use std::rc::Rc;
@@ -2652,7 +2652,7 @@ fn local_markdown_links_resolve_relative_to_the_open_file() {
 }
 
 #[test]
-fn markdown_modes_retain_each_tabs_draft_cursor_selection_and_undo() {
+fn shared_markdown_mode_preserves_each_tabs_draft_cursor_selection_and_undo() {
     use crate::app::editor::Event;
     use MarkdownViewMode::{Preview, Source, Split};
     use iced::widget::text_editor::{Action, Cursor, Edit, Position};
@@ -2660,8 +2660,9 @@ fn markdown_modes_retain_each_tabs_draft_cursor_selection_and_undo() {
     let mut app = app();
     let first = open(&mut app, "one.MD");
     let _ = app.finish_preview(first, Ok(Document::plain("alpha".into())));
-    assert_eq!(app.preview().markdown_view_mode(), Some(Source));
+    assert_eq!(app.markdown_view_mode(), Some(Source));
     let _ = app.update(Message::SetMarkdownViewMode(first, Split));
+    assert!(app.saving);
     let _ = app.update(Message::Editor(Event::Action(
         first,
         Action::Edit(Edit::Insert('#')),
@@ -2685,13 +2686,18 @@ fn markdown_modes_retain_each_tabs_draft_cursor_selection_and_undo() {
     assert_eq!(snapshot["selection"]["text"], "alpha");
 
     let second = open(&mut app, "two.markdown");
-    let _ = app.finish_preview(second, Ok(Document::plain("second".into())));
-    assert_eq!(app.preview().markdown_view_mode(), Some(Source));
+    let _ = app.update(Message::FileLoaded(
+        app.generation,
+        second,
+        Ok(Document::plain("second".into())),
+    ));
+    assert_eq!(app.markdown_view_mode(), Some(Preview));
+    assert!(!app.markdown.items.is_empty());
     let _ = app.update(Message::SetMarkdownViewMode(first, Source));
-    assert_eq!(app.preview().markdown_view_mode(), Some(Source));
+    assert_eq!(app.markdown_view_mode(), Some(Preview));
     let _ = app.update(Message::SetMarkdownViewMode(second, Split));
     let _ = app.select_tab(first);
-    assert_eq!(app.preview().markdown_view_mode(), Some(Preview));
+    assert_eq!(app.markdown_view_mode(), Some(Split));
     let _ = app.update(Message::SetMarkdownViewMode(first, Source));
     let buffer = app.editor_buffer().unwrap();
     assert_eq!(buffer.content.cursor(), cursor);
@@ -2703,7 +2709,44 @@ fn markdown_modes_retain_each_tabs_draft_cursor_selection_and_undo() {
     let _ = app.update(Message::Editor(Event::Undo(first, true)));
     assert_eq!(app.editor_buffer().unwrap().content.text(), "#alpha");
     let _ = app.select_tab(second);
-    assert_eq!(app.preview().markdown_view_mode(), Some(Split));
+    assert_eq!(app.markdown_view_mode(), Some(Source));
+    assert!(app.markdown.items.is_empty());
+}
+
+#[test]
+fn stored_markdown_mode_applies_after_restart_and_project_switch() {
+    let mut app = app();
+    let first = open(&mut app, "one.md");
+    let _ = app.finish_preview(first, Ok(Document::plain("# One".into())));
+    let _ = app.update(Message::SetMarkdownViewMode(
+        first,
+        MarkdownViewMode::Preview,
+    ));
+    app.workspace.add_project(0, PathBuf::from("other-project"));
+    app.workspace.select_project(0, 0);
+
+    let json = serde_json::to_string(&app.workspace).unwrap();
+    let mut restored = App::new(Rc::new(I18n::new(Language::English)));
+    restored.workspace = serde_json::from_str(&json).unwrap();
+    let _ = restored.load_directory();
+    let first = restored.preview().id;
+    assert_eq!(restored.preview().title, "one.md");
+    let _ = restored.finish_preview(first, Ok(Document::plain("# One".into())));
+    assert_eq!(
+        restored.markdown_view_mode(),
+        Some(MarkdownViewMode::Preview)
+    );
+
+    restored.workspace.select_project(0, 1);
+    let _ = restored.load_directory();
+    let _ = restored.open_file(PathBuf::from("other-project/two.md"));
+    let second = restored.preview().id;
+    let _ = restored.finish_preview(second, Ok(Document::plain("# Two".into())));
+    assert_eq!(
+        restored.markdown_view_mode(),
+        Some(MarkdownViewMode::Preview)
+    );
+    assert!(restored.editor_buffer().is_none());
 }
 
 #[test]
@@ -2716,10 +2759,7 @@ fn markdown_modes_support_plain_revisions_and_pages_and_exclude_comparisons() {
         revision,
         MarkdownViewMode::Preview,
     ));
-    assert_eq!(
-        app.preview().markdown_view_mode(),
-        Some(MarkdownViewMode::Preview)
-    );
+    assert_eq!(app.markdown_view_mode(), Some(MarkdownViewMode::Preview));
     assert!(app.preview().editor.is_none());
 
     let page = open(&mut app, "large.md");
@@ -2729,23 +2769,24 @@ fn markdown_modes_support_plain_revisions_and_pages_and_exclude_comparisons() {
         version: None,
     }));
     let _ = app.finish_preview(page, Ok(document));
-    assert_eq!(
-        app.preview().markdown_view_mode(),
-        Some(MarkdownViewMode::Source)
-    );
+    assert_eq!(app.markdown_view_mode(), Some(MarkdownViewMode::Preview));
     assert!(app.preview().editor.is_none());
 
     for name in ["plain.txt", "jsx.mdx"] {
         let id = open(&mut app, name);
         let _ = app.finish_preview(id, Ok(Document::plain("text".into())));
-        let _ = app.update(Message::SetMarkdownViewMode(id, MarkdownViewMode::Preview));
-        assert!(app.preview().markdown_view_mode().is_none());
+        let _ = app.update(Message::SetMarkdownViewMode(id, MarkdownViewMode::Source));
+        assert!(app.markdown_view_mode().is_none());
         assert!(app.editor_buffer().is_some());
     }
     let diff = open_change(&mut app, "guide.md");
     let _ = app.finish_preview(diff, Ok(Document::plain("# Unchanged".into())));
     let _ = app.update(Message::SetMarkdownViewMode(diff, MarkdownViewMode::Split));
-    assert!(app.preview().markdown_view_mode().is_none());
+    assert!(app.markdown_view_mode().is_none());
+    assert_eq!(
+        app.workspace.preferences.markdown_view_mode,
+        MarkdownViewMode::Preview
+    );
 }
 
 #[test]

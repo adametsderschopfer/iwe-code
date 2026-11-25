@@ -37,7 +37,7 @@ use crate::domain::{
         ChangedFile, Provider,
         project::{BranchKey, CommitKey, ProjectHistoryPage as HistoryPage, RepositorySet},
     },
-    workspace::{Appearance, FileEntry, FilePanel, Workspace},
+    workspace::{Appearance, FileEntry, FilePanel, MarkdownViewMode, Workspace},
 };
 use crate::i18n::{I18n, Key, Language};
 use crate::infrastructure::{pipelines, workspace};
@@ -378,7 +378,7 @@ pub(crate) enum Message {
     OpenCommitFile(usize),
     FileLoaded(u64, u64, Result<Document, Failure>),
     ToggleSvgSource(u64),
-    SetMarkdownViewMode(u64, tabs::MarkdownViewMode),
+    SetMarkdownViewMode(u64, MarkdownViewMode),
     ImageLoaded(u64, u64, Result<iced::widget::image::Handle, Failure>),
     EditorSyntax(u64, std::sync::Arc<crate::ui::editor::syntax::Prepared>),
     EditorFileRead(u64, u64, Document, Box<editor::Buffer>),
@@ -549,7 +549,10 @@ impl App {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         let task = self.handle_message(message);
-        self.tabs.update_markdown(&mut self.markdown);
+        self.tabs.update_markdown(
+            self.workspace.preferences.markdown_view_mode,
+            &mut self.markdown,
+        );
         self.dismiss_stale_color_picker();
         task
     }

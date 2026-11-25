@@ -691,9 +691,9 @@ baseline. Server saves use typed deployment operations and completion effects. T
 import application state. Save completions carry operation tokens and never replace newer draft
 text.
 
-Each open Markdown tab stores its view mode. The workspace parses the active editor snapshot for the
-formatted view. Read-only tabs use the loaded source text. The workspace reuses the parsed document
-until the source changes. Switching modes keeps the same editor buffer.
+Workspace preferences store one view mode for all Markdown tabs. The workspace parses the active
+editor snapshot for the formatted view. Read-only tabs use the loaded source text. The workspace
+reuses the parsed document until the source changes. Switching modes keeps the same editor buffer.
 
 `app/tabs.rs` records project-relative local tab paths, comparison mode, and the active tab in
 workspace metadata. It reopens the remembered tabs when their project becomes active. Normal exit

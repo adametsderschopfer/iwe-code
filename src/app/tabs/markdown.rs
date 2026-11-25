@@ -1,7 +1,10 @@
 //! Prepare the active Markdown document and route its links.
 
 use super::{App, Preview, Source, State};
-use crate::{app::Message, domain::external::Request};
+use crate::{
+    app::Message,
+    domain::{external::Request, language::Language, workspace::MarkdownViewMode},
+};
 use iced::{
     Task,
     widget::{markdown, operation},
@@ -9,27 +12,20 @@ use iced::{
 use std::sync::{Arc, Weak};
 use url::{ParseError, Url};
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) enum MarkdownViewMode {
-    #[default]
-    Source,
-    Split,
-    Preview,
-}
-
 impl Preview {
-    pub(crate) fn markdown_view_mode(&self) -> Option<MarkdownViewMode> {
-        use crate::domain::language::Language;
-
-        let path = self.path.as_deref()?;
-        let document = self.document.as_ref()?;
+    pub(in crate::app) fn supports_markdown_view(&self) -> bool {
+        let (Some(path), Some(document), Some(source)) =
+            (self.path.as_deref(), &self.document, &self.source)
+        else {
+            return false;
+        };
         if document.comparison.is_some()
             || self.pending_comparison.is_some()
             || (self.editor.is_none() && (self.loading || self.error.is_some()))
         {
-            return None;
+            return false;
         }
-        let plain_file = match self.source.as_ref()? {
+        let plain_file = match source {
             Source::Working { compare, .. } => !*compare,
             Source::Revision { .. } => true,
             Source::Commit { .. } => document.page.is_some(),
@@ -39,12 +35,7 @@ impl Preview {
                 ..
             } => previous.is_none() && local_root.is_none(),
         };
-        (plain_file && Language::for_path(path) == Some(Language::Markdown))
-            .then_some(self.markdown_mode)
-    }
-
-    pub(in crate::app) fn reading_markdown(&self) -> bool {
-        self.markdown_mode == MarkdownViewMode::Preview && self.markdown_view_mode().is_some()
+        plain_file && Language::for_path(path) == Some(Language::Markdown)
     }
 
     pub(crate) fn markdown_link(&self, link: String) -> Message {
@@ -63,31 +54,37 @@ impl Preview {
 }
 
 impl App {
+    pub(crate) fn markdown_view_mode(&self) -> Option<MarkdownViewMode> {
+        self.preview()
+            .supports_markdown_view()
+            .then_some(self.workspace.preferences.markdown_view_mode)
+    }
+
     pub(in crate::app) fn set_markdown_view_mode(
         &mut self,
         id: u64,
         mode: MarkdownViewMode,
     ) -> Task<Message> {
-        let tab = &mut self.tabs.files[self.tabs.active];
-        if tab.id != id
-            || tab
+        if self.preview().id != id
+            || self
                 .markdown_view_mode()
                 .is_none_or(|current| current == mode)
         {
             return Task::none();
         }
-        tab.markdown_mode = mode;
+        self.workspace.preferences.markdown_view_mode = mode;
         self.editor.menu = None;
         self.editor.rename = None;
         self.editor.suggestions = None;
         self.editor.definitions.clear();
-        if mode == MarkdownViewMode::Preview {
+        let focus = if mode == MarkdownViewMode::Preview {
             Task::none()
-        } else if tab.editor.is_some() {
+        } else if self.preview().editor.is_some() {
             operation::focus(format!("text-editor-{id}"))
         } else {
             self.restore_preview_scroll()
-        }
+        };
+        Task::batch([focus, self.save()])
     }
 }
 
@@ -103,10 +100,12 @@ enum Snapshot {
 }
 
 impl State {
-    pub(crate) fn update_markdown(&self, cache: &mut Cache) {
-        let Some(tab) = self.files.get(self.active).filter(|tab| {
-            tab.markdown_mode != MarkdownViewMode::Source && tab.markdown_view_mode().is_some()
-        }) else {
+    pub(in crate::app) fn update_markdown(&self, mode: MarkdownViewMode, cache: &mut Cache) {
+        let Some(tab) = self
+            .files
+            .get(self.active)
+            .filter(|tab| mode != MarkdownViewMode::Source && tab.supports_markdown_view())
+        else {
             if cache.source.is_some() {
                 *cache = Cache::default();
             }

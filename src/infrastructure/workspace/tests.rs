@@ -42,6 +42,10 @@ fn legacy_storage_is_backed_up_before_spaces_are_saved() {
     assert_eq!(restored.spaces[0].projects.len(), 2);
     assert_eq!(restored.preferences.language.as_deref(), Some("ru"));
     assert_eq!(
+        restored.preferences.markdown_view_mode,
+        crate::domain::workspace::MarkdownViewMode::Source
+    );
+    assert_eq!(
         restored.preferences.appearance,
         crate::domain::workspace::Appearance::Dark
     );
@@ -61,10 +65,15 @@ fn storage_roundtrip_preserves_preferences_and_overwrites_atomically() {
     workspace.preferences.language = Some("es".to_owned());
     workspace.preferences.code_size = 18;
     workspace.preferences.appearance = crate::domain::workspace::Appearance::Light;
+    workspace.preferences.markdown_view_mode = crate::domain::workspace::MarkdownViewMode::Split;
     save_at(&path, &workspace).unwrap();
     let restored: Workspace = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
     assert_eq!(restored.preferences.language.as_deref(), Some("es"));
     assert_eq!(restored.preferences.code_size, 18);
+    assert_eq!(
+        restored.preferences.markdown_view_mode,
+        crate::domain::workspace::MarkdownViewMode::Split
+    );
     assert_eq!(
         restored.preferences.appearance,
         crate::domain::workspace::Appearance::Light

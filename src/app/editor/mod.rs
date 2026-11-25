@@ -1,7 +1,11 @@
 //! Coordinate text actions, asynchronous saves, and unsaved-change decisions.
 
 use super::{App, Message};
-use crate::{domain::editor::Document, i18n::Key, infrastructure::editor};
+use crate::{
+    domain::{editor::Document, workspace::MarkdownViewMode},
+    i18n::Key,
+    infrastructure::editor,
+};
 use iced::{Task, widget::text_editor};
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
@@ -207,7 +211,7 @@ impl App {
 
     pub(crate) fn editor_buffer(&self) -> Option<&Buffer> {
         self.text_buffer()
-            .filter(|_| !self.preview().reading_markdown())
+            .filter(|_| self.markdown_view_mode() != Some(MarkdownViewMode::Preview))
     }
 
     pub(crate) fn editor_pending_tab(&self, id: u64) -> bool {
@@ -446,11 +450,12 @@ impl App {
 
     pub(super) fn update_editor(&mut self, event: Event) -> Task<Message> {
         if let Event::Action(id, _) | Event::Replace(id, _) | Event::Undo(id, _) = &event
+            && self.workspace.preferences.markdown_view_mode == MarkdownViewMode::Preview
             && self
                 .tabs
                 .files
                 .iter()
-                .any(|tab| tab.id == *id && tab.reading_markdown())
+                .any(|tab| tab.id == *id && tab.supports_markdown_view())
         {
             return Task::none();
         }

@@ -3114,6 +3114,16 @@
           "es": "Los enlaces del sitio y los metadatos de búsqueda ahora usan iwe-code.ru."
         },
         "sources": ["README.md", "website/public/sitemap.xml", "website/public/robots.txt"]
+      },
+      {
+        "id": "shared-markdown-view-mode",
+        "category": "changed",
+        "text": {
+          "en": "Choose a view once for all Markdown files. IWE Code remembers your choice after restart.",
+          "ru": "Выберите режим просмотра один раз для всех файлов Markdown. IWE Code запомнит выбор после перезапуска.",
+          "es": "Elige una vista para todos los archivos Markdown. IWE Code recuerda tu elección tras reiniciar."
+        },
+        "sources": ["src/app/tabs/markdown.rs", "src/domain/workspace.rs"]
       }
     ]
   }
