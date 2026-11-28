@@ -1,5 +1,6 @@
 use super::*;
 use crate::i18n::{I18n, Language};
+use crate::ui::theme::iced;
 use std::{rc::Rc, sync::Arc};
 
 fn app() -> App {
@@ -27,7 +28,7 @@ fn pointer_hover_changes_only_the_enabled_dialog_button_in_both_themes() {
                 .visible_bounds()
                 .unwrap()
         });
-        let sample = |ui: &mut Simulator<'_, Message>, cursor: Point| {
+        let sample = |ui: &mut Simulator<'_, Message, iced::Theme>, cursor: Point| {
             ui.point_at(cursor);
             ui.simulate([iced::Event::Mouse(mouse::Event::CursorMoved {
                 position: cursor,

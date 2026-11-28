@@ -10,6 +10,7 @@ use crate::modules::pipelines::{
 
 use super::{divider, icon_button, jobs, status};
 use crate::ui::presentation::IconButton;
+use crate::ui::theme::iced;
 use crate::ui::tooltip;
 use crate::{
     domain::{

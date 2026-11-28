@@ -1,5 +1,6 @@
 use super::*;
 use crate::i18n::{I18n, Language};
+use crate::ui::theme::iced;
 use std::{path::PathBuf, rc::Rc};
 
 fn folder_test_app(grouped: bool) -> (App, Vec<PathBuf>) {

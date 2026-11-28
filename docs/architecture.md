@@ -541,10 +541,11 @@ The default dark theme uses an opaque charcoal background (`#212121`) and naviga
 (`#181818`). The optional light theme uses `#fafafa` and `#f0f0f0`. Headers, settings, and panel
 gaps share the workspace background. Desktop colors never show through these surfaces.
 
-Settings persist the selected appearance. Semantic colors in `ui/theme` resolve against Iced's
-current theme. Syntax preparation stores paired colors. Switching themes preserves documents and
-does not repeat highlighting. Source row and overview caches invalidate their colors when appearance
-changes.
+The executable bundles Iwe and Islands. Settings persist the theme ID and appearance in workspace
+metadata. The theme adapter validates files and copies them into the configuration directory. The
+Iced theme carries resolved colors, fonts, metrics, and icon shapes to the interface. Source
+highlighting retains semantic roles. Theme changes preserve document state and invalidate cached
+drawing colors. See [theme files](themes.md) for the format and storage behavior.
 
 The left sidebar contains navigation and projects. A separate file panel sits beside the source
 preview, with a vertical toolbar on its left. Flat content panes use subtle separators instead of

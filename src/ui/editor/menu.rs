@@ -1,5 +1,6 @@
 //! Render keyboard-accessible editor actions and the local rename dialog.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{
         App, Message,

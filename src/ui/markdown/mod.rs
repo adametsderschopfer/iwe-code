@@ -1,5 +1,6 @@
 //! Display a read-only Markdown document with the workspace palette and fonts.
 
+use crate::ui::theme::iced;
 mod selection;
 
 use crate::{domain::shortcuts::Shortcuts, ui::theme};
@@ -30,8 +31,8 @@ pub(crate) fn view<'a>(
     identity: (u64, u64),
     shortcuts: &Shortcuts,
 ) -> Element<'a, Action> {
-    let mut style = markdown::Style::from(appearance);
-    style.font = theme::font();
+    let mut style = markdown::Style::from(appearance.native());
+    style.font = appearance.interface_font();
     style.link_color = theme::BLUE.resolve(appearance);
     style.inline_code_highlight.background = theme::MARKDOWN_INLINE_CODE.resolve(appearance).into();
     style.inline_code_padding = [0, 3].into();
@@ -77,7 +78,7 @@ pub(crate) fn view<'a>(
 
 struct Viewer(selection::Shared);
 
-impl<'a> markdown::Viewer<'a, Action> for Viewer {
+impl<'a> markdown::Viewer<'a, Action, Theme> for Viewer {
     fn on_link_click(url: String) -> Action {
         Action::Link(url)
     }
@@ -104,7 +105,7 @@ impl<'a> markdown::Viewer<'a, Action> for Viewer {
             (_, H1 | H2) => 16,
             _ => 8,
         };
-        settings.style.font = theme::semibold();
+        settings.style.font.weight = iced::font::Weight::Semibold;
         container(self.0.block(value.spans(settings.style), |rich| {
             rich.size(size).line_height(1.22).style(theme::TEXT.text())
         }))
@@ -148,7 +149,7 @@ impl<'a> markdown::Viewer<'a, Action> for Viewer {
                 border: Border {
                     color: theme::LINE.resolve(appearance),
                     width: 1.,
-                    radius: theme::CONTROL_RADIUS.into(),
+                    radius: appearance.control_radius().into(),
                 },
                 ..theme::code_surface(appearance)
             })
@@ -177,7 +178,7 @@ impl<'a> markdown::Viewer<'a, Action> for Viewer {
             rule::vertical(2).style(|appearance| rule::Style {
                 color: theme::BLUE.resolve(appearance),
                 radius: 1.0.into(),
-                ..rule::default(appearance)
+                ..rule::default(appearance.native())
             }),
             markdown::items(self, settings, contents),
         ]
@@ -195,7 +196,7 @@ impl<'a> markdown::Viewer<'a, Action> for Viewer {
         rule::horizontal(1)
             .style(|appearance| rule::Style {
                 color: theme::LINE.resolve(appearance),
-                ..rule::default(appearance)
+                ..rule::default(appearance.native())
             })
             .into()
     }

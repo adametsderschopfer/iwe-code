@@ -1,5 +1,6 @@
 use super::theme;
 use crate::domain::repository::GraphRow;
+use crate::ui::theme::iced;
 
 use iced::{
     Element, Point, Rectangle, Renderer, Theme, mouse,
@@ -27,7 +28,7 @@ pub(crate) fn view<'a, Message: 'a>(row: &'a GraphRow, width: f32) -> Element<'a
 }
 
 struct Graph<'a>(&'a GraphRow);
-impl<Message> canvas::Program<Message> for Graph<'_> {
+impl<Message> canvas::Program<Message, Theme> for Graph<'_> {
     type State = ();
     fn draw(
         &self,

@@ -20,6 +20,7 @@ use iced::{
 };
 use std::collections::BTreeMap;
 
+use crate::ui::theme::iced;
 #[derive(Debug, Clone)]
 pub(crate) enum Interaction {
     Select(Option<Id>),
@@ -186,7 +187,7 @@ impl Drawing<'_> {
             .find(|node| self.camera.rect(node, bounds).contains(at))
     }
 }
-impl canvas::Program<Event> for Drawing<'_> {
+impl canvas::Program<Event, Theme> for Drawing<'_> {
     type State = Option<(Point, Option<Id>)>;
     fn update(
         &self,
@@ -325,7 +326,7 @@ impl canvas::Program<Event> for Drawing<'_> {
                         position: Point::new(rect.x + 9. * scale, rect.y + y * scale),
                         size: (size * scale).into(),
                         color: tone,
-                        font: theme::font(),
+                        font: theme.interface_font(),
                         ..Default::default()
                     });
                 }

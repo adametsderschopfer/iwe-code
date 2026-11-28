@@ -1,5 +1,6 @@
 //! Render the Windows header menu bar and its anchored dropdown menus.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message, Navigation, SettingsTab, menu_bar::Menu},
     i18n::Key,

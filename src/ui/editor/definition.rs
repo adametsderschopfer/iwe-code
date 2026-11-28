@@ -1,5 +1,6 @@
 //! Let users choose among multiple definition locations.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message, editor::Event},
     ui::{context_menu, theme},

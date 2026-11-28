@@ -1,6 +1,7 @@
 //! Keep command-click selection separate from ordinary controls and outside clicks.
 
 use crate::modules::git::selection::{Event as SelectionEvent, Target};
+use crate::ui::theme::iced;
 use iced::{
     Element, Event, Length, Rectangle, Renderer, Size, Theme, Vector,
     advanced::{

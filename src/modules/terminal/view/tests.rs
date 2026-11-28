@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 use iced::keyboard::{Key, Modifiers, key::Named};
 
 #[test]

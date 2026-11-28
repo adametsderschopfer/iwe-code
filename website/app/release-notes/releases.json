@@ -3203,6 +3203,30 @@
           "es": "Arrastra proyectos entre espacios en la barra lateral."
         },
         "sources": ["src/ui/reorder/mod.rs", "src/app/spaces.rs"]
+      },
+      {
+        "id": "workspace-themes",
+        "category": "added",
+        "text": {
+          "en": "Choose a theme and its light or dark variant in General settings. Import themes from JSON files.",
+          "ru": "Выбирайте тему и её светлый или тёмный вариант в общих настройках. Импортируйте темы из файлов JSON.",
+          "es": "Elige un tema y su variante clara u oscura en los ajustes generales. Importa temas desde archivos JSON."
+        },
+        "sources": [
+          "src/ui/screens/settings.rs",
+          "src/infrastructure/themes/mod.rs",
+          "docs/themes.md"
+        ]
+      },
+      {
+        "id": "islands-workspace-theme",
+        "category": "added",
+        "text": {
+          "en": "Choose Islands for a cooler workspace palette, rounded controls, and JetBrains Mono.",
+          "ru": "Выберите Islands для более холодной палитры, скруглённых элементов управления и шрифта JetBrains Mono.",
+          "es": "Elige Islands para usar una paleta más fría, controles redondeados y la fuente JetBrains Mono."
+        },
+        "sources": ["assets/themes/islands.json", "src/ui/theme/runtime.rs"]
       }
     ]
   }

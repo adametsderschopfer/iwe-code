@@ -1,5 +1,6 @@
 //! Draw line numbers from the editor's actual layout and scroll position.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{
         Message,
@@ -44,7 +45,7 @@ impl Gutter<'_> {
     }
 }
 
-impl canvas::Program<Message> for Gutter<'_> {
+impl canvas::Program<Message, Theme> for Gutter<'_> {
     type State = ();
 
     fn mouse_interaction(

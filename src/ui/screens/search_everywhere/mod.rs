@@ -1,5 +1,6 @@
 //! Present a keyboard-driven search popup above the workspace.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{
         App, Message,

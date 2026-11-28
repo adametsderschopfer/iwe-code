@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 
 #[test]
 fn syntax_selection_covers_extensions_and_named_build_files() {

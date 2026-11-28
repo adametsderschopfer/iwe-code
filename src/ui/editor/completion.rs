@@ -1,5 +1,6 @@
 //! Display completion candidates beside the text cursor.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message, editor::Event},
     ui::theme,

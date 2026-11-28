@@ -1,5 +1,6 @@
 //! Render declarative panels described by external modules.
 
+use crate::ui::theme::iced;
 use crate::{
     app::modules::external,
     domain::modules::{ButtonStyle, TextStyle, WidgetAction, WidgetNode},

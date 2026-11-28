@@ -3,11 +3,12 @@ use crate::{app::Message, ui::theme};
 use iced::{Element, Point, Rectangle, Renderer, Theme, mouse, widget::canvas};
 use std::time::Instant;
 
+use crate::ui::theme::iced;
 pub(super) fn view<'a>() -> Element<'a, Message> {
     canvas::Canvas::new(Spinner).width(16).height(16).into()
 }
 struct Spinner;
-impl canvas::Program<Message> for Spinner {
+impl canvas::Program<Message, Theme> for Spinner {
     type State = Option<Instant>;
     fn update(
         &self,

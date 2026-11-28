@@ -2,6 +2,7 @@
 
 use super::{GUTTER, caption, error_key};
 use crate::ui::modal;
+use crate::ui::theme::iced;
 use crate::{
     i18n::{I18n, Key},
     modules::docker::{Action, Draft, Event, Kind, State, container::Field},

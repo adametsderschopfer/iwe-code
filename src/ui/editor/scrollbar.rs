@@ -1,5 +1,6 @@
 //! Keep the editor scroll position visible and draggable.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{Message, editor::Event as EditorEvent},
     ui::theme,
@@ -42,7 +43,7 @@ impl Scrollbar<'_> {
     }
 }
 
-impl canvas::Program<Message> for Scrollbar<'_> {
+impl canvas::Program<Message, Theme> for Scrollbar<'_> {
     type State = Option<(u64, f32)>;
 
     fn mouse_interaction(
@@ -122,7 +123,7 @@ impl canvas::Program<Message> for Scrollbar<'_> {
             &canvas::Path::rounded_rectangle(
                 Point::new(thumb.x, thumb.y),
                 thumb.size(),
-                theme::CONTROL_RADIUS.into(),
+                theme.control_radius().into(),
             ),
             theme::scrollbar_thumb(
                 theme,

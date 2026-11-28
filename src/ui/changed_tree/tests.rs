@@ -1,5 +1,6 @@
 use super::*;
 use crate::i18n::Language;
+use crate::ui::theme::iced;
 use iced::widget::{container, scrollable};
 
 #[derive(Clone, Debug, PartialEq)]

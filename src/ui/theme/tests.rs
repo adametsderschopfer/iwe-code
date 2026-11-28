@@ -1,3 +1,4 @@
+use super::iced;
 use super::*;
 
 fn luminance(color: Color) -> f32 {
@@ -157,7 +158,10 @@ fn light_text_remains_readable_on_neutral_surfaces() {
             FILE_MODIFIED,
         ] {
             assert!(
-                contrast(foreground.light, background.light) >= 4.5,
+                contrast(
+                    foreground.resolve(&Theme::Light),
+                    background.resolve(&Theme::Light)
+                ) >= 4.5,
                 "{foreground:?} on {background:?}"
             );
         }
@@ -180,9 +184,9 @@ fn syntax_colors_remain_readable_in_light_diff_rows() {
         let highlight = change_fill(unified_color(change), &Theme::Light, 0.30);
         let opacity = row.a + (1. - row.a) * highlight.a;
         let background = Color {
-            r: color.r * opacity + CODE_BACKGROUND.light.r * (1. - opacity),
-            g: color.g * opacity + CODE_BACKGROUND.light.g * (1. - opacity),
-            b: color.b * opacity + CODE_BACKGROUND.light.b * (1. - opacity),
+            r: color.r * opacity + CODE_BACKGROUND.resolve(&Theme::Light).r * (1. - opacity),
+            g: color.g * opacity + CODE_BACKGROUND.resolve(&Theme::Light).g * (1. - opacity),
+            b: color.b * opacity + CODE_BACKGROUND.resolve(&Theme::Light).b * (1. - opacity),
             a: 1.,
         };
         for foreground in [
@@ -198,9 +202,48 @@ fn syntax_colors_remain_readable_in_light_diff_rows() {
             syntax::DECORATOR,
         ] {
             assert!(
-                contrast(foreground.light, background) >= 4.5,
+                contrast(foreground.resolve(&Theme::Light), background) >= 4.5,
                 "{change:?}: {foreground:?} on {background:?}"
             );
+        }
+    }
+}
+
+#[test]
+fn islands_keeps_interface_and_editor_text_readable_in_both_variants() {
+    use crate::domain::workspace::Appearance;
+    for appearance in [Appearance::Dark, Appearance::Light] {
+        let theme = Theme::islands(appearance);
+        for (foreground, background) in [
+            (TEXT, BACKGROUND),
+            (MUTED, SIDEBAR),
+            (BLUE, BACKGROUND),
+            (PRIMARY_TEXT, PRIMARY),
+            (PRIMARY_TEXT, PRIMARY_HOVER),
+        ] {
+            assert!(
+                contrast(foreground.resolve(&theme), background.resolve(&theme)) >= 4.5,
+                "{appearance:?}: {foreground:?} on {background:?}"
+            );
+        }
+        for foreground in [
+            syntax::TEXT,
+            syntax::KEYWORD,
+            syntax::FUNCTION,
+            syntax::STRING,
+            syntax::COMMENT,
+            syntax::NUMBER,
+            syntax::PARAMETER,
+            syntax::FIELD,
+            syntax::ESCAPE,
+            syntax::DECORATOR,
+        ] {
+            for background in [CODE_BACKGROUND, CODE_SELECTION] {
+                assert!(
+                    contrast(foreground.resolve(&theme), background.resolve(&theme)) >= 4.5,
+                    "{appearance:?}: {foreground:?} on {background:?}"
+                );
+            }
         }
     }
 }

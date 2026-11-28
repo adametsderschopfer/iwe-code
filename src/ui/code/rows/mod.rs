@@ -1,5 +1,6 @@
 //! Preserve text layout for source rows that remain in the visible range.
 
+use crate::ui::theme::iced;
 use iced::{
     Element, Event, Length, Rectangle, Renderer, Size, Theme,
     advanced::{

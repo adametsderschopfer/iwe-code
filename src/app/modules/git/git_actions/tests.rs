@@ -3,6 +3,7 @@ use crate::domain::{
     git::Error,
     repository::{Branch, ReferenceKind},
 };
+use crate::ui::theme::iced;
 use crate::{
     domain::repository::Repository,
     i18n::{I18n, Language},

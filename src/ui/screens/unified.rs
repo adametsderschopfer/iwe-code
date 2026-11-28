@@ -1,5 +1,6 @@
 //! Compose a unified comparison with both source line numbers and compact fold separators.
 
+use crate::ui::theme::iced;
 use crate::ui::tooltip;
 use crate::{
     app::{App, Message},
@@ -158,7 +159,7 @@ pub(super) fn fold<'a>(
 
 struct FoldSeparator;
 
-impl<Message> canvas::Program<Message> for FoldSeparator {
+impl<Message> canvas::Program<Message, Theme> for FoldSeparator {
     type State = ();
     fn draw(
         &self,

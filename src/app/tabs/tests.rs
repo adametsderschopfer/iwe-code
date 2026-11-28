@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 use crate::{
     domain::{repository::GraphRow, workspace::MarkdownViewMode},
     i18n::{I18n, Language},

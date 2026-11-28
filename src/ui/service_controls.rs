@@ -1,6 +1,8 @@
 //! Share localized actions, fields, and resource rows across bundled modules.
+
 use super::theme;
 use crate::i18n::{I18n, Key};
+use crate::ui::theme::iced;
 use iced::{
     Element, Length,
     widget::{Button, button, row, text},

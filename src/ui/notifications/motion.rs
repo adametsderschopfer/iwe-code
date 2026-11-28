@@ -1,6 +1,7 @@
 //! Slide departing cards out, then release their space without scaling their contents.
 
 use crate::ui::theme;
+use crate::ui::theme::iced;
 use iced::{
     Element, Event, Length, Point, Rectangle, Renderer, Size, Theme, Vector,
     advanced::{

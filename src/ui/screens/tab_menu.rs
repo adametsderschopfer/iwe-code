@@ -1,5 +1,6 @@
 //! List open source tabs when the tab strip does not fit the available width.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message},
     ui::{context_menu, ellipsis, file_icons, theme, tooltip},

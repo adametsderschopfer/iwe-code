@@ -7,6 +7,7 @@ use crate::domain::{
 };
 use crate::modules::pipelines::jobs::Event;
 use crate::ui::presentation::error_key;
+use crate::ui::theme::iced;
 use crate::ui::tooltip;
 use crate::{
     i18n::Key,

@@ -3,6 +3,7 @@
 use super::{App, Message};
 #[cfg(target_os = "macos")]
 use crate::infrastructure::window_effect;
+use crate::ui::theme::iced;
 use crate::{
     i18n::Key,
     ui::{screens, theme},
@@ -387,6 +388,10 @@ impl App {
     }
 
     pub(super) fn view_window(&self, id: window::Id) -> Element<'_, Message> {
+        self.theme().with_typography(|| self.window_content(id))
+    }
+
+    fn window_content(&self, id: window::Id) -> Element<'_, Message> {
         if !self.windows.is_secondary(id) {
             return self.view();
         }

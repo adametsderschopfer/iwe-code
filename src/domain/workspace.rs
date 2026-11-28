@@ -105,6 +105,8 @@ pub(crate) struct Preferences {
     pub language: Option<String>,
     pub shortcuts: super::shortcuts::Shortcuts,
     pub appearance: Appearance,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theme: Option<String>,
     pub code_size: u16,
     pub code_line_height: u16,
     pub code_font: CodeFont,
@@ -194,6 +196,7 @@ impl Default for Preferences {
             language: None,
             shortcuts: super::shortcuts::Shortcuts::default(),
             appearance: Appearance::default(),
+            theme: None,
             code_size: 14,
             code_line_height: 165,
             code_font: CodeFont::default(),

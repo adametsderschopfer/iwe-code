@@ -1,35 +1,22 @@
 //! Resolve protocol colors while preserving readable defaults in both themes.
 
-use crate::ui::theme::{self, Tone};
+use crate::domain::theme::ColorRole;
+use crate::ui::theme::iced;
 use iced::{Color, Theme};
 
 pub(crate) fn background(theme: &Theme) -> Color {
-    theme::code_background(theme)
+    theme.color(ColorRole::TerminalBackground)
+}
+
+pub(crate) fn foreground(theme: &Theme) -> Color {
+    theme.color(ColorRole::TerminalText)
 }
 
 pub(crate) fn color(color: vt100::Color, default: Color, theme: &Theme) -> Color {
-    const ANSI: [Tone; 16] = [
-        Tone::new(0x303030, 0x242424),
-        Tone::new(0xec9191, 0xa72b2d),
-        Tone::new(0x81c99c, 0x28663f),
-        Tone::new(0xdec287, 0x7b5b0b),
-        Tone::new(0x8bb4eb, 0x245da0),
-        Tone::new(0xc09de3, 0x7650a0),
-        Tone::new(0x78c7c2, 0x16706b),
-        Tone::new(0xd8d8d8, 0x55585e),
-        Tone::new(0x949494, 0x666666),
-        Tone::new(0xf16c6c, 0xc03737),
-        Tone::new(0x73c991, 0x2b7c46),
-        Tone::new(0xf4cc52, 0x856619),
-        Tone::new(0x75beff, 0x2475ac),
-        Tone::new(0xdf91aa, 0xa13b65),
-        Tone::new(0x53c1de, 0x12758e),
-        Tone::new(0xffffff, 0x303030),
-    ];
     match color {
         vt100::Color::Default => default,
         vt100::Color::Rgb(r, g, b) => Color::from_rgb8(r, g, b),
-        vt100::Color::Idx(index @ 0..=15) => ANSI[usize::from(index)].resolve(theme),
+        vt100::Color::Idx(index @ 0..=15) => theme.color(ColorRole::ANSI[usize::from(index)]),
         vt100::Color::Idx(index @ 16..=231) => {
             let index = index - 16;
             let component = |value| if value == 0 { 0 } else { 55 + value * 40 };

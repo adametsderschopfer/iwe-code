@@ -1,6 +1,7 @@
 //! Select displayed source text across virtual rows without including gutters.
 
 use super::{Document, comparison::Side};
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message},
     ui::theme,

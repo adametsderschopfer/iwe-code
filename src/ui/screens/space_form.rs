@@ -1,5 +1,6 @@
 use super::{modal, workspace::short_path};
 use crate::ui::presentation::{IconButton, short};
+use crate::ui::theme::iced;
 use crate::ui::tooltip;
 use crate::{
     app::{App, Message, spaces},

@@ -1,5 +1,6 @@
 //! Render compact statuses with distinct symbols in both appearances.
 
+use crate::ui::theme::iced;
 use crate::{domain::jobs::Status, i18n::Key, ui::theme};
 use iced::{
     Element, Point, Rectangle, Renderer, Theme, mouse,
@@ -29,7 +30,7 @@ pub(super) fn badge<'a, Message: 'a>(status: Status, selected: bool) -> Element<
 
 struct Badge(Status, bool);
 
-impl<Message> canvas::Program<Message> for Badge {
+impl<Message> canvas::Program<Message, Theme> for Badge {
     type State = ();
 
     fn draw(

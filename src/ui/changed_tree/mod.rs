@@ -1,6 +1,7 @@
 //! Display changed files with compact folders, file counts, and status colors.
 
 use super::{ellipsis, file_icons, theme};
+use crate::ui::theme::iced;
 use crate::ui::tooltip;
 use crate::{
     domain::changes::FileStatus,

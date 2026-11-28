@@ -1,4 +1,5 @@
 use super::{auth, diff, git, git_actions, pipelines, settings, unified};
+use crate::ui::theme::iced;
 use crate::ui::tooltip;
 use crate::{
     app::{App, Message, Navigation, Panel, error_key, spaces},

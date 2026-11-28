@@ -395,6 +395,7 @@ fn project_view<'a>(app: &'a App, search: &'a Search) -> Element<'a, Message> {
     context_menu::on_key(popup, move |event| key(event, true, app))
 }
 
+use crate::ui::theme::iced;
 fn highlighted<'a>(value: &str, pattern: Option<&regex::Regex>, app: &App) -> Element<'a, Message> {
     let mut spans = Vec::new();
     let mut start = 0;

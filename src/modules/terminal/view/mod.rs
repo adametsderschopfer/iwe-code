@@ -1,5 +1,6 @@
 //! Render the terminal screen and capture input only while its canvas has focus.
 
+use crate::ui::theme::iced;
 mod focus;
 mod input;
 mod search;
@@ -78,7 +79,7 @@ pub(crate) fn view<'a>(
         revision: tab.revision,
         size: f32::from(preferences.terminal_size),
         line_height: f32::from(preferences.terminal_line_height) / 100.,
-        font: theme::selected_code_font(preferences.terminal_font),
+        font: theme::selected_terminal_font(preferences.terminal_font),
         interactive,
         running: tab.running(),
         search: &tab.search,
@@ -155,7 +156,7 @@ struct RenderKey {
     size: u32,
     line_height: u32,
     font: iced::Font,
-    dark: bool,
+    theme_revision: u64,
     cursor: bool,
     selection: Option<((u16, u16), (u16, u16))>,
 }
@@ -220,7 +221,7 @@ impl Screen<'_> {
     }
 }
 
-impl canvas::Program<Event> for Screen<'_> {
+impl canvas::Program<Event, Theme> for Screen<'_> {
     type State = State;
 
     fn update(
@@ -531,7 +532,7 @@ impl canvas::Program<Event> for Screen<'_> {
             size: self.size.to_bits(),
             line_height: self.line_height.to_bits(),
             font: self.font,
-            dark: theme.extended_palette().is_dark,
+            theme_revision: theme.revision(),
             cursor: state.focused && self.interactive && self.running,
             selection: state
                 .anchor
@@ -584,7 +585,7 @@ impl Screen<'_> {
                     style::PADDING + f32::from(col - left) * cell_size.width,
                     style::PADDING + f32::from(row) * cell_size.height,
                 );
-                let mut fg = style::color(cell.fgcolor(), theme::TEXT.resolve(theme), theme);
+                let mut fg = style::color(cell.fgcolor(), style::foreground(theme), theme);
                 let mut bg = style::color(cell.bgcolor(), default_bg, theme);
                 if cell.inverse() {
                     std::mem::swap(&mut fg, &mut bg);
@@ -594,7 +595,7 @@ impl Screen<'_> {
                         (theme::code_background(theme), theme::YELLOW.resolve(theme))
                     } else {
                         (
-                            theme::TEXT.resolve(theme),
+                            style::foreground(theme),
                             theme::CODE_SELECTION.resolve(theme),
                         )
                     };
@@ -653,7 +654,7 @@ impl Screen<'_> {
                     style::PADDING + f32::from(row) * cell_size.height,
                 ),
                 Size::new(2., cell_size.height),
-                theme::TEXT.resolve(theme),
+                style::foreground(theme),
             );
         }
     }

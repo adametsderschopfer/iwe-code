@@ -1,5 +1,6 @@
 //! Show project repository heads without hiding additional repositories.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message},
     domain::repository::Repository,

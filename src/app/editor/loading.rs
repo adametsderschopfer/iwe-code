@@ -1,5 +1,6 @@
 //! Populate the native editor before its first layout. Only visible lines need glyph positions.
 
+use crate::ui::theme::iced;
 use iced::{
     Font, Pixels, Size,
     advanced::{

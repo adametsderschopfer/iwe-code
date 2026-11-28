@@ -15,6 +15,7 @@ pub(crate) mod repository;
 pub(crate) mod search;
 pub(crate) mod shortcuts;
 pub(crate) mod text_search;
+pub(crate) mod theme;
 pub(crate) mod update;
 pub(crate) mod workspace;
 

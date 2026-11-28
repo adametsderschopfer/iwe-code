@@ -1,5 +1,6 @@
 //! Build labeled actions at the standard or compact size.
 
+use crate::ui::theme::iced;
 use iced::widget::{Button, button, text};
 
 pub(crate) fn text_button<'a, Message: Clone + 'a>(

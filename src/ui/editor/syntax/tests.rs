@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 use iced::advanced::text::Highlighter as _;
 
 #[tokio::test]

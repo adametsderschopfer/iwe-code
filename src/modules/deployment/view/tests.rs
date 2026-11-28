@@ -1,5 +1,6 @@
 use super::settings::{connection_form, keys_view};
 use super::*;
+use crate::ui::theme::iced;
 use crate::{i18n::Language, infrastructure::deployment::transport::Entry};
 use iced::{Event as IcedEvent, mouse};
 

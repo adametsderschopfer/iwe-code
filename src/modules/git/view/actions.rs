@@ -1,6 +1,7 @@
 use super::{Event as Message, View};
 use crate::modules::git::actions::{self as git_actions, Action, Message as GitMessage};
 use crate::ui::modal;
+use crate::ui::theme::iced;
 use crate::ui::tooltip;
 use crate::{
     i18n::{FluentArgs, Key},

@@ -1,6 +1,7 @@
 //! Present compact server lists, aligned forms, and focused settings dialogs.
 
 use super::{error_key, style, tree};
+use crate::ui::theme::iced;
 use crate::{
     domain::{
         deployment::{Authentication, Connections, Error, Profile, Protocol, safe_text},

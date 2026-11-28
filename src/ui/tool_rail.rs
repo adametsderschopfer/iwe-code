@@ -8,6 +8,7 @@ use iced::{
     widget::{Column, button, container, scrollable, text},
 };
 
+use crate::ui::theme::iced;
 pub(crate) const WIDTH: f32 = 42.;
 pub(crate) const GAP: f32 = 2.;
 

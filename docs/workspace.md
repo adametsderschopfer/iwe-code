@@ -679,15 +679,15 @@ right. Subtle separators divide rows. Module settings use the same compact list 
 opaque application header covers the titlebar area while preserving native window controls. The
 header supports dragging and double-clicking to maximize or restore the settings window. The
 **Language** list in **General** offers English, Russian, and Spanish. English is the default.
-Language changes apply immediately. General also switches between **Dark** and **Light** appearance.
-Dark remains the default. Appearance changes apply immediately to panels, dialogs, source code, and
-both diff views. The choice survives restarts. Switching themes preserves open files and scroll
-positions. Code adjusts the source font size and line numbers. Code and Terminal each have a font
-family list. The bottom toolbar lists Terminal, Docker, Git, and Pipelines in that order. Opening
-one panel hides the current panel. Select the active button again to collapse its panel. The buttons
-stay at the bottom of the vertical toolbar when you open, switch, or collapse a panel. Drag the
-horizontal divider to resize the open panel. If the buttons no longer fit, scroll the toolbar to
-reach them.
+Language changes apply immediately. **Theme** selects a bundled or imported theme. **Appearance**
+switches between its dark and light variants. Iwe and its dark variant remain the defaults. The
+application keeps your selection across restarts. Theme changes preserve open files and scroll
+positions. See [themes](themes.md) for import and customization. Code adjusts the source font size
+and line numbers. Code and Terminal each have a font family list. The bottom toolbar lists Terminal,
+Docker, Git, and Pipelines in that order. Opening one panel hides the current panel. Select the
+active button again to collapse its panel. The buttons stay at the bottom of the vertical toolbar
+when you open, switch, or collapse a panel. Drag the horizontal divider to resize the open panel. If
+the buttons no longer fit, scroll the toolbar to reach them.
 
 On macOS, choose **IWE Code** → **Settings** to open the settings window. **Spaces**, **Projects**,
 and **Deployment** appear beside the **IWE Code** application menu. **Deployment** offers separate

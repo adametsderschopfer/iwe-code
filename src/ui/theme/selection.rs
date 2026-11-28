@@ -1,5 +1,6 @@
 //! Build form and toolbar selectors with the shared menu and control styles.
 
+use crate::ui::theme::iced;
 use iced::widget::{self, Checkbox, PickList, Toggler};
 use std::borrow::Borrow;
 
@@ -35,9 +36,13 @@ impl Select {
 }
 
 pub(crate) fn switch<'a, Message: 'a>(checked: bool) -> Toggler<'a, Message> {
-    widget::toggler(checked).style(super::toggle_style)
+    widget::toggler(checked)
+        .font(super::font())
+        .style(super::toggle_style)
 }
 
 pub(crate) fn checkbox<'a, Message: 'a>(checked: bool) -> Checkbox<'a, Message> {
-    widget::checkbox(checked).style(super::checkbox_style)
+    widget::checkbox(checked)
+        .font(super::font())
+        .style(super::checkbox_style)
 }

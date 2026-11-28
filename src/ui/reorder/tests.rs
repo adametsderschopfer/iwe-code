@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 use iced::widget::{button, row, scrollable, text};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -31,7 +32,7 @@ fn view() -> Element<'static, Message> {
         .into()
 }
 
-fn drag(ui: &mut iced_test::Simulator<Message>, from: Point, to: Point) {
+fn drag(ui: &mut iced_test::Simulator<Message, iced::Theme>, from: Point, to: Point) {
     ui.point_at(from);
     ui.simulate([Event::Mouse(mouse::Event::ButtonPressed(
         mouse::Button::Left,

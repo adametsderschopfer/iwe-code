@@ -1,6 +1,7 @@
 //! Render terminal search controls with the shared compact search field.
 
 use super::{Event, icon_control};
+use crate::ui::theme::iced;
 use crate::{
     i18n::{FluentArgs, I18n, Key},
     modules::terminal::{

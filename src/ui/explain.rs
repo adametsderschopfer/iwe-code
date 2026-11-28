@@ -1,6 +1,7 @@
 //! Share the Codex explanation action across workspace and bundled module views.
 
 use super::{context_menu, modal, theme};
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message, explain::Event},
     domain::explain::{Agent, Target},

@@ -1,5 +1,6 @@
 //! Compose Windows caption controls and resize handles through safe Iced APIs.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message, windows::Event},
     i18n::Key,

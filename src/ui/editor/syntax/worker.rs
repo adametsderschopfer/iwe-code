@@ -1,6 +1,7 @@
 //! Resume multiline parsing from the last unchanged block outside the render thread.
 
 use super::{BLOCK, Settings, Span};
+use crate::ui::theme::iced;
 use crate::ui::{
     code::{PALETTE, SYNTAXES, syntax_for},
     theme::syntax,

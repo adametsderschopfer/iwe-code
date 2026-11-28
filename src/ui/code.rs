@@ -1,5 +1,6 @@
 //! Prepare immutable, highlighted lines for the source viewer.
 
+use crate::ui::theme::iced;
 pub(crate) mod comparison;
 pub(crate) mod folding;
 pub(crate) mod frozen_gutter;

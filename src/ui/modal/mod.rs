@@ -1,6 +1,7 @@
 //! Compose dialogs from shared surfaces, titles, actions, and keyboard handling.
 
 use crate::ui::theme;
+use crate::ui::theme::iced;
 use iced::{
     Alignment, Element, Length,
     widget::{

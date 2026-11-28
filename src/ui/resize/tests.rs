@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 use iced::{
     Point,
     widget::{button, container, row, space, text},
@@ -34,7 +35,7 @@ fn view(enabled: bool) -> Element<'static, Message> {
     )
 }
 
-fn move_to(ui: &mut iced_test::Simulator<'_, Message>, position: Point) {
+fn move_to(ui: &mut iced_test::Simulator<'_, Message, iced::Theme>, position: Point) {
     ui.point_at(position);
     ui.simulate([Event::Mouse(mouse::Event::CursorMoved { position })]);
 }

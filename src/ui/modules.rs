@@ -1,5 +1,6 @@
 //! Present the module catalog and its shared controls.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message, modules::Event},
     domain::modules::{Permission, Placement},

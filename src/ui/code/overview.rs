@@ -6,6 +6,7 @@ use super::{
     folding::Folding,
 };
 use crate::ui::theme;
+use crate::ui::theme::iced;
 use iced::{
     Alignment, Element, Length, Point, Rectangle, Renderer, Size, Theme, mouse,
     widget::{
@@ -117,11 +118,11 @@ struct Overview<'a> {
 
 #[derive(Default)]
 struct State {
-    key: Cell<Option<(u64, bool)>>,
+    key: Cell<Option<(u64, u64)>>,
     cache: Cache,
 }
 
-impl<Message> canvas::Program<Message> for Overview<'_> {
+impl<Message> canvas::Program<Message, Theme> for Overview<'_> {
     type State = State;
 
     fn draw(
@@ -132,7 +133,7 @@ impl<Message> canvas::Program<Message> for Overview<'_> {
         bounds: Rectangle,
         _: mouse::Cursor,
     ) -> Vec<Geometry> {
-        let key = (self.key, theme.extended_palette().is_dark);
+        let key = (self.key, theme.revision());
         if state.key.get() != Some(key) {
             state.cache.clear();
             state.key.set(Some(key));

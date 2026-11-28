@@ -1,6 +1,7 @@
 //! Present a compact Go to Line dialog above the source preview.
 
 use crate::ui::modal;
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message, line_navigation::Event},
     i18n::Key,

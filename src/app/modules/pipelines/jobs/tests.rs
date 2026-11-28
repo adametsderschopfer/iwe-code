@@ -1,5 +1,6 @@
 use super::*;
 use crate::domain::repository::Pipeline;
+use crate::ui::theme::iced;
 use crate::{
     app::Panel,
     domain::{

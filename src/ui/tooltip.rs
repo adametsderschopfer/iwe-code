@@ -1,6 +1,7 @@
 //! Keep hover hints separated from their controls throughout the interface.
 
 use crate::i18n::{I18n, Key};
+use crate::ui::theme::iced;
 pub(crate) use iced::widget::tooltip::Position;
 use iced::{
     Element, Font,

@@ -1,6 +1,8 @@
 //! Draw compact file-type symbols without platform icon fonts or external assets.
 
 use super::theme;
+use crate::domain::theme::ColorRole;
+use crate::ui::theme::iced;
 
 use iced::{
     Color, Element, Font, Point, Rectangle, Renderer, Theme, font, mouse,
@@ -39,6 +41,46 @@ enum Kind {
     Text,
     Folder(bool, bool),
     Chevron(bool),
+}
+
+impl Kind {
+    fn theme_key(self) -> &'static str {
+        match self {
+            Self::Python => "file-python",
+            Self::JavaScript => "file-javascript",
+            Self::TypeScript => "file-typescript",
+            Self::React => "file-react",
+            Self::Vue => "file-vue",
+            Self::Svelte => "file-svelte",
+            Self::Rust => "file-rust",
+            Self::Cpp => "file-cpp",
+            Self::CSharp => "file-csharp",
+            Self::Go => "file-go",
+            Self::Html => "file-html",
+            Self::Css => "file-css",
+            Self::Sass => "file-sass",
+            Self::Json => "file-json",
+            Self::Yaml => "file-yaml",
+            Self::Toml => "file-toml",
+            Self::Markdown => "file-markdown",
+            Self::Docker => "file-docker",
+            Self::Make => "file-make",
+            Self::Shell => "file-shell",
+            Self::Database => "file-database",
+            Self::Image => "file-image",
+            Self::Git => "file-git",
+            Self::GitLab => "file-gitlab",
+            Self::Lock => "file-lock",
+            Self::Settings => "file-settings",
+            Self::Text => "file-text",
+            Self::Folder(false, false) => "file-folder",
+            Self::Folder(true, false) => "file-folder-open",
+            Self::Folder(false, true) => "file-package",
+            Self::Folder(true, true) => "file-package-open",
+            Self::Chevron(false) => "file-chevron",
+            Self::Chevron(true) => "file-chevron-open",
+        }
+    }
 }
 
 pub(crate) fn file<'a, Message: 'a>(path: &FilePath) -> Element<'a, Message> {
@@ -166,8 +208,8 @@ fn label(frame: &mut Frame, value: &str, color: Color, size: f32) {
     });
 }
 
-impl<Message> canvas::Program<Message> for Drawing {
-    type State = super::icons::cache::Cache<(Kind, bool)>;
+impl<Message> canvas::Program<Message, Theme> for Drawing {
+    type State = super::icons::cache::Cache<(Kind, u64)>;
     fn draw(
         &self,
         state: &Self::State,
@@ -177,7 +219,7 @@ impl<Message> canvas::Program<Message> for Drawing {
         _: mouse::Cursor,
     ) -> Vec<Geometry> {
         state.draw(
-            (self.0, theme.extended_palette().is_dark),
+            (self.0, theme.revision()),
             renderer,
             bounds.size(),
             |frame| self.paint(frame, theme),
@@ -188,6 +230,9 @@ impl<Message> canvas::Program<Message> for Drawing {
 impl Drawing {
     fn paint(&self, frame: &mut Frame, theme: &Theme) {
         let gray = theme::ICON_GRAY.resolve(theme);
+        if super::icons::paint_theme_icon(frame, theme, self.0.theme_key(), gray) {
+            return;
+        }
         let blue = theme::ICON_BLUE.resolve(theme);
         let yellow = theme::ICON_YELLOW.resolve(theme);
         let cyan = theme::ICON_CYAN.resolve(theme);
@@ -255,8 +300,14 @@ impl Drawing {
                     f.rotate(std::f32::consts::PI);
                     f.fill(&upper, yellow);
                 });
-                frame.fill(&Path::circle(Point::new(5.5, 3.), 0.7), Color::WHITE);
-                frame.fill(&Path::circle(Point::new(10.5, 13.), 0.7), Color::WHITE);
+                frame.fill(
+                    &Path::circle(Point::new(5.5, 3.), 0.7),
+                    theme.color(ColorRole::IconHighlight),
+                );
+                frame.fill(
+                    &Path::circle(Point::new(10.5, 13.), 0.7),
+                    theme.color(ColorRole::IconHighlight),
+                );
             }
             Kind::JavaScript | Kind::TypeScript => {
                 let js = matches!(self.0, Kind::JavaScript);
@@ -268,11 +319,11 @@ impl Drawing {
                 label(
                     frame,
                     if js { "JS" } else { "TS" },
-                    if js {
-                        Color::from_rgb8(41, 41, 41)
+                    theme.color(if js {
+                        ColorRole::IconJavascriptText
                     } else {
-                        Color::WHITE
-                    },
+                        ColorRole::IconHighlight
+                    }),
                     9.,
                 );
             }
@@ -307,7 +358,7 @@ impl Drawing {
                         (15., 2.),
                         (8., 15.),
                     ],
-                    Color::from_rgb8(66, 184, 131),
+                    theme.color(ColorRole::IconVueGreen),
                 );
                 shape(
                     frame,
@@ -319,7 +370,7 @@ impl Drawing {
                         (12., 2.),
                         (8., 9.),
                     ],
-                    Color::from_rgb8(87, 120, 140),
+                    theme.color(ColorRole::IconVueBlue),
                 );
             }
             Kind::Docker => {
@@ -358,7 +409,7 @@ impl Drawing {
                 shape(
                     frame,
                     &[(5., 6.), (11., 6.), (8., 15.)],
-                    Color::from_rgb8(226, 78, 48),
+                    theme.color(ColorRole::IconHtml),
                 );
             }
             Kind::Git => {
@@ -443,7 +494,7 @@ impl Drawing {
                     Kind::Sass => ("S", pink, 13.),
                     Kind::Svelte => ("S", orange, 13.),
                     Kind::Json => ("{}", yellow, 11.),
-                    Kind::Yaml => ("Y", Color::from_rgb8(215, 104, 99), 12.),
+                    Kind::Yaml => ("Y", theme.color(ColorRole::IconYaml), 12.),
                     Kind::Toml => ("T", blue, 12.),
                     Kind::Markdown => ("M↓", blue, 9.),
                     Kind::Make => ("M", blue, 12.),

@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 use crate::{
     app::search_everywhere::{Dialog, Scope},
     domain::workspace::{Project, Space},

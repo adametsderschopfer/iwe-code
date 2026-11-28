@@ -1,6 +1,7 @@
 //! Show local file commands and their confirmation dialogs.
 
 use crate::ui::modal;
+use crate::ui::theme::iced;
 use crate::{
     app::{
         App, Message,

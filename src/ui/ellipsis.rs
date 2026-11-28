@@ -1,5 +1,6 @@
 //! Fit a single line using the renderer's actual text measurements.
 
+use crate::ui::theme::iced;
 use iced::{
     Element, Font, Length, Rectangle, Renderer, Size, Theme,
     advanced::{

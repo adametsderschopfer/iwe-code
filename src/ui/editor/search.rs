@@ -1,4 +1,6 @@
 //! Paint visible search matches using the editor's shaped glyph positions.
+
+use crate::ui::theme::iced;
 use crate::{app::text_search::Search, ui::theme};
 use iced::{
     Point, Rectangle, Renderer, Theme, mouse,
@@ -8,7 +10,7 @@ pub(super) struct Highlights<'a> {
     pub content: &'a text_editor::Content,
     pub search: &'a Search,
 }
-impl<Message> canvas::Program<Message> for Highlights<'_> {
+impl<Message> canvas::Program<Message, Theme> for Highlights<'_> {
     type State = ();
     fn draw(
         &self,

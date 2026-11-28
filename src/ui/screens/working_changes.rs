@@ -1,5 +1,6 @@
 //! Group working changes by repository without mixing identical relative paths.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message, error_key},
     i18n::{FluentArgs, Key},

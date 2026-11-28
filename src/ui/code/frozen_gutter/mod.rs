@@ -1,5 +1,6 @@
 //! Pin a source row's gutter while its containing scrollable moves horizontally.
 
+use crate::ui::theme::iced;
 use iced::{
     Element, Event, Length, Rectangle, Renderer, Size, Theme, Vector,
     advanced::{

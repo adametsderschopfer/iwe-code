@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 use crate::{domain::repository::Repository, infrastructure::repository};
 use iced::widget::operation;
 fn branch_key(reference: impl Into<String>) -> crate::domain::repository::project::BranchKey {
@@ -94,8 +95,11 @@ fn appearance_switch_applies_immediately_in_every_language() {
             }
             assert_eq!(app.workspace.preferences.appearance, appearance);
             assert_eq!(
-                app.theme().extended_palette().is_dark,
-                appearance == Appearance::Dark
+                iced::theme::Base::mode(&app.theme()),
+                match appearance {
+                    Appearance::Light => iced::theme::Mode::Light,
+                    Appearance::Dark => iced::theme::Mode::Dark,
+                }
             );
             if let Some(output) = std::env::var_os("IWE_RENDER_DIR").map(PathBuf::from) {
                 let mut ui =

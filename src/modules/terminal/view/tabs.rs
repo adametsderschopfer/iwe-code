@@ -1,6 +1,7 @@
 //! Render terminal tab controls and position their shared context menu.
 
 use super::{Event, TerminalState, icon_control, style};
+use crate::ui::theme::iced;
 use crate::{
     i18n::{I18n, Key},
     modules::terminal::state::{Tab, TitleAction, TitleControl},

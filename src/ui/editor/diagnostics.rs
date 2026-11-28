@@ -1,5 +1,6 @@
 //! Draw diagnostic underlines using the editor's shaped text positions.
 
+use crate::ui::theme::iced;
 use crate::{
     domain::language::{Diagnostic, Position, byte_offset},
     ui::theme,
@@ -14,7 +15,7 @@ pub(super) struct Underlines<'a> {
     pub diagnostics: &'a [Diagnostic],
 }
 
-impl<Message> canvas::Program<Message> for Underlines<'_> {
+impl<Message> canvas::Program<Message, Theme> for Underlines<'_> {
     type State = ();
     fn update(
         &self,

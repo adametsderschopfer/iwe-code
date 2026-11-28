@@ -5,6 +5,7 @@ pub(crate) mod external;
 use crate::modules::ModuleId;
 pub(crate) use crate::modules::{git::GitPanel, pipelines::PipelineState};
 
+use crate::ui::theme::iced;
 pub(crate) mod auth;
 pub(crate) use modules::git::branch_selection;
 pub(crate) mod changes;
@@ -28,6 +29,7 @@ pub(crate) mod shortcuts;
 pub(crate) mod spaces;
 pub(crate) mod tabs;
 pub(crate) mod text_search;
+pub(crate) mod themes;
 pub(crate) mod updates;
 pub(crate) mod windows;
 
@@ -86,6 +88,9 @@ fn application(
                 Task::batch([
                     open.map(Message::WindowOpened),
                     Task::perform(workspace::load(), Message::Loaded),
+                    Task::perform(crate::infrastructure::themes::load(), |definitions| {
+                        Message::Themes(themes::Event::Loaded(definitions))
+                    }),
                     modules::external::startup()
                         .map(|event| Message::Module(modules::Event::External(event))),
                     Task::done(Message::Update(updates::Event::Automatic(
@@ -221,6 +226,7 @@ pub(crate) struct App {
     pub workspace: Workspace,
     pub navigation: Navigation,
     pub settings_tab: SettingsTab,
+    pub(crate) themes: themes::State,
     window_zoom_preview: Option<u16>,
     pub shortcuts: shortcuts::State,
     pub modules: modules::State,
@@ -424,6 +430,7 @@ pub(crate) enum Message {
     Opened(Result<(), Failure>),
     SetLanguage(Language),
     SetAppearance(Appearance),
+    Themes(themes::Event),
     Shortcut(shortcuts::Event),
     SetCodeSize(u16),
     SetTerminalSize(u16),
@@ -471,10 +478,9 @@ pub(crate) enum Message {
 
 impl App {
     pub(crate) fn theme(&self) -> Theme {
-        match self.workspace.preferences.appearance {
-            Appearance::Dark => Theme::Dark,
-            Appearance::Light => Theme::Light,
-        }
+        let preferences = &self.workspace.preferences;
+        self.themes
+            .active(preferences.theme.as_deref(), preferences.appearance)
     }
 
     pub(crate) fn new(i18n: Rc<I18n>) -> Self {
@@ -483,6 +489,7 @@ impl App {
             workspace: Workspace::default(),
             navigation: Navigation::Projects,
             settings_tab: SettingsTab::default(),
+            themes: themes::State::default(),
             window_zoom_preview: None,
             shortcuts: shortcuts::State::default(),
             modules: modules::State::default(),
@@ -1788,6 +1795,7 @@ impl App {
                 self.apply_language();
                 return self.save();
             }
+            Message::Themes(event) => return self.update_themes(event),
             Message::SetAppearance(appearance) => {
                 self.workspace.preferences.appearance = appearance;
                 return self.save();

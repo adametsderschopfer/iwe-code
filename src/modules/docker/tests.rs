@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 
 #[test]
 fn inventories_keep_image_tags_and_support_compose_arrays() {
@@ -844,7 +845,7 @@ fn section_dividers_meet_the_header_and_filter_corners_match_the_ui_kit() {
                 let edge = pixel(area.center_x(), y);
                 assert_ne!(edge, pixel(area.x - 2., y), "{id} has a visible border");
                 let outside = pixel(area.x - 2., y);
-                let radius = crate::ui::theme::CONTROL_RADIUS;
+                let radius = iced::Theme::Dark.control_radius();
                 for offset in [0.5, area.width - 0.5] {
                     assert_eq!(pixel(area.x + offset, y), outside, "{id} rounded corner");
                 }

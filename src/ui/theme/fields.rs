@@ -1,9 +1,10 @@
 //! Shared text controls keep native editing, keyboard input, and selection.
 
 use super::{
-    BLUE, CODE_BACKGROUND, CODE_SELECTION, CONTROL_RADIUS, DANGER_HOVER, ELEVATED, FAINT,
-    INPUT_BORDER, INPUT_SELECTION, LINE, MUTED, PRIMARY_DISABLED, RED, TEXT, font, syntax,
+    BLUE, CODE_BACKGROUND, CODE_SELECTION, DANGER_HOVER, ELEVATED, FAINT, INPUT_BORDER,
+    INPUT_SELECTION, LINE, MUTED, PRIMARY_DISABLED, RED, TEXT, font, syntax,
 };
+use crate::ui::theme::iced;
 use iced::{
     Border, Element, Theme,
     advanced::text::highlighter::PlainText,
@@ -64,7 +65,7 @@ fn input(theme: &Theme, status: text_input::Status) -> text_input::Style {
         border: Border {
             color: outline.resolve(theme),
             width,
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
         },
         icon: MUTED.resolve(theme),
         placeholder: FAINT.resolve(theme),

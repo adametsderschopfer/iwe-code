@@ -1,6 +1,7 @@
 //! Reorder column rows while preserving clicks and trailing row actions.
 
 use super::theme;
+use crate::ui::theme::iced;
 use iced::{
     Border, Element, Event, Length, Point, Rectangle, Renderer, Size, Theme, Vector,
     advanced::{
@@ -507,7 +508,7 @@ impl<Message> Widget<Message, Theme, Renderer> for Reorder<'_, Message> {
                         border: Border {
                             color: theme::BLUE.resolve(theme),
                             width: 1.,
-                            radius: theme::CONTROL_RADIUS.into(),
+                            radius: theme.control_radius().into(),
                         },
                         ..Default::default()
                     },

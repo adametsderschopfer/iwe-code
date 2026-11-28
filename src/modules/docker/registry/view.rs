@@ -1,4 +1,5 @@
 use super::{Editor, Event, Form, Mode, State};
+use crate::ui::theme::iced;
 use crate::{
     domain::images::{Registry, repository, tag},
     i18n::{I18n, Key},

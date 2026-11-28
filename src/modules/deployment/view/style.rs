@@ -1,6 +1,7 @@
 //! Use the warning tone for deployment notices.
 
 use crate::ui::theme;
+use crate::ui::theme::iced;
 use iced::{Border, Theme, widget::container};
 
 pub(super) fn warning(theme: &Theme) -> container::Style {
@@ -11,7 +12,7 @@ pub(super) fn warning(theme: &Theme) -> container::Style {
         border: Border {
             color: iced::Color { a: 0.35, ..color },
             width: 1.,
-            radius: theme::CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
         },
         ..Default::default()
     }

@@ -1,5 +1,6 @@
 //! Place color controls alongside visible literals and edit them in an anchored popup.
 
+use crate::ui::theme::iced;
 use crate::{
     app::{
         App, Message,
@@ -157,7 +158,7 @@ impl Markers<'_> {
     }
 }
 
-impl canvas::Program<Message> for Markers<'_> {
+impl canvas::Program<Message, Theme> for Markers<'_> {
     type State = ();
 
     fn update(
@@ -245,7 +246,7 @@ fn swatch(frame: &mut canvas::Frame, area: Rectangle, rgba: Rgba, theme: &Theme)
 
 struct Sample(Rgba);
 
-impl canvas::Program<Message> for Sample {
+impl canvas::Program<Message, Theme> for Sample {
     type State = ();
 
     fn draw(
@@ -277,7 +278,7 @@ struct Track<'a> {
     picker: &'a Picker,
 }
 
-impl canvas::Program<Message> for Track<'_> {
+impl canvas::Program<Message, Theme> for Track<'_> {
     type State = bool;
 
     fn update(

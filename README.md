@@ -13,6 +13,9 @@ browser sign-in. Self-hosted GitLab supports personal access tokens. Open settin
 the bottom left. Preferences persist between launches. English, Russian, and Spanish translations
 are embedded in the executable.
 
+Choose a theme and appearance under **Settings → General**. Import a [theme file](docs/themes.md) to
+customize colors, fonts, icons, and shared controls.
+
 View bundled modules under **Settings → Modules**. The first system module provides an integrated
 terminal for the selected project. System modules are always enabled and cannot be removed. Install
 external modules from `.iwe-module` package files in the same place. See

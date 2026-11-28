@@ -1,6 +1,7 @@
 //! Keep action labels aligned and distinguish destructive commands in context menus.
 
 use super::{TEXT_SIZE, row};
+use crate::ui::theme::iced;
 use crate::{
     i18n::Key,
     ui::{

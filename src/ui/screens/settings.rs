@@ -1,8 +1,13 @@
 use crate::ui::modal;
 use crate::ui::presentation::{divider, vertical_divider};
+use crate::ui::theme::iced;
 use crate::{
-    app::{App, Message, SettingsTab},
-    domain::{shortcuts::Command, workspace::Appearance},
+    app::{App, Message, SettingsTab, themes::Event as ThemeEvent},
+    domain::{
+        shortcuts::Command,
+        theme::{BUILTIN_ID, ISLANDS_ID},
+        workspace::Appearance,
+    },
     i18n::{Key, Language},
     ui::theme,
 };
@@ -151,6 +156,7 @@ fn view_for(app: &App, deployment: Option<bool>) -> Element<'_, Message> {
                     .align_y(Alignment::Center)
                     .into()
                 ),
+                theme_setting(app),
                 setting(
                     t(Key::Appearance),
                     t(Key::AppearanceDescription),
@@ -696,6 +702,49 @@ pub(crate) fn shortcut_recording_overlay<'a>(
         440.,
         cancel,
     )
+}
+
+fn theme_setting(app: &App) -> Element<'_, Message> {
+    let t = |key| app.i18n.text(key);
+    let mut options = Vec::from(
+        [
+            (BUILTIN_ID, Key::ThemeBuiltin),
+            (ISLANDS_ID, Key::ThemeIslands),
+        ]
+        .map(|(id, key)| SelectOption {
+            value: id.to_owned(),
+            label: t(key),
+        }),
+    );
+    options.extend(app.themes.choices().map(|(id, label)| SelectOption {
+        value: id.to_owned(),
+        label: label.to_owned(),
+    }));
+    let selected = options
+        .iter()
+        .find(|option| Some(option.value.as_str()) == app.workspace.preferences.theme.as_deref())
+        .unwrap_or(&options[0])
+        .clone();
+    let ready = app.loaded && app.themes.ready && !app.themes.importing;
+    let controls = row![
+        container(
+            theme::Select::Standard
+                .view(options, Some(selected), |option| {
+                    Message::Themes(ThemeEvent::Select(option.value))
+                })
+                .width(168)
+        )
+        .id("settings-theme-select"),
+        container(
+            theme::text_button(t(Key::ThemeImport))
+                .on_press_maybe(ready.then_some(Message::Themes(ThemeEvent::Import)))
+        )
+        .id("settings-theme-import"),
+    ]
+    .spacing(8)
+    .align_y(Alignment::Center);
+    let description = app.themes.error.map_or_else(|| t(Key::ThemeDescription), t);
+    setting(t(Key::Theme), description, controls.into())
 }
 
 pub(crate) fn setting<'a>(

@@ -6,6 +6,7 @@ use crate::modules::git::actions::{
 };
 use crate::ui::modal;
 
+use crate::ui::theme::iced;
 use crate::{
     domain::repository::ReferenceKind,
     i18n::{FluentArgs, Key},

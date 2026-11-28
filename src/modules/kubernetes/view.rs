@@ -1,4 +1,5 @@
 use super::{Event, Kind, Operation, State, Tab};
+use crate::ui::theme::iced;
 use crate::{
     domain::images::ImageRef,
     i18n::{I18n, Key},

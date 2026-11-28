@@ -1,5 +1,6 @@
 use super::{GUTTER, error_key, pagination};
 use crate::ui::presentation::IconButton;
+use crate::ui::theme::iced;
 use crate::{
     i18n::{I18n, Key},
     modules::docker::{

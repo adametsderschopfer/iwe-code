@@ -1,6 +1,7 @@
 //! Place background operation details above the shared status bar.
 
 use super::theme;
+use crate::ui::theme::iced;
 use iced::{
     Element, Length,
     widget::{container, opaque, scrollable, stack},

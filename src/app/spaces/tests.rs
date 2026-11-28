@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 use crate::{
     domain::workspace::Workspace,
     i18n::{I18n, Language},
@@ -1051,7 +1052,7 @@ fn context_click_on_an_unselected_project_does_not_remove_the_group() {
     assert_eq!(app.workspace.directory(), Some(&api));
 }
 
-fn reveal_space_settings(ui: &mut iced_test::Simulator<AppMessage>) {
+fn reveal_space_settings(ui: &mut iced_test::Simulator<AppMessage, iced::Theme>) {
     use iced::{Event, mouse, widget::Id, window};
     let heading = ui
         .find(Id::new("space-group-0"))
@@ -1082,13 +1083,13 @@ fn space_settings_slide_in_and_the_hidden_action_leaves_no_gap() {
         .unwrap()
         .visible_bounds()
         .unwrap();
-    let count = |ui: &mut iced_test::Simulator<AppMessage>| {
+    let count = |ui: &mut iced_test::Simulator<AppMessage, iced::Theme>| {
         ui.find(Id::new("space-project-count-0"))
             .unwrap()
             .visible_bounds()
             .unwrap()
     };
-    let gear = |ui: &mut iced_test::Simulator<AppMessage>| {
+    let gear = |ui: &mut iced_test::Simulator<AppMessage, iced::Theme>| {
         ui.find(Id::new("edit-space-0"))
             .unwrap()
             .visible_bounds()

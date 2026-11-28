@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 
 #[test]
 fn long_titles_fit_one_line_at_different_widths() {

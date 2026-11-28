@@ -1,6 +1,7 @@
 //! Include the canvas in Iced's keyboard focus operations.
 
 use super::{Event, Screen, State};
+use crate::ui::theme::iced;
 use iced::{
     Element, Length, Rectangle, Renderer, Size, Theme,
     advanced::{
@@ -21,7 +22,7 @@ pub(super) fn view(screen: Screen<'_>) -> Element<'_, Event> {
 struct FocusableScreen<'a> {
     request: u64,
     id: Id,
-    canvas: Canvas<Screen<'a>, Event>,
+    canvas: Canvas<Screen<'a>, Event, Theme>,
 }
 
 impl Focusable for State {

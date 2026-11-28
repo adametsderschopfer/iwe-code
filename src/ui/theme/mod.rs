@@ -1,8 +1,11 @@
 //! Share neutral dark and light surfaces above the native window material.
 
 mod buttons;
+mod catalogs;
 mod fields;
+pub(crate) mod iced;
 mod palette;
+mod runtime;
 mod selection;
 pub(crate) mod syntax;
 pub(crate) use buttons::{compact_button, text_button};
@@ -10,10 +13,13 @@ pub(crate) use fields::{
     code_editor, compact_field, labeled_field, multiline_field, text_field, validated_input,
 };
 pub(crate) use palette::*;
+pub(crate) use runtime::{
+    InstalledTheme, Theme, code_font, font, selected_code_font, selected_terminal_font, semibold,
+};
 pub(crate) use selection::{Select, checkbox, switch};
 
-use iced::{
-    Border, Color, Font, Theme, font, theme,
+use ::iced::{
+    Border, Color, theme,
     widget::{
         button, checkbox as iced_checkbox, container, overlay::menu, pane_grid, pick_list,
         scrollable, slider, toggler,
@@ -55,12 +61,9 @@ pub(crate) fn unified_color(change: crate::ui::code::LineChange) -> Tone {
 }
 
 pub(crate) fn change_fill(color: Tone, theme: &Theme, opacity: f32) -> Color {
-    let opacity = if theme.extended_palette().is_dark {
-        opacity
-    } else {
-        opacity * 0.4
-    };
-    color.resolve(theme).scale_alpha(opacity)
+    color
+        .resolve(theme)
+        .scale_alpha(opacity * theme.diff_opacity())
 }
 
 pub(crate) fn source_row(
@@ -108,7 +111,6 @@ pub(crate) fn diff_row(
     }
 }
 
-pub(crate) const CONTROL_RADIUS: f32 = 5.;
 pub(crate) const COMMIT_GRAPH_PADDING: f32 = 12.;
 pub(crate) const COMMIT_REPOSITORY_GRAPH_PADDING: f32 = 4.;
 pub(crate) const COMMIT_REPOSITORY_MAX_WIDTH: f32 = 160.;
@@ -214,42 +216,6 @@ pub(crate) const PIPELINE_POPUP_WIDTH: f32 = 380.0;
 pub(crate) const PIPELINE_POPUP_JOBS_HEIGHT: f32 = 240.0;
 pub(crate) const PIPELINE_JOB_HEIGHT: f32 = 40.0;
 
-pub(crate) fn font() -> Font {
-    if cfg!(target_os = "macos") {
-        Font::with_name("Helvetica Neue")
-    } else if cfg!(target_os = "windows") {
-        Font::with_name("Segoe UI")
-    } else {
-        Font::DEFAULT
-    }
-}
-
-pub(crate) fn semibold() -> Font {
-    Font {
-        weight: font::Weight::Semibold,
-        ..font()
-    }
-}
-
-pub(crate) fn code_font() -> Font {
-    if cfg!(target_os = "macos") {
-        Font::with_name("Menlo")
-    } else if cfg!(target_os = "windows") {
-        Font::with_name("Consolas")
-    } else {
-        Font::MONOSPACE
-    }
-}
-
-pub(crate) fn selected_code_font(choice: crate::domain::workspace::CodeFont) -> Font {
-    use crate::domain::workspace::CodeFont;
-    match choice {
-        CodeFont::System => code_font(),
-        CodeFont::JetBrainsMono => Font::with_name("JetBrains Mono"),
-        CodeFont::FiraCode => Font::with_name("Fira Code"),
-    }
-}
-
 fn toggle_style(theme: &Theme, status: toggler::Status) -> toggler::Style {
     use toggler::Status::*;
     let (track, knob) = match status {
@@ -270,7 +236,7 @@ fn toggle_style(theme: &Theme, status: toggler::Status) -> toggler::Style {
             }
             .resolve(theme),
         ),
-        ..toggler::default(theme, status)
+        ..toggler::default(theme.native(), status)
     }
 }
 
@@ -289,7 +255,7 @@ fn checkbox_style(theme: &Theme, status: iced_checkbox::Status) -> iced_checkbox
         border: Border {
             color: outline.resolve(theme),
             width: 1.,
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
         },
         text_color: Some(
             if matches!(status, Disabled { .. }) {
@@ -303,7 +269,7 @@ fn checkbox_style(theme: &Theme, status: iced_checkbox::Status) -> iced_checkbox
 }
 
 pub(crate) fn font_slider(theme: &Theme, status: slider::Status) -> slider::Style {
-    let mut style = slider::default(theme, status);
+    let mut style = slider::default(theme.native(), status);
     style.rail.backgrounds = (TEXT.resolve(theme).into(), LINE.resolve(theme).into());
     style.handle.background = match status {
         slider::Status::Active => TEXT,
@@ -329,7 +295,7 @@ fn select(theme: &Theme, status: pick_list::Status) -> pick_list::Style {
             }
             .resolve(theme),
             width: 1.,
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
         },
     }
 }
@@ -340,7 +306,7 @@ fn select_menu(theme: &Theme) -> menu::Style {
         border: Border {
             color: LINE.resolve(theme),
             width: 1.,
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
         },
         text_color: TEXT.resolve(theme),
         selected_text_color: TEXT.resolve(theme),
@@ -423,7 +389,7 @@ pub(crate) fn menu_title(open: bool) -> impl Fn(&Theme) -> container::Style {
         background: open.then_some(SELECTED.resolve(theme).into()),
         text_color: Some(TEXT.resolve(theme)),
         border: Border {
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
             ..Default::default()
         },
         ..Default::default()
@@ -497,7 +463,7 @@ pub(crate) fn tooltip(theme: &Theme) -> container::Style {
         border: Border {
             color: LINE.resolve(theme),
             width: 1.0,
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
         },
         ..Default::default()
     }
@@ -533,7 +499,7 @@ pub(crate) fn badge(theme: &Theme) -> container::Style {
     container::Style {
         background: Some(ELEVATED.resolve(theme).into()),
         border: Border {
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
             ..Default::default()
         },
         text_color: Some(MUTED.resolve(theme)),
@@ -551,7 +517,7 @@ pub(crate) fn branch_badge(theme: &Theme, status: button::Status) -> button::Sty
         ),
         text_color: if hovered { TEXT } else { MUTED }.resolve(theme),
         border: Border {
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
             ..Default::default()
         },
         ..Default::default()
@@ -569,9 +535,9 @@ pub(crate) fn branch_attention(active: bool) -> impl Fn(&Theme) -> container::St
     }
 }
 
-pub(crate) fn backdrop(_theme: &Theme) -> container::Style {
+pub(crate) fn backdrop(theme: &Theme) -> container::Style {
     container::Style {
-        background: Some(Color::BLACK.scale_alpha(0.5).into()),
+        background: Some(Color::BLACK.scale_alpha(theme.backdrop_opacity()).into()),
         ..Default::default()
     }
 }
@@ -582,7 +548,7 @@ pub(crate) fn dialog(theme: &Theme) -> container::Style {
         border: Border {
             color: LINE.resolve(theme),
             width: 1.0,
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.dialog_radius().into(),
         },
         shadow: iced::Shadow {
             color: Color::from_rgba(0.0, 0.0, 0.0, 0.35),
@@ -608,7 +574,7 @@ pub(crate) fn action(selected: bool) -> impl Fn(&Theme, button::Status) -> butto
                 TEXT.resolve(theme)
             },
             border: Border {
-                radius: CONTROL_RADIUS.into(),
+                radius: theme.control_radius().into(),
                 ..Default::default()
             },
             ..Default::default()
@@ -668,7 +634,7 @@ fn filled_button(theme: &Theme, status: button::Status, fill: Tone, hover: Tone)
         background: Some(background.resolve(theme).into()),
         text_color: text.resolve(theme),
         border: Border {
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
             ..Default::default()
         },
         ..Default::default()
@@ -685,7 +651,7 @@ pub(crate) fn secondary(theme: &Theme, status: button::Status) -> button::Style 
         }
         .resolve(theme),
         width: 1.0,
-        radius: CONTROL_RADIUS.into(),
+        radius: theme.control_radius().into(),
     };
     style
 }
@@ -701,7 +667,7 @@ pub(crate) fn scrollbar_thumb(theme: &Theme, highlighted: bool) -> Color {
 }
 
 pub(crate) fn scroll(theme: &Theme, status: scrollable::Status) -> scrollable::Style {
-    let mut style = scrollable::default(theme, status);
+    let mut style = scrollable::default(theme.native(), status);
     let (horizontal_disabled, vertical_disabled) = match status {
         scrollable::Status::Active {
             is_horizontal_scrollbar_disabled,
@@ -730,7 +696,7 @@ pub(crate) fn scroll(theme: &Theme, status: scrollable::Status) -> scrollable::S
         rail.border = Border::default();
         rail.scroller.background = if disabled { Color::TRANSPARENT } else { thumb }.into();
         rail.scroller.border = Border {
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
             ..Default::default()
         };
     }
@@ -758,11 +724,7 @@ mod tests;
 pub(crate) fn success_tooltip(theme: &Theme) -> container::Style {
     container::Style {
         background: Some(GREEN.resolve(theme).into()),
-        text_color: Some(if theme.extended_palette().is_dark {
-            Color::BLACK
-        } else {
-            Color::WHITE
-        }),
+        text_color: Some(theme.color(crate::domain::theme::ColorRole::TooltipSuccessText)),
         border: Border {
             color: GREEN.resolve(theme),
             ..tooltip(theme).border
@@ -778,7 +740,7 @@ pub(crate) fn search_panel(theme: &Theme) -> container::Style {
         border: Border {
             color: LINE.resolve(theme),
             width: 1.,
-            radius: CONTROL_RADIUS.into(),
+            radius: theme.control_radius().into(),
         },
         ..Default::default()
     }

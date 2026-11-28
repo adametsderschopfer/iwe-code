@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::theme::iced;
 use crate::{
     i18n::{I18n, Language},
     ui::code::Document,
@@ -57,7 +58,7 @@ fn markdown_renders_a_typed_link_before_saving_and_returns_to_the_editor() {
     use iced::widget::Id;
     const DRAFT: &str = "[Unsaved link](https://example.org/draft)";
 
-    fn screen(app: &App) -> iced_test::Simulator<'_, Message> {
+    fn screen(app: &App) -> iced_test::Simulator<'_, Message, iced::Theme> {
         iced_test::Simulator::with_size(iced::Settings::default(), (1600., 900.), app.view())
     }
 
@@ -1357,7 +1358,7 @@ fn grouped_editor_actions_share_one_menu_and_keyboard_skips_headings() {
             Some(Position { line: 0, column: 5 }),
         );
         let _ = app.update_editor(Event::Menu(open.clone()));
-        fn view(app: &App) -> iced_test::Simulator<'_, Message> {
+        fn view(app: &App) -> iced_test::Simulator<'_, Message, iced::Theme> {
             iced_test::Simulator::with_size(iced::Settings::default(), (1080., 720.), app.view())
         }
         let mut ui = view(&app);

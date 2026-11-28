@@ -1,6 +1,7 @@
 //! Keep the draft color tied to the exact document snapshot it came from.
 
 use super::{App, Buffer, Message};
+use crate::ui::theme::iced;
 use crate::{
     domain::editor::colors::{self, Rgba},
     i18n::Key,

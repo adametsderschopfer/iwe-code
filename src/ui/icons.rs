@@ -1,5 +1,6 @@
 //! Draw small, consistent outline icons without a platform icon font.
 
+use crate::ui::theme::iced;
 pub(super) mod cache;
 
 use super::theme::Tone;
@@ -68,6 +69,99 @@ pub(crate) enum Icon {
     External,
 }
 
+impl Icon {
+    fn theme_key(self) -> &'static str {
+        match self {
+            Self::Docker => "docker",
+            Self::Kubernetes => "kubernetes",
+            Self::Cube => "cube",
+            Self::Network => "network",
+            Self::Relationships => "relationships",
+            Self::Volume => "volume",
+            Self::Locate => "locate",
+            Self::More => "more",
+            Self::Check => "check",
+            Self::Warning => "warning",
+            Self::CollapseLines => "collapse-lines",
+            Self::ExpandLines => "expand-lines",
+            Self::MarkdownSource => "markdown-source",
+            Self::MarkdownSplit => "markdown-split",
+            Self::Image => "image",
+            Self::SplitDiff => "split-diff",
+            Self::Sidebar => "sidebar",
+            Self::UnifiedDiff => "unified-diff",
+            Self::Back => "back",
+            Self::Branch => "branch",
+            Self::Tag => "tag",
+            Self::Play => "play",
+            Self::Settings => "settings",
+            Self::Terminal => "terminal",
+            Self::Server => "server",
+            Self::Plus => "plus",
+            Self::Minus => "minus",
+            Self::Duplicate => "duplicate",
+            Self::Cut => "cut",
+            Self::Paste => "paste",
+            Self::Trash => "trash",
+            Self::Pause => "pause",
+            Self::Stop => "stop",
+            Self::Rename => "rename",
+            Self::Right => "right",
+            Self::Down => "down",
+            Self::Up => "up",
+            Self::Drag => "drag",
+            Self::Changes => "changes",
+            Self::Fetch => "fetch",
+            Self::UpdateBranch => "update-branch",
+            Self::Upload => "upload",
+            Self::Update => "update",
+            Self::Pin => "pin",
+            Self::Refresh => "refresh",
+            Self::Close => "close",
+            Self::Search => "search",
+            #[cfg(target_os = "windows")]
+            Self::Minimize => "minimize",
+            #[cfg(target_os = "windows")]
+            Self::Maximize => "maximize",
+            #[cfg(target_os = "windows")]
+            Self::Restore => "restore",
+            Self::Folder => "folder",
+            Self::External => "external",
+        }
+    }
+}
+
+pub(super) fn paint_theme_icon(
+    frame: &mut Frame,
+    theme: &Theme,
+    key: &str,
+    color: iced::Color,
+) -> bool {
+    let Some(icon) = theme.icon(key) else {
+        return false;
+    };
+    let bounds = frame.size();
+    let scale = bounds.width.min(bounds.height) / 20.;
+    frame.translate(iced::Vector::new(
+        (bounds.width - 20. * scale) / 2.,
+        (bounds.height - 20. * scale) / 2.,
+    ));
+    frame.scale(scale);
+    if icon.fill {
+        frame.fill(&icon.path, color);
+    } else {
+        frame.stroke(
+            &icon.path,
+            Stroke::default()
+                .with_width(theme.icon_stroke())
+                .with_color(color)
+                .with_line_cap(canvas::LineCap::Round)
+                .with_line_join(canvas::LineJoin::Round),
+        );
+    }
+    true
+}
+
 pub(crate) fn icon<'a, Message: 'a>(icon: Icon, color: Tone) -> Element<'a, Message> {
     sized_icon(icon, color, 20.)
 }
@@ -85,8 +179,8 @@ pub(crate) fn sized_icon<'a, Message: 'a>(
 
 struct Drawing(Icon, Tone);
 
-impl<Message> canvas::Program<Message> for Drawing {
-    type State = cache::Cache<(Icon, iced::Color, bool)>;
+impl<Message> canvas::Program<Message, Theme> for Drawing {
+    type State = cache::Cache<(Icon, Tone, u64)>;
     fn draw(
         &self,
         state: &Self::State,
@@ -96,11 +190,7 @@ impl<Message> canvas::Program<Message> for Drawing {
         _: mouse::Cursor,
     ) -> Vec<Geometry> {
         state.draw(
-            (
-                self.0,
-                self.1.resolve(theme),
-                theme.extended_palette().is_dark,
-            ),
+            (self.0, self.1, theme.revision()),
             renderer,
             bounds.size(),
             |frame| self.paint(frame, theme),
@@ -110,6 +200,10 @@ impl<Message> canvas::Program<Message> for Drawing {
 
 impl Drawing {
     fn paint(&self, frame: &mut Frame, theme: &Theme) {
+        let color = self.1.resolve(theme);
+        if paint_theme_icon(frame, theme, self.0.theme_key(), color) {
+            return;
+        }
         let bounds = frame.size();
         frame.scale(bounds.width.min(bounds.height) / 20.);
         let updating = matches!(self.0, Icon::Update);
@@ -119,11 +213,13 @@ impl Drawing {
                 super::theme::UPDATE_BLUE.resolve(theme),
             );
         }
-        let stroke = Stroke::default().with_width(1.5).with_color(if updating {
-            super::theme::PIPELINE_GLYPH.resolve(theme)
-        } else {
-            self.1.resolve(theme)
-        });
+        let stroke = Stroke::default()
+            .with_width(theme.icon_stroke())
+            .with_color(if updating {
+                super::theme::PIPELINE_GLYPH.resolve(theme)
+            } else {
+                self.1.resolve(theme)
+            });
         let mut line = |points: &[(f32, f32)]| {
             let path = Path::new(|builder| {
                 if let Some(&(x, y)) = points.first() {

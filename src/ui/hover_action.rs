@@ -1,6 +1,7 @@
 //! Reveal a trailing row action without reserving space when it is hidden.
 
 use super::theme;
+use crate::ui::theme::iced;
 use iced::{
     Animation, Element, Event, Length, Point, Rectangle, Renderer, Size, Theme, Vector,
     advanced::{

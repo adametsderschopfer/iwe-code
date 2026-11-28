@@ -1,6 +1,7 @@
 //! Resize the file panel without rebuilding its scroll state or the source preview.
 
 use super::theme;
+use crate::ui::theme::iced;
 use iced::{
     Element, Event, Length, Rectangle, Renderer, Size, Theme, Vector,
     advanced::{

@@ -1,6 +1,7 @@
 //! Render synchronized comparison panes with shared folding and change connectors.
 
 use crate::ui::presentation::divider;
+use crate::ui::theme::iced;
 use crate::{
     app::{App, Message},
     i18n::{FluentArgs, Key},
@@ -303,7 +304,7 @@ struct Connectors<'a> {
     offset: f32,
 }
 
-impl<Message> canvas::Program<Message> for Connectors<'_> {
+impl<Message> canvas::Program<Message, Theme> for Connectors<'_> {
     type State = ();
 
     fn draw(

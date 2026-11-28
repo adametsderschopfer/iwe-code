@@ -1,6 +1,7 @@
 //! Share a selection across the shaped text blocks of a Markdown preview.
 
 use super::Action;
+use crate::ui::theme::iced;
 use crate::{
     domain::shortcuts::{Command, Shortcuts},
     ui::{shortcuts, theme},
@@ -20,7 +21,7 @@ use iced::{
 };
 use std::{any::Any, cell::Cell, rc::Rc};
 
-type RichText<'a> = Rich<'a, String, Action>;
+type RichText<'a> = Rich<'a, String, Action, Theme>;
 type Range = (Position, Position);
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

@@ -1,4 +1,5 @@
 use super::overlay;
+use crate::ui::theme::iced;
 use iced::{
     Event, Length,
     keyboard::{self, key::Named},
@@ -42,7 +43,7 @@ fn tab_cycles_between_editable_dialog_fields_and_reveals_the_focused_field() {
     );
     let view = overlay(base, body.into(), 300., Message::Dismiss);
     let mut ui = Simulator::with_size(iced::Settings::default(), (450., 300.), view);
-    let last_visible = |ui: &mut Simulator<'_, Message>| {
+    let last_visible = |ui: &mut Simulator<'_, Message, iced::Theme>| {
         ui.find(Id::new("last")).unwrap().visible_bounds().is_some()
     };
     assert!(!last_visible(&mut ui));
