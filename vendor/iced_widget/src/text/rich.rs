@@ -74,6 +74,19 @@ where
         }
     }
 
+    /// Returns the shaped paragraph stored in this widget's tree.
+    ///
+    /// Call this after layout with the tree that belongs to this widget.
+    pub fn paragraph<'b>(&self, tree: &'b Tree) -> &'b Renderer::Paragraph
+    where
+        Renderer: 'static,
+    {
+        &tree
+            .state
+            .downcast_ref::<State<Link, Renderer::Paragraph>>()
+            .paragraph
+    }
+
     /// Sets the default size of the [`Rich`] text.
     pub fn size(mut self, size: impl Into<Pixels>) -> Self {
         self.size = Some(size.into());

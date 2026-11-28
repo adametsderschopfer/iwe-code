@@ -13,6 +13,7 @@ pub(crate) mod external_module_panel;
 pub(crate) mod file_icons;
 pub(crate) mod focus;
 pub(crate) mod graph;
+pub(crate) mod hover_action;
 pub(crate) mod icons;
 pub(crate) mod markdown;
 pub(crate) mod modules;

@@ -54,6 +54,11 @@ pub(crate) enum Message {
     RemoveProject(usize),
     MoveProject(Option<usize>, usize, usize),
     MoveSpace(usize, usize),
+    DropProject {
+        source: usize,
+        path: PathBuf,
+        target: usize,
+    },
     ScrollSpaces(f32),
     ScrollProjects(Option<usize>, f32),
     Create,
@@ -82,17 +87,40 @@ impl App {
 
     pub(crate) fn project_menu_selection(&self) -> Option<ProjectSelection> {
         let (space, path, _) = self.project_menu.as_ref()?;
-        Some(
-            self.project_selection
-                .as_ref()
-                .filter(|set| set.contains(*space, path))
-                .cloned()
-                .unwrap_or_else(|| ProjectSelection::single(*space, path.clone())),
-        )
+        Some(self.project_selection_for(*space, path))
+    }
+
+    pub(crate) fn project_selection_for(
+        &self,
+        space: usize,
+        path: &std::path::Path,
+    ) -> ProjectSelection {
+        self.project_selection
+            .as_ref()
+            .filter(|set| set.contains(space, path))
+            .cloned()
+            .unwrap_or_else(|| ProjectSelection::single(space, path.to_path_buf()))
     }
 
     pub(super) fn change_selected_projects(
         &mut self,
+        destination: Option<usize>,
+    ) -> Task<AppMessage> {
+        let Some(selection) = self.project_menu_selection() else {
+            return Task::none();
+        };
+        if destination.is_none()
+            && selection.len() > 1
+            && self.project_menu_page != ProjectMenuPage::ConfirmRemoval
+        {
+            return Task::none();
+        }
+        self.change_projects(&selection, destination)
+    }
+
+    fn change_projects(
+        &mut self,
+        selection: &ProjectSelection,
         destination: Option<usize>,
     ) -> Task<AppMessage> {
         if self.picking
@@ -103,23 +131,15 @@ impl App {
         {
             return Task::none();
         }
-        let Some(selection) = self.project_menu_selection() else {
-            return Task::none();
-        };
-        if destination.is_none()
-            && selection.len() > 1
-            && self.project_menu_page != ProjectMenuPage::ConfirmRemoval
-        {
-            return Task::none();
-        }
         let previous = self.workspace.directory().cloned();
         if !self
             .workspace
-            .move_or_remove_projects(&selection, destination)
+            .move_or_remove_projects(selection, destination)
         {
             return Task::none();
         }
         self.project_menu = None;
+        self.space_menu = None;
         self.project_selection = None;
         if let Some(target) = destination {
             self.collapsed_spaces.remove(&target);
@@ -266,6 +286,14 @@ impl App {
                         }
                     }
                 }
+            }
+            Message::DropProject {
+                source,
+                path,
+                target,
+            } if self.loaded => {
+                let selection = self.project_selection_for(source, &path);
+                return self.change_projects(&selection, Some(target));
             }
             Message::MoveSpace(from, to)
                 if self.loaded

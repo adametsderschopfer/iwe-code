@@ -7,7 +7,7 @@ use crate::{
     i18n::{FluentArgs, Key},
     modules::ModuleId,
     ui::{
-        changed_tree, code, context_menu, external_module_panel, file_icons,
+        changed_tree, code, context_menu, external_module_panel, file_icons, hover_action,
         icons::{Icon, icon, sized_icon},
         presentation::{IconButton, center_message, divider, icon_button, short, vertical_divider},
         reorder, resize, tab_label, theme,
@@ -562,7 +562,6 @@ fn sidebar(app: &App) -> Element<'_, Message> {
         .padding([4, 8])
         .into()
     };
-    let mut body = Column::new().spacing(4).width(Length::Fill);
     let pinned: Vec<_> = app
         .workspace
         .spaces
@@ -576,193 +575,204 @@ fn sidebar(app: &App) -> Element<'_, Message> {
                 .filter_map(move |(project, item)| item.pinned.then_some((space, project)))
         })
         .collect();
-    if !pinned.is_empty() {
-        body = body.push(
-            container(
-                row![
-                    icon(Icon::Pin, theme::FAINT),
-                    text(app.i18n.text(Key::PinnedProjects))
-                        .size(13)
-                        .style(theme::FAINT.text())
-                ]
-                .spacing(8),
-            )
-            .padding([4, 9]),
+    let mut groups = Column::new().spacing(3).width(Length::Fill);
+    let has_pinned = !pinned.is_empty();
+    let mut visible_projects = Vec::new();
+    if has_pinned {
+        let heading = container(
+            row![
+                icon(Icon::Pin, theme::FAINT),
+                text(app.i18n.text(Key::PinnedProjects))
+                    .size(13)
+                    .style(theme::FAINT.text())
+            ]
+            .spacing(8),
+        )
+        .padding([4, 9]);
+        let projects = Column::with_children(
+            pinned
+                .iter()
+                .map(|&(space, project)| project_entry(app, space, project)),
+        )
+        .spacing(4)
+        .width(Length::Fill);
+        groups = groups.push(
+            column![heading, projects]
+                .spacing(4)
+                .padding(iced::padding::bottom(5)),
         );
-        for (space, project) in pinned {
-            body = body.push(project_entry(app, space, project));
-        }
-        body = body.push(space().height(5));
+        visible_projects.push(pinned);
     }
-    {
-        let mut groups = Column::new().spacing(3).width(Length::Fill);
-        for (space_index, group) in app.workspace.spaces.iter().enumerate() {
-            let mut group_body = Column::new().spacing(2).width(Length::Fill);
-            group_body = group_body.push(context_menu::trigger(
-                container(
-                    row![
-                        button(
-                            row![
-                                file_icons::chevron(!app.collapsed_spaces.contains(&space_index)),
-                                text(short(&group.name, 22))
-                                    .size(13)
-                                    .font(theme::semibold())
-                                    .wrapping(text::Wrapping::None)
-                                    .width(Length::Fill),
-                                text(
-                                    group
-                                        .projects
-                                        .iter()
-                                        .filter(|project| !project.pinned)
-                                        .count()
-                                )
-                                .size(12)
-                                .style(theme::FAINT.text()),
-                            ]
-                            .spacing(6)
-                            .align_y(Alignment::Center)
-                            .height(24)
-                        )
-                        .padding([0, 8])
-                        .width(Length::Fill)
-                        .on_press(Message::ToggleSpace(space_index))
-                        .style(theme::action(false)),
-                        tooltip::view(
-                            container(IconButton::Inline(26.).button(
-                                Icon::Settings,
-                                (!app.picking).then_some(Message::Space(
-                                    crate::app::spaces::Message::Edit(space_index)
-                                )),
-                                false
-                            ))
-                            .id(format!("edit-space-{space_index}")),
-                            text(app.i18n.text(Key::EditSpace)).size(12),
-                            tooltip::Position::Right
-                        ),
-                    ]
-                    .spacing(4)
-                    .align_y(Alignment::Center),
-                )
+    let animate_actions = !crate::app::windows::reduce_motion();
+    for (space_index, group) in app.workspace.spaces.iter().enumerate() {
+        let mut group_body = Column::new().spacing(2).width(Length::Fill);
+        let count = group
+            .projects
+            .iter()
+            .filter(|project| !project.pinned)
+            .count();
+        let heading = button(
+            row![
+                file_icons::chevron(!app.collapsed_spaces.contains(&space_index)),
+                text(short(&group.name, 22))
+                    .size(13)
+                    .font(theme::semibold())
+                    .wrapping(text::Wrapping::None)
+                    .width(Length::Fill),
+                container(text(count).size(12).style(theme::FAINT.text()))
+                    .id(format!("space-project-count-{space_index}")),
+            ]
+            .spacing(6)
+            .align_y(Alignment::Center)
+            .height(26),
+        )
+        .padding([0, 8])
+        .width(Length::Fill)
+        .on_press(Message::ToggleSpace(space_index))
+        .style(theme::action(false));
+        let settings = tooltip::view(
+            container(IconButton::Inline(26.).button(
+                Icon::Settings,
+                (!app.picking).then_some(Message::Space(spaces::Message::Edit(space_index))),
+                false,
+            ))
+            .id(format!("edit-space-{space_index}")),
+            text(app.i18n.text(Key::EditSpace)).size(12),
+            tooltip::Position::Right,
+        );
+        group_body = group_body.push(context_menu::trigger(
+            container(hover_action::trailing(heading, settings, animate_actions))
                 .id(format!("space-group-{space_index}"))
                 .padding([1, 0])
                 .width(Length::Fill),
-                move |point| Message::SpaceMenu(space_index, point),
-            ));
-            if app.collapsed_spaces.contains(&space_index) {
-                groups = groups.push(group_body);
-                continue;
-            }
-            let mut projects = Column::new().spacing(2).width(Length::Fill);
-            let visible: Vec<_> = group
-                .projects
-                .iter()
-                .enumerate()
-                .filter_map(|(index, project)| (!project.pinned).then_some(index))
-                .collect();
-            for &project_index in &visible {
-                projects = projects.push(project_entry(app, space_index, project_index));
-            }
-            if !visible.is_empty() {
-                let projects: Element<'_, Message> =
-                    if app.picking || app.space_draft.is_some() || app.auth_dialog.is_some() {
-                        projects.into()
-                    } else {
-                        reorder::column(
-                            projects,
-                            36.,
-                            move |from, to| {
-                                Message::Space(crate::app::spaces::Message::MoveProject(
-                                    Some(space_index),
-                                    visible[from],
-                                    visible[to],
-                                ))
-                            },
-                            move |offset| {
-                                Message::Space(crate::app::spaces::Message::ScrollProjects(
-                                    Some(space_index),
-                                    offset,
-                                ))
-                            },
-                        )
-                    };
-                group_body = group_body.push(projects);
-            }
-            if group.projects.is_empty() {
-                group_body = group_body.push(
-                    container(
-                        text(app.i18n.text(Key::NoProjects))
-                            .size(12)
-                            .style(theme::FAINT.text()),
-                    )
-                    .padding([3, 9]),
-                );
-            }
-            let selected = matches!(app.space_menu, Some((index, spaces::Menu::AddProject { parent: None, .. })) if index == space_index);
-            let open =
-                Message::ProjectAdd(crate::app::project_add::Message::Open(Some(space_index)));
-            let control = button(
-                row![
-                    icon(Icon::Plus, theme::MUTED),
-                    text(app.i18n.text(Key::AddProject))
-                        .size(12)
-                        .width(Length::Fill),
-                    sized_icon(Icon::Right, theme::MUTED, 12.),
-                ]
-                .spacing(8)
-                .align_y(Alignment::Center),
-            )
-            .on_press_maybe((!app.picking).then_some(open))
-            .style(theme::action(selected))
-            .padding([4, 9])
-            .width(Length::Fill);
-            let add = mouse_area(container(control).id(spaces::add_project_id(space_index, false)));
-            let add = if !app.picking
-                && app
-                    .space_menu
-                    .is_none_or(|(_, menu)| menu.parent().is_none())
-                && app.project_menu.is_none()
-                && app.files.menu.is_none()
-            {
-                add.on_enter(Message::OpenSpaceAddMenu(space_index))
-            } else {
-                add
-            };
-            group_body = group_body.push(add);
+            move |point| Message::SpaceMenu(space_index, point),
+        ));
+        if app.collapsed_spaces.contains(&space_index) {
+            visible_projects.push(Vec::new());
             groups = groups.push(group_body);
+            continue;
         }
-        let groups: Element<'_, Message> = if app.picking
-            || app.space_draft.is_some()
-            || app.project_add.is_some()
-            || app.auth_dialog.is_some()
-            || app.modules.git.git_actions.has_dialog()
-        {
-            groups.into()
-        } else {
-            reorder::groups(
-                groups,
-                28.,
-                |from, to| Message::Space(crate::app::spaces::Message::MoveSpace(from, to)),
-                |offset| Message::Space(crate::app::spaces::Message::ScrollSpaces(offset)),
-            )
-        };
-        body = body.push(groups);
-        if app.workspace.spaces.is_empty() {
-            body = body.push(
-                container(
-                    text(app.i18n.text(Key::NoSpaces))
-                        .size(13)
-                        .style(theme::MUTED.text()),
+        let visible: Vec<_> = group
+            .projects
+            .iter()
+            .enumerate()
+            .filter_map(|(index, project)| (!project.pinned).then_some((space_index, index)))
+            .collect();
+        if !visible.is_empty() {
+            group_body = group_body.push(
+                Column::with_children(
+                    visible
+                        .iter()
+                        .map(|&(space, project)| project_entry(app, space, project)),
                 )
-                .id("spaces-empty-message")
-                .padding([12, 8]),
+                .spacing(2)
+                .width(Length::Fill),
             );
         }
+        visible_projects.push(visible);
+        if group.projects.is_empty() {
+            group_body = group_body.push(
+                container(
+                    text(app.i18n.text(Key::NoProjects))
+                        .size(12)
+                        .style(theme::FAINT.text()),
+                )
+                .padding([3, 9]),
+            );
+        }
+        let selected = matches!(app.space_menu, Some((index, spaces::Menu::AddProject { parent: None, .. })) if index == space_index);
+        let open = Message::ProjectAdd(crate::app::project_add::Message::Open(Some(space_index)));
+        let control = button(
+            row![
+                icon(Icon::Plus, theme::MUTED),
+                text(app.i18n.text(Key::AddProject))
+                    .size(12)
+                    .width(Length::Fill),
+                sized_icon(Icon::Right, theme::MUTED, 12.),
+            ]
+            .spacing(8)
+            .align_y(Alignment::Center),
+        )
+        .on_press_maybe((!app.picking).then_some(open))
+        .style(theme::action(selected))
+        .padding([4, 9])
+        .width(Length::Fill);
+        let add = mouse_area(container(control).id(spaces::add_project_id(space_index, false)));
+        let add = if !app.picking
+            && app
+                .space_menu
+                .is_none_or(|(_, menu)| menu.parent().is_none())
+            && app.project_menu.is_none()
+            && app.files.menu.is_none()
+        {
+            add.on_enter(Message::OpenSpaceAddMenu(space_index))
+        } else {
+            add
+        };
+        group_body = group_body.push(add);
+        groups = groups.push(group_body);
     }
+    let browser: Element<'_, Message> = if app.workspace.spaces.is_empty() {
+        container(
+            text(app.i18n.text(Key::NoSpaces))
+                .size(13)
+                .style(theme::MUTED.text()),
+        )
+        .id("spaces-empty-message")
+        .padding([12, 8])
+        .into()
+    } else if app.picking
+        || app.space_draft.is_some()
+        || app.project_add.is_some()
+        || app.auth_dialog.is_some()
+        || app.modules.git.git_actions.has_dialog()
+    {
+        groups.into()
+    } else {
+        reorder::groups(
+            groups,
+            visible_projects.iter().map(Vec::len).collect(),
+            has_pinned,
+            |from, to| Message::Space(spaces::Message::MoveSpace(from, to)),
+            move |group, row, destination, slot| {
+                let (source, project) = *visible_projects.get(group)?.get(row)?;
+                let target = destination.checked_sub(usize::from(has_pinned))?;
+                if let Some(slot) = slot {
+                    let (_, to) = *visible_projects.get(group)?.get(slot)?;
+                    return Some(Message::Space(spaces::Message::MoveProject(
+                        Some(source),
+                        project,
+                        to,
+                    )));
+                }
+                let path = &app
+                    .workspace
+                    .spaces
+                    .get(source)?
+                    .projects
+                    .get(project)?
+                    .directory;
+                let selection = app.project_selection_for(source, path);
+                selection
+                    .destinations(&app.workspace)
+                    .contains(&target)
+                    .then(|| {
+                        Message::Space(spaces::Message::DropProject {
+                            source,
+                            path: path.clone(),
+                            target,
+                        })
+                    })
+            },
+            |offset| Message::Space(spaces::Message::ScrollSpaces(offset)),
+        )
+    };
     let sidebar = column![
         navigation,
         space().height(8),
-        scrollable(body)
+        scrollable(browser)
             .id("project-browser")
+            .width(Length::Fill)
             .spacing(theme::SIDEBAR_SCROLL_GAP)
             .style(theme::scroll)
             .height(Length::Fill),
@@ -2280,8 +2290,13 @@ fn file_panes(app: &App) -> Element<'_, Message> {
         &app.theme(),
         theme::selected_code_font(preferences.code_font),
         preferences.code_size,
+        (app.preview().id, app.markdown.revision),
+        &preferences.shortcuts,
     )
-    .map(|url| app.preview().markdown_link(url));
+    .map(|action| match action {
+        crate::ui::markdown::Action::Link(url) => app.preview().markdown_link(url),
+        crate::ui::markdown::Action::Copy(text) => Message::CopyMarkdownText(text),
+    });
     if mode == MarkdownViewMode::Preview {
         return formatted;
     }

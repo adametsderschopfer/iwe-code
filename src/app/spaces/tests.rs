@@ -394,6 +394,7 @@ fn edit_space_controls_and_translations_fit() {
                 .collect(),
         );
         let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+        reveal_space_settings(&mut ui);
         ui.click(iced::widget::Id::new("edit-space-0")).unwrap();
         let messages: Vec<_> = ui.into_messages().collect();
         assert!(matches!(
@@ -852,13 +853,17 @@ fn overflowing_space_list_keeps_edit_buttons_outside_the_scrollbar_lane() {
             );
         }
         let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+        reveal_space_settings(&mut ui);
         let edit = ui
             .find(Id::new("edit-space-0"))
             .unwrap()
             .visible_bounds()
             .unwrap();
         let scrollbar_left = theme::SIDEBAR_WIDTH - 12. - 10.;
-        assert!(edit.x + edit.width <= scrollbar_left - theme::SIDEBAR_SCROLL_GAP);
+        assert!(
+            edit.x + edit.width <= scrollbar_left - theme::SIDEBAR_SCROLL_GAP,
+            "{edit:?} overlaps the scrollbar lane at {scrollbar_left}",
+        );
         ui.click(Id::new("edit-space-0")).unwrap();
         assert!(
             ui.into_messages()
@@ -1044,4 +1049,166 @@ fn context_click_on_an_unselected_project_does_not_remove_the_group() {
     assert!(app.workspace.spaces[1].projects.is_empty());
     assert_eq!(app.workspace.spaces[0].projects.len(), 2);
     assert_eq!(app.workspace.directory(), Some(&api));
+}
+
+fn reveal_space_settings(ui: &mut iced_test::Simulator<AppMessage>) {
+    use iced::{Event, mouse, widget::Id, window};
+    let heading = ui
+        .find(Id::new("space-group-0"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap()
+        .center();
+    ui.point_at(heading);
+    ui.simulate([Event::Mouse(mouse::Event::CursorMoved {
+        position: heading,
+    })]);
+    ui.simulate([Event::Window(window::Event::RedrawRequested(
+        std::time::Instant::now() + theme::SPACE_ACTION_TRANSITION,
+    ))]);
+}
+
+#[test]
+fn space_settings_slide_in_and_the_hidden_action_leaves_no_gap() {
+    use iced::{Event, Point, mouse, widget::Id, window};
+    use std::time::Instant;
+
+    let mut app = state(Language::English);
+    app.workspace
+        .create_space("Team".into(), vec!["web".into()]);
+    let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+    let heading = ui
+        .find(Id::new("space-group-0"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    let count = |ui: &mut iced_test::Simulator<AppMessage>| {
+        ui.find(Id::new("space-project-count-0"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap()
+    };
+    let gear = |ui: &mut iced_test::Simulator<AppMessage>| {
+        ui.find(Id::new("edit-space-0"))
+            .unwrap()
+            .visible_bounds()
+            .unwrap()
+    };
+    let idle_count = count(&mut ui);
+    assert!((heading.x + heading.width - idle_count.x - idle_count.width - 8.).abs() < 1.);
+
+    let hover = heading.center();
+    ui.point_at(hover);
+    ui.simulate([Event::Mouse(mouse::Event::CursorMoved { position: hover })]);
+    let now = Instant::now();
+    let half = Event::Window(window::Event::RedrawRequested(
+        now + theme::SPACE_ACTION_TRANSITION / 2,
+    ));
+    ui.simulate([half]);
+    let middle_count = count(&mut ui);
+    let middle_gear = gear(&mut ui);
+    ui.simulate([Event::Window(window::Event::RedrawRequested(
+        now + theme::SPACE_ACTION_TRANSITION,
+    ))]);
+    let open_count = count(&mut ui);
+    let open_gear = gear(&mut ui);
+    assert!(open_count.x < idle_count.x);
+    if !crate::app::windows::reduce_motion() {
+        assert!(open_count.x < middle_count.x && middle_count.x < idle_count.x);
+        assert!(open_gear.x < middle_gear.x);
+    }
+
+    let outside = Point::new(-1., -1.);
+    ui.point_at(outside);
+    ui.simulate([Event::Mouse(mouse::Event::CursorMoved {
+        position: outside,
+    })]);
+    ui.simulate([Event::Window(window::Event::RedrawRequested(
+        Instant::now() + theme::SPACE_ACTION_TRANSITION,
+    ))]);
+    assert_eq!(count(&mut ui), idle_count);
+}
+
+#[test]
+fn dragging_a_pinned_project_moves_it_to_a_collapsed_space_and_preserves_the_open_project() {
+    use iced::{Event, mouse, widget::Id};
+    let mut app = state(Language::English);
+    app.workspace
+        .create_space("Source".into(), vec!["web".into(), "api".into()]);
+    app.workspace.create_space("Destination".into(), Vec::new());
+    app.workspace.spaces[0].projects[0].pinned = true;
+    app.workspace.select_project(0, 0);
+    app.collapsed_spaces.insert(1);
+    let generation = app.generation;
+    let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+    let source = ui
+        .find(Id::new("space-project-0-0"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    let target = ui
+        .find(Id::new("space-group-1"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap();
+    ui.point_at(source.center());
+    ui.simulate([Event::Mouse(mouse::Event::ButtonPressed(
+        mouse::Button::Left,
+    ))]);
+    ui.point_at(target.center());
+    ui.simulate([
+        Event::Mouse(mouse::Event::CursorMoved {
+            position: target.center(),
+        }),
+        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+    ]);
+    let messages = ui.into_messages().collect::<Vec<_>>();
+    assert!(
+        matches!(messages.as_slice(), [AppMessage::Space(Message::DropProject { source: 0, target: 1, path })] if path == &PathBuf::from("web"))
+    );
+    for message in messages {
+        let _ = app.update(message);
+    }
+    assert_eq!(app.generation, generation);
+    assert!(app.saving);
+    assert!(!app.collapsed_spaces.contains(&1));
+    let restored: Workspace =
+        serde_json::from_value(serde_json::to_value(&app.workspace).unwrap()).unwrap();
+    assert_eq!(restored.selected_space, Some(1));
+    assert_eq!(restored.directory(), Some(&PathBuf::from("web")));
+    assert!(restored.spaces[1].projects[0].pinned);
+    assert_eq!(restored.spaces[0].projects.len(), 1);
+}
+
+#[test]
+fn dragging_a_project_to_a_space_with_the_same_folder_cancels_the_move() {
+    use iced::{Event, mouse, widget::Id};
+    let mut app = state(Language::English);
+    app.workspace
+        .create_space("Source".into(), vec!["web".into()]);
+    app.workspace
+        .create_space("Destination".into(), vec!["web".into()]);
+    let mut ui = iced_test::Simulator::with_size(settings(), (1080., 720.), app.view());
+    let source = ui
+        .find(Id::new("space-project-0-0"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap()
+        .center();
+    let target = ui
+        .find(Id::new("space-group-1"))
+        .unwrap()
+        .visible_bounds()
+        .unwrap()
+        .center();
+    ui.point_at(source);
+    ui.simulate([Event::Mouse(mouse::Event::ButtonPressed(
+        mouse::Button::Left,
+    ))]);
+    ui.point_at(target);
+    ui.simulate([
+        Event::Mouse(mouse::Event::CursorMoved { position: target }),
+        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+    ]);
+    assert!(ui.into_messages().next().is_none());
 }

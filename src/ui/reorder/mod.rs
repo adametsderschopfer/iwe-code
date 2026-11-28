@@ -22,7 +22,7 @@ pub(crate) fn column<'a, Message: 'a>(
     Element::new(Reorder {
         content: content.into(),
         action_width,
-        handle_height: None,
+        groups: None,
         on_move: Box::new(on_move),
         on_scroll: Some(Box::new(on_scroll)),
     })
@@ -35,7 +35,7 @@ pub(crate) fn fixed_column<'a, Message: 'a>(
     Element::new(Reorder {
         content: content.into(),
         action_width: 0.,
-        handle_height: None,
+        groups: None,
         on_move: Box::new(on_move),
         on_scroll: None,
     })
@@ -43,25 +43,50 @@ pub(crate) fn fixed_column<'a, Message: 'a>(
 
 pub(crate) fn groups<'a, Message: 'a>(
     content: Column<'a, Message>,
-    handle_height: f32,
+    project_counts: Vec<usize>,
+    has_pinned: bool,
     on_move: impl Fn(usize, usize) -> Message + 'a,
+    on_project_drop: impl Fn(usize, usize, usize, Option<usize>) -> Option<Message> + 'a,
     on_scroll: impl Fn(f32) -> Message + 'a,
 ) -> Element<'a, Message> {
     Element::new(Reorder {
         content: content.into(),
         action_width: 36.,
-        handle_height: Some(handle_height),
+        groups: Some(Groups {
+            project_counts,
+            has_pinned,
+            on_project_drop: Box::new(on_project_drop),
+        }),
         on_move: Box::new(on_move),
         on_scroll: Some(Box::new(on_scroll)),
     })
 }
 
+type ProjectDrop<'a, Message> = dyn Fn(usize, usize, usize, Option<usize>) -> Option<Message> + 'a;
+
+struct Groups<'a, Message> {
+    project_counts: Vec<usize>,
+    has_pinned: bool,
+    on_project_drop: Box<ProjectDrop<'a, Message>>,
+}
+
 struct Reorder<'a, Message> {
     content: Element<'a, Message>,
     action_width: f32,
-    handle_height: Option<f32>,
+    groups: Option<Groups<'a, Message>>,
     on_move: Box<dyn Fn(usize, usize) -> Message + 'a>,
     on_scroll: Option<Box<dyn Fn(f32) -> Message + 'a>>,
+}
+
+#[derive(Clone, Copy)]
+enum Source {
+    Row(usize),
+    Project { group: usize, row: usize },
+}
+
+struct Drop<Message> {
+    message: Message,
+    indicator: Rectangle,
 }
 
 #[derive(Default)]
@@ -70,36 +95,170 @@ struct State {
 }
 
 struct Drag {
-    source: usize,
+    source: Source,
     origin: Point,
     active: bool,
     last_scroll: Instant,
 }
 
 fn target(
-    layout: Layout<'_>,
+    bounds: Rectangle,
+    rows: impl Iterator<Item = Rectangle>,
     cursor: mouse::Cursor,
     viewport: &Rectangle,
     source: usize,
 ) -> Option<(usize, f32)> {
-    let visible = layout.bounds().intersection(viewport)?;
+    let visible = bounds.intersection(viewport)?;
     let position = cursor.position().filter(|point| visible.contains(*point))?;
     let mut slot = 0;
-    let mut edge = layout.bounds().y;
+    let mut edge = bounds.y;
     let mut count = 0;
-    for row in layout.children() {
+    for row in rows {
         count += 1;
-        if position.y >= row.bounds().center_y() {
+        if position.y >= row.center_y() {
             slot += 1;
-            edge = row.bounds().y + row.bounds().height;
+            edge = row.y + row.height;
         } else if slot == count - 1 {
-            edge = row.bounds().y;
+            edge = row.y;
         }
     }
     if source >= count {
         return None;
     }
     Some((slot.saturating_sub(usize::from(slot > source)), edge))
+}
+
+impl<Message> Reorder<'_, Message> {
+    fn source_at(&self, layout: Layout<'_>, point: Point) -> Option<Source> {
+        for (group, entry) in layout.children().enumerate() {
+            if !entry.bounds().contains(point) {
+                continue;
+            }
+            let Some(groups) = &self.groups else {
+                return (point.x < entry.bounds().x + entry.bounds().width - self.action_width)
+                    .then_some(Source::Row(group));
+            };
+            let heading = entry.children().next()?.bounds();
+            if heading.contains(point) {
+                return (!(groups.has_pinned && group == 0)
+                    && point.x < heading.x + heading.width - self.action_width)
+                    .then_some(Source::Row(group));
+            }
+            if groups
+                .project_counts
+                .get(group)
+                .copied()
+                .unwrap_or_default()
+                > 0
+            {
+                return entry
+                    .children()
+                    .nth(1)?
+                    .children()
+                    .position(|row| row.bounds().contains(point))
+                    .map(|row| Source::Project { group, row });
+            }
+        }
+        None
+    }
+
+    fn source_bounds(&self, layout: Layout<'_>, source: Source) -> Option<Rectangle> {
+        match source {
+            Source::Row(index) => {
+                let entry = layout.children().nth(index)?;
+                Some(if self.groups.is_some() {
+                    entry.children().next()?.bounds()
+                } else {
+                    entry.bounds()
+                })
+            }
+            Source::Project { group, row } => Some(
+                layout
+                    .children()
+                    .nth(group)?
+                    .children()
+                    .nth(1)?
+                    .children()
+                    .nth(row)?
+                    .bounds(),
+            ),
+        }
+    }
+
+    fn drop_at(
+        &self,
+        layout: Layout<'_>,
+        cursor: mouse::Cursor,
+        viewport: &Rectangle,
+        source: Source,
+    ) -> Option<Drop<Message>> {
+        let line = |bounds: Rectangle, edge: f32| Rectangle {
+            x: bounds.x,
+            y: edge - 1.,
+            width: bounds.width,
+            height: 2.,
+        };
+        match source {
+            Source::Row(source) => {
+                let skip =
+                    usize::from(self.groups.as_ref().is_some_and(|groups| groups.has_pinned));
+                let bounds = layout.bounds();
+                let rows = layout.children().skip(skip);
+                let bounds = Rectangle {
+                    y: layout.children().nth(skip)?.bounds().y,
+                    ..bounds
+                };
+                let bounds = Rectangle {
+                    height: layout.bounds().y + layout.bounds().height - bounds.y,
+                    ..bounds
+                };
+                let source = source.checked_sub(skip)?;
+                let (destination, edge) = target(
+                    bounds,
+                    rows.map(|row| row.bounds()),
+                    cursor,
+                    viewport,
+                    source,
+                )?;
+                (source != destination).then(|| Drop {
+                    message: (self.on_move)(source, destination),
+                    indicator: line(bounds, edge),
+                })
+            }
+            Source::Project { group, row } => {
+                let groups = self.groups.as_ref()?;
+                let position = cursor
+                    .position()
+                    .filter(|point| viewport.contains(*point))?;
+                let (destination, entry) =
+                    layout.children().enumerate().find(|(index, entry)| {
+                        !(groups.has_pinned && *index == 0) && entry.bounds().contains(position)
+                    })?;
+                let heading = entry.children().next()?.bounds();
+                let (slot, indicator) = if group == destination {
+                    let projects = entry.children().nth(1)?;
+                    let bounds = projects.bounds();
+                    let (slot, edge) = target(
+                        bounds,
+                        projects.children().map(|row| row.bounds()),
+                        cursor,
+                        viewport,
+                        row,
+                    )?;
+                    if slot == row {
+                        return None;
+                    }
+                    (Some(slot), line(bounds, edge))
+                } else {
+                    (None, heading)
+                };
+                Some(Drop {
+                    message: (groups.on_project_drop)(group, row, destination, slot)?,
+                    indicator,
+                })
+            }
+        }
+    }
 }
 
 impl<Message> Widget<Message, Theme, Renderer> for Reorder<'_, Message> {
@@ -162,13 +321,7 @@ impl<Message> Widget<Message, Theme, Renderer> for Reorder<'_, Message> {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
                 if let Some(position) = cursor.position()
                     && viewport.contains(position)
-                    && let Some(source) = layout.children().position(|row| {
-                        row.bounds().contains(position)
-                            && self
-                                .handle_height
-                                .is_none_or(|height| position.y < row.bounds().y + height)
-                            && position.x < row.bounds().x + row.bounds().width - self.action_width
-                    })
+                    && let Some(source) = self.source_at(layout, position)
                 {
                     state.drag = Some(Drag {
                         source,
@@ -196,22 +349,22 @@ impl<Message> Widget<Message, Theme, Renderer> for Reorder<'_, Message> {
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 if let Some(drag) = state.drag.take() {
                     if drag.active {
-                        if let Some((destination, _)) =
-                            target(layout, cursor, viewport, drag.source)
-                            && destination != drag.source
-                        {
-                            shell.publish((self.on_move)(drag.source, destination));
+                        if let Some(drop) = self.drop_at(layout, cursor, viewport, drag.source) {
+                            shell.publish(drop.message);
                         }
                         shell.request_redraw();
                         shell.capture_event();
                         return;
                     }
-                    if layout.children().nth(drag.source).is_some_and(|row| {
-                        cursor.is_over(row.bounds())
-                            && cursor
-                                .position()
-                                .is_some_and(|point| viewport.contains(point))
-                    }) {
+                    if self
+                        .source_bounds(layout, drag.source)
+                        .is_some_and(|bounds| {
+                            cursor.is_over(bounds)
+                                && cursor
+                                    .position()
+                                    .is_some_and(|point| viewport.contains(point))
+                        })
+                    {
                         let mut messages = Vec::new();
                         let mut press = Shell::new(&mut messages);
                         self.content.as_widget_mut().update(
@@ -345,12 +498,12 @@ impl<Message> Widget<Message, Theme, Renderer> for Reorder<'_, Message> {
         );
         if let Some(drag) = drag
             && let Some(clip) = layout.bounds().intersection(viewport)
-            && let Some(source) = layout.children().nth(drag.source)
+            && let Some(source) = self.source_bounds(layout, drag.source)
         {
             renderer.with_layer(clip, |renderer| {
                 renderer.fill_quad(
                     renderer::Quad {
-                        bounds: source.bounds(),
+                        bounds: source,
                         border: Border {
                             color: theme::BLUE.resolve(theme),
                             width: 1.,
@@ -360,21 +513,25 @@ impl<Message> Widget<Message, Theme, Renderer> for Reorder<'_, Message> {
                     },
                     theme::BLUE.resolve(theme).scale_alpha(0.12),
                 );
-                if let Some((destination, edge)) = target(layout, cursor, viewport, drag.source)
-                    && destination != drag.source
-                {
+                if let Some(drop) = self.drop_at(layout, cursor, viewport, drag.source) {
+                    let mut bounds = drop.indicator;
+                    if bounds.height == 2. {
+                        bounds.y = bounds
+                            .y
+                            .clamp(clip.y, (clip.y + clip.height - 2.).max(clip.y));
+                    }
+                    let color = theme::BLUE.resolve(theme);
+                    let background = if bounds.height == 2. {
+                        color
+                    } else {
+                        color.scale_alpha(0.24)
+                    };
                     renderer.fill_quad(
                         renderer::Quad {
-                            bounds: Rectangle {
-                                x: clip.x,
-                                y: (edge - 1.)
-                                    .clamp(clip.y, (clip.y + clip.height - 2.).max(clip.y)),
-                                width: clip.width,
-                                height: clip.height.min(2.),
-                            },
+                            bounds,
                             ..Default::default()
                         },
-                        theme::BLUE.resolve(theme),
+                        background,
                     );
                 }
             });

@@ -3173,6 +3173,37 @@
     "publishedAt": null,
     "tags": [],
     "source": null,
-    "items": []
+    "items": [
+      {
+        "id": "space-settings-hover",
+        "category": "changed",
+        "text": {
+          "en": "The settings button slides in when you hover over a space.",
+          "ru": "Кнопка настроек выезжает при наведении на пространство.",
+          "es": "El botón de configuración se desliza al pasar el cursor sobre un espacio."
+        },
+        "sources": ["src/ui/screens/workspace.rs"]
+      },
+      {
+        "id": "markdown-preview-selection",
+        "category": "added",
+        "text": {
+          "en": "Select and copy text in the Markdown preview.",
+          "ru": "Выделяйте и копируйте текст в предпросмотре Markdown.",
+          "es": "Selecciona y copia texto en la vista previa de Markdown."
+        },
+        "sources": ["src/ui/markdown/mod.rs", "src/ui/markdown/selection.rs"]
+      },
+      {
+        "id": "drag-projects-between-spaces",
+        "category": "added",
+        "text": {
+          "en": "Drag projects between spaces in the sidebar.",
+          "ru": "Перетаскивайте проекты между пространствами в боковой панели.",
+          "es": "Arrastra proyectos entre espacios en la barra lateral."
+        },
+        "sources": ["src/ui/reorder/mod.rs", "src/app/spaces.rs"]
+      }
+    ]
   }
 ]

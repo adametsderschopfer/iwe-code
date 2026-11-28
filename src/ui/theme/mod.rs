@@ -177,6 +177,8 @@ pub(crate) const WORKSPACE_HEADER_HEIGHT: f32 = 56.;
 pub(crate) const WORKSPACE_HEADER_BUTTON_SIZE: f32 = 40.;
 pub(crate) const SPACES_SIDEBAR_TRANSITION: std::time::Duration =
     std::time::Duration::from_millis(133);
+pub(crate) const SPACE_ACTION_TRANSITION: std::time::Duration =
+    std::time::Duration::from_millis(150);
 pub(crate) const FILE_TAB_MIN_WIDTH: f32 = 200.0;
 pub(crate) const FILE_TAB_TEXT_SIZE: f32 = 12.0;
 pub(crate) const FILE_TAB_NAME_LIMIT: usize = 35;

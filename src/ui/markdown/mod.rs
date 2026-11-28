@@ -1,9 +1,11 @@
 //! Display a read-only Markdown document with the workspace palette and fonts.
 
-use crate::ui::theme;
+mod selection;
+
+use crate::{domain::shortcuts::Shortcuts, ui::theme};
 use iced::{
     Border, Element, Font, Length, Padding, Theme, padding,
-    widget::{container, markdown, rich_text, row, rule, scrollable, text},
+    widget::{container, markdown, row, rule, scrollable, text},
 };
 
 const DOCUMENT_WIDTH: f32 = 680.;
@@ -14,12 +16,20 @@ const DOCUMENT_PADDING: Padding = Padding {
     left: 24.,
 };
 
+#[derive(Debug, PartialEq)]
+pub(crate) enum Action {
+    Link(String),
+    Copy(String),
+}
+
 pub(crate) fn view<'a>(
     items: &'a [markdown::Item],
     appearance: &Theme,
     code_font: Font,
     code_size: u16,
-) -> Element<'a, String> {
+    identity: (u64, u64),
+    shortcuts: &Shortcuts,
+) -> Element<'a, Action> {
     let mut style = markdown::Style::from(appearance);
     style.font = theme::font();
     style.link_color = theme::BLUE.resolve(appearance);
@@ -38,11 +48,13 @@ pub(crate) fn view<'a>(
     settings.h5_size = 16.into();
     settings.h6_size = 15.into();
 
-    let document = container(markdown::view_with(items, settings, &Viewer))
+    let selection = selection::Shared::default();
+    let viewer = Viewer(selection);
+    let document = container(markdown::view_with(items, settings, &viewer))
         .id("markdown-document")
         .width(Length::Fill)
         .max_width(DOCUMENT_WIDTH);
-    container(
+    let pane = container(
         scrollable(
             container(document)
                 .padding(DOCUMENT_PADDING)
@@ -59,15 +71,15 @@ pub(crate) fn view<'a>(
     .style(|appearance| container::Style {
         text_color: Some(theme::MARKDOWN_TEXT.resolve(appearance)),
         ..theme::surface(appearance)
-    })
-    .into()
+    });
+    selection::document(pane.into(), viewer.0, identity, shortcuts.clone())
 }
 
-struct Viewer;
+struct Viewer(selection::Shared);
 
-impl<'a> markdown::Viewer<'a, String> for Viewer {
-    fn on_link_click(url: String) -> String {
-        url
+impl<'a> markdown::Viewer<'a, Action> for Viewer {
+    fn on_link_click(url: String) -> Action {
+        Action::Link(url)
     }
 
     fn heading(
@@ -76,7 +88,7 @@ impl<'a> markdown::Viewer<'a, String> for Viewer {
         level: &'a markdown::HeadingLevel,
         value: &'a markdown::Text,
         index: usize,
-    ) -> Element<'a, String> {
+    ) -> Element<'a, Action> {
         use markdown::HeadingLevel::*;
 
         let size = match level {
@@ -93,14 +105,9 @@ impl<'a> markdown::Viewer<'a, String> for Viewer {
             _ => 8,
         };
         settings.style.font = theme::semibold();
-        container(
-            rich_text(value.spans(settings.style))
-                .size(size)
-                .line_height(1.22)
-                .wrapping(text::Wrapping::WordOrGlyph)
-                .style(theme::TEXT.text())
-                .on_link_click(Self::on_link_click),
-        )
+        container(self.0.block(value.spans(settings.style), |rich| {
+            rich.size(size).line_height(1.22).style(theme::TEXT.text())
+        }))
         .padding(padding::top(top))
         .into()
     }
@@ -109,13 +116,10 @@ impl<'a> markdown::Viewer<'a, String> for Viewer {
         &self,
         settings: markdown::Settings,
         value: &markdown::Text,
-    ) -> Element<'a, String> {
-        rich_text(value.spans(settings.style))
-            .size(settings.text_size)
-            .line_height(1.55)
-            .wrapping(text::Wrapping::WordOrGlyph)
-            .on_link_click(Self::on_link_click)
-            .into()
+    ) -> Element<'a, Action> {
+        self.0.block(value.spans(settings.style), |rich| {
+            rich.size(settings.text_size).line_height(1.55)
+        })
     }
 
     fn code_block(
@@ -124,12 +128,16 @@ impl<'a> markdown::Viewer<'a, String> for Viewer {
         _language: Option<&'a str>,
         code: &'a str,
         _lines: &'a [markdown::Text],
-    ) -> Element<'a, String> {
-        let code = text(code.strip_suffix('\n').unwrap_or(code))
-            .font(settings.style.code_block_font)
-            .size(settings.code_size)
-            .line_height(1.45)
-            .wrapping(text::Wrapping::None);
+    ) -> Element<'a, Action> {
+        let code = self.0.block(
+            vec![text::Span::new(code.strip_suffix('\n').unwrap_or(code))],
+            |rich| {
+                rich.font(settings.style.code_block_font)
+                    .size(settings.code_size)
+                    .line_height(1.45)
+                    .wrapping(text::Wrapping::None)
+            },
+        );
         let scroller = scrollable(container(code).padding([13, 16]))
             .direction(scrollable::Direction::Horizontal(Default::default()))
             .width(Length::Fill)
@@ -147,11 +155,24 @@ impl<'a> markdown::Viewer<'a, String> for Viewer {
             .into()
     }
 
+    fn image(
+        &self,
+        settings: markdown::Settings,
+        _url: &'a String,
+        _title: &'a str,
+        alt: &markdown::Text,
+    ) -> Element<'a, Action> {
+        container(self.0.block(alt.spans(settings.style), |rich| rich))
+            .padding(settings.spacing.0)
+            .class(<Theme as markdown::Catalog>::code_block())
+            .into()
+    }
+
     fn quote(
         &self,
         settings: markdown::Settings,
         contents: &'a [markdown::Item],
-    ) -> Element<'a, String> {
+    ) -> Element<'a, Action> {
         let quote = row![
             rule::vertical(2).style(|appearance| rule::Style {
                 color: theme::BLUE.resolve(appearance),
@@ -170,7 +191,7 @@ impl<'a> markdown::Viewer<'a, String> for Viewer {
             .into()
     }
 
-    fn rule(&self, _settings: markdown::Settings) -> Element<'a, String> {
+    fn rule(&self, _settings: markdown::Settings) -> Element<'a, Action> {
         rule::horizontal(1)
             .style(|appearance| rule::Style {
                 color: theme::LINE.resolve(appearance),

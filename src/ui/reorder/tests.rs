@@ -134,24 +134,26 @@ fn scrolled_rows_keep_small_pointer_movements_as_clicks() {
                             .width(Length::Fill)
                             .on_press(Message::Action(group)),
                     )
-                    .push(column(
-                        Column::with_children((0..4).map(|index| {
-                            button(text(format!("Project {}", group * 4 + index)))
-                                .height(40)
-                                .width(Length::Fill)
-                                .on_press(Message::Click(group * 4 + index))
-                                .into()
-                        })),
-                        0.,
-                        Message::Move,
-                        Message::Scroll,
-                    ))
+                    .push(Column::with_children((0..4).map(|index| {
+                        button(text(format!("Project {}", group * 4 + index)))
+                            .height(40)
+                            .width(Length::Fill)
+                            .on_press(Message::Click(group * 4 + index))
+                            .into()
+                    })))
                     .into()
             }));
-            scrollable(super::groups(groups, 38., Message::Move, Message::Scroll))
-                .width(240)
-                .height(188)
-                .into()
+            scrollable(super::groups(
+                groups,
+                vec![4; 4],
+                false,
+                Message::Move,
+                |_, _, _, _| None,
+                Message::Scroll,
+            ))
+            .width(240)
+            .height(188)
+            .into()
         } else {
             view()
         };

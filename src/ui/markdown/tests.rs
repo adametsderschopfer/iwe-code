@@ -11,7 +11,14 @@ fn preview_displays_fenced_and_indented_code_in_both_themes() {
         let mut ui = iced_test::Simulator::with_size(
             iced::Settings::default(),
             (320., 550.),
-            view(&items, &appearance, theme::code_font(), 14),
+            view(
+                &items,
+                &appearance,
+                theme::code_font(),
+                14,
+                (0, 0),
+                &Shortcuts::default(),
+            ),
         );
         assert!(ui.find(Id::new("markdown-preview-pane")).is_ok());
         assert!(ui.find("let x = 42;").is_ok());
@@ -33,7 +40,14 @@ fn reading_column_centers_on_wide_panes_and_wraps_in_narrow_panes() {
         let mut ui = iced_test::Simulator::with_size(
             iced::Settings::default(),
             (width, 550.),
-            view(&items, &Theme::Dark, theme::code_font(), 14),
+            view(
+                &items,
+                &Theme::Dark,
+                theme::code_font(),
+                14,
+                (0, 0),
+                &Shortcuts::default(),
+            ),
         );
         let document = ui
             .find(Id::new("markdown-document"))
@@ -53,4 +67,72 @@ fn reading_column_centers_on_wide_panes_and_wraps_in_narrow_panes() {
     assert!(narrow.width < wide.width);
     assert!((wide_code.x - wide.x - (narrow_code.x - narrow.x)).abs() < 1.);
     assert!(narrow_code.y > wide_code.y + 30.);
+}
+
+fn shortcut(key: &str) -> iced::Event {
+    use iced::{Event, keyboard};
+    let mut event = iced_test::simulator::press_key(keyboard::Key::Character(key.into()), None);
+    if let Event::Keyboard(keyboard::Event::KeyPressed { modifiers, .. }) = &mut event {
+        *modifiers = keyboard::Modifiers::COMMAND;
+    }
+    event
+}
+
+#[test]
+fn selection_copies_rendered_text_across_blocks_and_preserves_link_clicks() {
+    use iced::{Event, Point, mouse};
+
+    let items: Vec<_> = markdown::parse(
+        "# Привет\n\n[link](https://example.com) **mundo**\n\n```\nline one\nline two\n```",
+    )
+    .collect();
+    let mut ui = iced_test::Simulator::with_size(
+        iced::Settings::default(),
+        (540., 550.),
+        view(
+            &items,
+            &Theme::Dark,
+            theme::code_font(),
+            14,
+            (1, 0),
+            &Shortcuts::default(),
+        ),
+    );
+
+    let heading = ui.find("Привет").unwrap().visible_bounds().unwrap();
+    let paragraph = ui.find("link mundo").unwrap().visible_bounds().unwrap();
+    let press = Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left));
+    let release = Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left));
+
+    ui.point_at(Point::new(paragraph.x + 3., paragraph.center_y()));
+    ui.simulate([press.clone(), release.clone()]);
+    ui.point_at(Point::new(heading.x + 0.5, heading.center_y()));
+    ui.simulate([press.clone()]);
+    let end = Point::new(paragraph.x + paragraph.width - 0.5, paragraph.center_y());
+    ui.point_at(end);
+    ui.simulate([
+        Event::Mouse(mouse::Event::CursorMoved { position: end }),
+        release.clone(),
+        shortcut("c"),
+    ]);
+
+    ui.point_at(Point::new(paragraph.x + 1., paragraph.center_y()));
+    ui.simulate([press]);
+    let end = Point::new(heading.x + 0.5, heading.center_y());
+    ui.point_at(end);
+    ui.simulate([
+        Event::Mouse(mouse::Event::CursorMoved { position: end }),
+        release,
+        shortcut("a"),
+        shortcut("c"),
+    ]);
+
+    assert_eq!(
+        ui.into_messages().collect::<Vec<_>>(),
+        [
+            Action::Link("https://example.com".into()),
+            Action::Copy("Привет\nlink mundo".into()),
+            Action::Copy("Привет\nlink mundo\nline one\nline two".into()),
+        ]
+    );
 }

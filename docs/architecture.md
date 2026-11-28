@@ -307,14 +307,16 @@ own request counter to reject stale completions and timers. Both use the same tw
 two-second success state.
 
 The shared `ui/reorder` widget handles project dragging, drop indicators, and edge scrolling. Its
-grouped mode accepts drags only within space headings while forwarding nested project controls.
-Domain space moves preserve selection. Application coordination remaps collapsed indices and saves
-without reloading the selected project. It defers row clicks until release and preserves trailing
-action buttons. Space forms reorder their drafts. Sidebar drops update domain order and save
-immediately. Both paths preserve the selected directory and existing project metadata. Project
-metadata includes a persistent pinned flag. Sidebar rendering moves pinned rows above the spaces
-without changing membership or selection. The shared reorder widget also handles file-panel icons.
-Their saved order determines the panel selected at startup and after project changes.
+grouped mode handles space reordering and project drops across spaces. The corresponding domain
+operation validates duplicate folders and preserves project membership data. The settings button
+slides in when the pointer enters its space heading. It uses no space while hidden. Domain space
+moves preserve selection. Application coordination remaps collapsed indices and saves without
+reloading the selected project. It defers row clicks until release and preserves trailing action
+buttons. Space forms reorder their drafts. Sidebar drops update domain order and save immediately.
+Both paths preserve the selected directory and existing project metadata. Project metadata includes
+a persistent pinned flag. Sidebar rendering moves pinned rows above the spaces without changing
+membership or selection. The shared reorder widget also handles file-panel icons. Their saved order
+determines the panel selected at startup and after project changes.
 
 Git history uses bounded pages with frozen revision hashes and continuing graph lanes. Scrolling
 loads older pages and preserves the current position. Search continues loading until history ends or
@@ -694,6 +696,8 @@ text.
 Workspace preferences store one view mode for all Markdown tabs. The workspace parses the active
 editor snapshot for the formatted view. Read-only tabs use the loaded source text. The workspace
 reuses the parsed document until the source changes. Switching modes keeps the same editor buffer.
+The formatted view uses shaped text to select and copy content across Markdown blocks. The preview
+keeps its selection separately from the editor and clears it when the source snapshot changes.
 
 `app/tabs.rs` records project-relative local tab paths, comparison mode, and the active tab in
 workspace metadata. It reopens the remembered tabs when their project becomes active. Normal exit

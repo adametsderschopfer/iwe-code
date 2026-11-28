@@ -295,7 +295,7 @@
             "heading": "Manage spaces",
             "bullets": [
               "Create a space with the plus beside the Spaces heading.",
-              "Edit a space with the settings button beside its name.",
+              "Hover over a space name to reveal its settings button.",
               "Drag a space heading to change the space order.",
               "The open project and collapsed spaces keep their state."
             ]
@@ -305,6 +305,7 @@
             "bullets": [
               "Choose Add project to select existing folders or clone a repository.",
               "Pin a project to keep it at the top of the list.",
+              "Drop a project on another space to move it there.",
               "Remove a project from its context menu. Only the space entry disappears.",
               "Removing the active project selects another project or the empty workspace."
             ]
@@ -374,6 +375,13 @@
               "Files open in tabs above the code area.",
               "Long names shorten, and hidden tabs appear in a dropdown list.",
               "Closed tabs free memory. Prepared documents stay within a 16 MiB limit."
+            ]
+          },
+          {
+            "heading": "Read Markdown",
+            "bullets": [
+              "Choose Preview or Side by side to see the formatted document.",
+              "Drag across text in the preview to select it. Use the Copy shortcut to copy it."
             ]
           },
           {

@@ -91,6 +91,7 @@ impl App {
 #[derive(Default)]
 pub(crate) struct Cache {
     source: Option<Snapshot>,
+    pub revision: u64,
     pub items: Vec<markdown::Item>,
 }
 
@@ -127,6 +128,7 @@ impl State {
         } else {
             return;
         };
+        cache.revision = cache.revision.wrapping_add(1);
         cache.items = markdown::parse(text).collect();
         cache.source = Some(source);
     }

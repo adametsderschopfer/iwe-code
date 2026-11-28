@@ -16,11 +16,11 @@ discards its name, folder choices, and project order.
 In the space form, choose **Add project**, then the folder button to add local folders. Choose the
 Git branch button to clone a repository.
 
-Use the settings button beside a space name to edit that space in the same form. Change its name,
-add project folders, or remove projects, then choose **Save changes**. Cancel keeps the saved space
-unchanged. Removing a project only detaches its folder. The application never deletes the folder.
-The header shows **Space • Project** whenever a project is selected. Without a selected project, it
-shows only the space name. Settings keeps its own heading.
+Hover over a space name to slide its settings button in from the right. Use it to edit the space.
+Change its name, add project folders, or remove projects, then choose **Save changes**. Cancel keeps
+the saved space unchanged. Removing a project only detaches its folder. The application never
+deletes the folder. The header shows **Space • Project** whenever a project is selected. Without a
+selected project, it shows only the space name. Settings keeps its own heading.
 
 Use the sidebar button in the header to hide or show **Spaces**. Drag the sidebar's right edge to
 change its width. The sidebar slides open and closed below the window header. On macOS, Reduce
@@ -125,9 +125,11 @@ when more projects exist. Scroll to reach the remaining projects. A line marks t
 Holding a dragged row near the list edge scrolls the list. Dropping outside the list cancels the
 move. **Save changes** applies the form's project order.
 
-Drag project rows within their space in the sidebar to change the same order. Sidebar changes save
-immediately and survive restarts. Reordering preserves the open project, file tabs, and loaded
-history. Sidebar rows retain their existing icons. Dragging does not move projects between spaces.
+Drag project rows within their space in the sidebar to change their order. Drop a project on another
+space to move it there. The destination expands and shows the moved project. You can also drag
+pinned projects and selected projects between spaces. A space accepts each project folder once.
+Sidebar changes save immediately and survive restarts. Moving projects preserves their folders, open
+file tabs, and loaded history.
 
 The **Spaces** heading and its add button stay fixed above the scrolling project list.
 
@@ -809,10 +811,12 @@ to see its name.
 
 The formatted document centers a reading column in both views. Text wraps as the pane narrows.
 Headings, quotes, and code use distinct styles from the current theme. Long code lines scroll
-horizontally inside their blocks. Web links open in the browser. Relative file links in local
-documents open their targets in IWE. Switching views keeps each tab's draft, cursor, selection, and
-undo history. The source view stays read-only for revisions and large files. Large files display one
-page at a time. Comparison tabs keep their comparison controls.
+horizontally inside their blocks. Drag across the formatted text to select it. Use the Copy shortcut
+to copy the selection. Use Select All to select the formatted document after clicking its text. Web
+links open in the browser. Relative file links in local documents open their targets in IWE.
+Switching views keeps each tab's draft, cursor, selection, and undo history. The source view stays
+read-only for revisions and large files. Large files display one page at a time. Comparison tabs
+keep their comparison controls.
 
 ### File tab limits and saving
 

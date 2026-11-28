@@ -420,6 +420,7 @@ pub(crate) enum Message {
     SignIn,
     Auth(auth::Message),
     OpenUrl(String),
+    CopyMarkdownText(String),
     Opened(Result<(), Failure>),
     SetLanguage(Language),
     SetAppearance(Appearance),
@@ -1311,11 +1312,7 @@ impl App {
                 let from = self.spaces_sidebar_progress_at(now);
                 self.workspace.preferences.show_spaces_sidebar =
                     !self.workspace.preferences.show_spaces_sidebar;
-                let animate = self.window_id.is_some();
-                #[cfg(target_os = "macos")]
-                let animate = animate
-                    && !objc2_app_kit::NSWorkspace::sharedWorkspace()
-                        .accessibilityDisplayShouldReduceMotion();
+                let animate = self.window_id.is_some() && !windows::reduce_motion();
                 self.spaces_sidebar_transition = animate.then_some((now, from));
                 return self.save();
             }
@@ -1781,6 +1778,7 @@ impl App {
             }
             Message::SignIn => return self.begin_auth(),
             Message::Auth(message) => return self.update_auth(message),
+            Message::CopyMarkdownText(text) => return iced::clipboard::write(text),
             Message::OpenUrl(url) => {
                 return Task::perform(pipelines::open_url(url), Message::Opened);
             }

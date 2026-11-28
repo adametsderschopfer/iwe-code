@@ -24,6 +24,17 @@ pub(crate) struct State {
     pub maximized: bool,
 }
 
+pub(crate) fn reduce_motion() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        objc2_app_kit::NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceMotion()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
+}
+
 impl State {
     pub(crate) fn is_secondary(&self, id: window::Id) -> bool {
         self.settings == Some(id) || self.is_deployment(id)
